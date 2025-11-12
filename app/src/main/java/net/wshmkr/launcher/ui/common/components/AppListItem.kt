@@ -46,30 +46,23 @@ fun AppListItem(
                 },
                 onLongClick = { showBottomSheet = true }
             )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .padding(12.dp)
+            .padding(vertical = 8.dp, horizontal = 16.dp)
             .alpha(alpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
             painter = rememberDrawablePainter(drawable = appInfo.icon),
             contentDescription = appInfo.label,
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(40.dp)
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(20.dp))
         Column(
             modifier = Modifier.weight(1f)
         ) {
             if (appInfo.hasNotifications) {
                 NotificationPreview(appInfo)
             } else {
-                Text(
-                    text = appInfo.label,
-                    fontSize = 16.sp,
-                    color = Color.White,
-                    maxLines = 1,
-                    fontStyle = if (appInfo.isHidden) FontStyle.Italic else FontStyle.Normal
-                )
+                AppTitle(appInfo.label, appInfo.isHidden)
             }
         }
     }
@@ -81,4 +74,15 @@ fun AppListItem(
             viewModel = viewModel,
         )
     }
+}
+
+@Composable
+fun AppTitle(title: String, isHidden: Boolean) {
+    Text(
+        text = title,
+        fontSize = 16.sp,
+        color = Color.White,
+        maxLines = 1,
+        fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal
+    )
 }

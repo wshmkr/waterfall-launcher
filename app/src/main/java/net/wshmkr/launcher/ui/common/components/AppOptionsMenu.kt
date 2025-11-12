@@ -19,6 +19,8 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -84,7 +86,8 @@ fun AppOptionsMenu(
             if (appInfo.isSuggested) {
                 MenuOption(
                     icon = Icons.Outlined.Clear,
-                    text = "Stop suggesting\nDon't show below favorites",
+                    text = "Stop suggesting",
+                    subtext = "Don't show below favorites",
                     onClick = {
                         viewModel.toggleSuggest(appInfo.packageName)
                         onDismiss()
@@ -94,7 +97,8 @@ fun AppOptionsMenu(
             if (appInfo.doNotSuggest) {
                 MenuOption(
                     icon = Icons.Outlined.Done,
-                    text = "Suggest again\nSuggestions appear below favorites",
+                    text = "Suggest again",
+                    subtext = "Suggestions appear below favorites",
                     onClick = {
                         viewModel.toggleSuggest(appInfo.packageName)
                         onDismiss()
@@ -137,7 +141,7 @@ fun AppOptionsMenu(
 
             if (appInfo.isHidden) {
                 MenuOption(
-                    icon = Icons.Outlined.Done,
+                    icon = Icons.Outlined.Visibility,
                     text = "Show in app list",
                     onClick = {
                         viewModel.toggleHidden(appInfo.packageName)
@@ -146,7 +150,7 @@ fun AppOptionsMenu(
                 )
             } else {
                 MenuOption(
-                    icon = Icons.Outlined.Clear,
+                    icon = Icons.Outlined.VisibilityOff,
                     text = "Hide from app list",
                     onClick = {
                         viewModel.toggleHidden(appInfo.packageName)
@@ -186,13 +190,14 @@ fun AppOptionsMenu(
 fun MenuOption(
     icon: ImageVector,
     text: String,
+    subtext: String? = null,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 16.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -201,9 +206,18 @@ fun MenuOption(
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = text,
-            fontSize = 18.sp
-        )
+        Column {
+            Text(
+                text = text,
+                fontSize = 18.sp
+            )
+            subtext?.let {
+                Text(
+                    text = subtext,
+                    fontSize = 16.sp,
+                    color = Color.Gray,
+                )
+            }
+        }
     }
 }

@@ -44,26 +44,29 @@ fun ClockWidget() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(top = 32.dp),
+        horizontalAlignment = Alignment.Start
     ) {
         Text(
             text = currentTime,
-            fontSize = 72.sp,
-            fontWeight = FontWeight.Light,
+            fontSize = 48.sp,
             color = Color.White,
-            modifier = Modifier.clickable {
-                launchClockApp(context)
-            }
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .clickable {
+                    launchClockApp(context)
+                }
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = currentDate,
-            fontSize = 18.sp,
+            fontSize = 16.sp,
             color = Color.White,
-            modifier = Modifier.clickable {
-                launchCalendarApp(context)
-            }
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .clickable {
+                    launchCalendarApp(context)
+                }
         )
     }
 }

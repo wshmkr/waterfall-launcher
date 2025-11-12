@@ -2,7 +2,11 @@ package net.wshmkr.launcher.ui.feature.home
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -14,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.ListItem
 import net.wshmkr.launcher.ui.Screen
@@ -59,6 +64,7 @@ fun FavoritesView(
                     onLongPress = { navController.navigate(Screen.Settings.route) }
                 )
             },
+        contentPadding = PaddingValues(horizontal = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         userScrollEnabled = false,
@@ -77,9 +83,11 @@ fun FavoritesView(
             when (item) {
                 is ListItem.ClockWidget -> {
                     ClockWidget()
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
                 is ListItem.MediaWidget -> {
                     MediaWidget()
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
                 is ListItem.AppItem -> {
                     AppListItem(

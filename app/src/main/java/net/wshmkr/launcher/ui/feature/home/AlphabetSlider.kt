@@ -120,11 +120,11 @@ private fun LettersList(
             Text(
                 text = letter,
                 modifier = Modifier
+                    .fillMaxWidth()
                     .onGloballyPositioned { coordinates ->
                         onLetterPositioned(index, coordinates.boundsInParent().top)
                     },
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
                 color = if (letter == activeLetter) Color.Red else Color.White,
                 textAlign = TextAlign.Center
             )

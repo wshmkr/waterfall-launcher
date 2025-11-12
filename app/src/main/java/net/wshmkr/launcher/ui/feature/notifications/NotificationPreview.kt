@@ -11,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.AppInfo
@@ -21,6 +20,7 @@ import net.wshmkr.launcher.util.ONE_MINUTE
 import net.wshmkr.launcher.util.ONE_WEEK
 import net.wshmkr.launcher.util.timeSince
 import kotlinx.coroutines.delay
+import net.wshmkr.launcher.ui.common.components.AppTitle
 
 @Composable
 fun NotificationPreview(appInfo: AppInfo) {
@@ -52,33 +52,31 @@ fun NotificationPreview(appInfo: AppInfo) {
         } ?: ""
     }
 
-    Text(
-        text = appInfo.label + age,
-        fontSize = 16.sp,
-        color = Color.White,
-        maxLines = 1,
-        fontStyle = if (appInfo.isHidden) FontStyle.Italic else FontStyle.Normal
-    )
+    AppTitle(appInfo.label + age, appInfo.isHidden)
 
     if (notification != null) {
         Spacer(modifier = Modifier.height(4.dp))
 
         appInfo.mostRecentNotification?.title?.let {
-            Text(
-                text = it,
-                fontSize = 12.sp,
-                color = Color.White,
-                maxLines = 1,
-            )
+            if (!it.isEmpty()) {
+                Text(
+                    text = it,
+                    fontSize = 12.sp,
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
         }
 
         contentText?.let {
-            Text(
-                text = it,
-                fontSize = 12.sp,
-                color = Color.White,
-                maxLines = 2,
-            )
+            if (!it.isEmpty()) {
+                Text(
+                    text = it,
+                    fontSize = 12.sp,
+                    color = Color.White,
+                    maxLines = 2,
+                )
+            }
         }
     }
 }
