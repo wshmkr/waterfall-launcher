@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Waterfall Launcher</string>
+    <string name="app_icon">App Icon</string>
+    <string name="background_image">Background Image</string>
+    <string name="launcher_settings">Launcher Settings</string>
+    <string name="background_settings">Background Settings</string>
+    <string name="change_background">Change Background Image</string>
+    <string name="remove_background">Remove Background Image</string>
+    <string name="close">Close</string>
+    <string name="all_apps">All Apps</string>
+    <string name="accessibility_service_description">Allows the launcher to expand the notification drawer when you swipe down on the home screen.</string>
+</resources>
