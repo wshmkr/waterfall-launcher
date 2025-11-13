@@ -2,6 +2,7 @@ package net.wshmkr.launcher.ui.feature.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -74,16 +75,14 @@ fun AllAppsView(
     }
 
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPosition)
-    val coroutineScope = rememberCoroutineScope()
 
-    DisposableEffect(Unit) {
-        viewModel.setScrollCallback { position ->
-            coroutineScope.launch {
+    // Scroll when activeLetter changes - this happens AFTER recomposition with new alpha values
+    LaunchedEffect(viewModel.activeLetter) {
+        val letter = viewModel.activeLetter
+        if (letter != null && letter != STAR_SYMBOL) {
+            viewModel.getScrollPosition(letter)?.let { position ->
                 listState.scrollToItem(position, scrollOffset = 0)
             }
-        }
-        onDispose {
-            viewModel.setScrollCallback { }
         }
     }
 
@@ -115,13 +114,14 @@ fun AllAppsView(
                             Spacer(modifier = Modifier.height(8.dp))
                             SectionHeaderItem(
                                 letter = item.letter,
-                                alpha = viewModel.getAlpha(item.letter),
+                                targetAlpha = viewModel.getAlpha(item.letter),
+                                isActiveLetter = item.letter == viewModel.activeLetter,
                             )
                         }
                         is ListItem.AppItem -> {
                             AppListItem(
                                 appInfo = item.appInfo,
-                                alpha = viewModel.getAlpha(
+                                targetAlpha = viewModel.getAlpha(
                                     item.appInfo.label.first().uppercaseChar().toString()
                                 ),
                                 viewModel = viewModel,
@@ -152,13 +152,23 @@ fun AllAppsView(
 }
 
 @Composable
-fun SectionHeaderItem(letter: String, alpha: Float) {
+fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolean) {
+    val animatedAlpha by animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = if (isActiveLetter || targetAlpha < 1f) {
+            tween(durationMillis = 0)
+        } else {
+            tween(durationMillis = 300)
+        },
+        label = "section_header_alpha"
+    )
+    
     Text(
         text = letter,
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
-            .alpha(alpha),
+            .alpha(animatedAlpha),
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
         color = Color.White

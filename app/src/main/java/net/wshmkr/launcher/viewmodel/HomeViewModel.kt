@@ -57,8 +57,6 @@ class HomeViewModel @Inject constructor(
         private set
 
     var showSearchOverlay by mutableStateOf(false)
-    
-    private var scrollToPositionCallback: ((Int) -> Unit)? = null
 
     init {
         viewModelScope.launch {
@@ -83,21 +81,19 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun setScrollCallback(callback: (Int) -> Unit) {
-        scrollToPositionCallback = callback
-    }
-
     fun scrollToLetter(letter: String) {
         activeLetter = letter
         showingFavorites = letter == STAR_SYMBOL
-
-        if (letter != STAR_SYMBOL) {
-            val header = allAppsListItems.find { 
-                it is ListItem.SectionHeader && it.letter == letter 
-            } as? ListItem.SectionHeader
-            
-            header?.let { scrollToPositionCallback?.invoke(it.position) }
-        }
+    }
+    
+    fun getScrollPosition(letter: String): Int? {
+        if (letter == STAR_SYMBOL) return null
+        
+        val header = allAppsListItems.find { 
+            it is ListItem.SectionHeader && it.letter == letter 
+        } as? ListItem.SectionHeader
+        
+        return header?.position
     }
 
     fun deselectLetter() {
