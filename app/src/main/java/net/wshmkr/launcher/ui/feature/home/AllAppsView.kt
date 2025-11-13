@@ -155,7 +155,6 @@ fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolea
         } else {
             tween(durationMillis = 300)
         },
-        label = "section_header_alpha"
     )
     
     Text(

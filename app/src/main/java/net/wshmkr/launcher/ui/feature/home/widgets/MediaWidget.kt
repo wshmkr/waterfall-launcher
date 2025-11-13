@@ -2,13 +2,15 @@ package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.content.Intent
 import android.media.session.MediaController
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
@@ -21,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -93,12 +96,15 @@ fun MediaWidget() {
 
 @Composable
 private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
-    Column(
+    Row(
         modifier = Modifier
+            .padding(horizontal = 12.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onRequestPermission() }
+            .background(Color.Black.copy(alpha = 0.5f))
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
-            .clickable { onRequestPermission() },
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = Icons.Filled.MusicNote,
@@ -108,7 +114,7 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Enable notification access\nto control media",
+            text = "Enable notification access\nfor media controls",
             fontSize = 14.sp,
             color = Color.White.copy(alpha = 0.5f),
             textAlign = TextAlign.Center,
