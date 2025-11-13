@@ -100,11 +100,9 @@ fun FavoritesView(
                 when (item) {
                     is ListItem.ClockWidget -> {
                         ClockWidget()
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                     is ListItem.MediaWidget -> {
                         MediaWidget()
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                     is ListItem.AppItem -> {
                         AppListItem(

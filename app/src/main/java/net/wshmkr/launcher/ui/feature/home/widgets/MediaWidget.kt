@@ -73,12 +73,13 @@ fun MediaWidget() {
         return
     }
 
-    mediaInfo?.let { media ->
+    val currentMediaInfo = mediaInfo
+    if (currentMediaInfo != null) {
         MediaControls(
-            mediaInfo = media,
+            mediaInfo = currentMediaInfo,
             mediaController = mediaController,
             onMediaAppClick = {
-                media.packageName?.let { pkg ->
+                currentMediaInfo.packageName?.let { pkg ->
                     try {
                         val intent = context.packageManager.getLaunchIntentForPackage(pkg)
                         intent?.let {
@@ -91,6 +92,8 @@ fun MediaWidget() {
                 }
             }
         )
+    } else {
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 

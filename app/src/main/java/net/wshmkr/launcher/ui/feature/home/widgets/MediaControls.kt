@@ -50,8 +50,10 @@ fun MediaControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clickable { onMediaAppClick() },
+            .padding(8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onMediaAppClick() }
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         MediaAlbumArt(albumArt = mediaInfo.albumArt)
