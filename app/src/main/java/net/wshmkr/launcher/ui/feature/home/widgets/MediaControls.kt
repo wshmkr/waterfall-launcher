@@ -19,10 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -50,8 +50,10 @@ fun MediaControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
-            .clickable { onMediaAppClick() },
+            .padding(8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onMediaAppClick() }
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         MediaAlbumArt(albumArt = mediaInfo.albumArt)
@@ -67,8 +69,6 @@ fun MediaControls(
                 artist = mediaInfo.artist
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             MediaControlButtons(
                 isPlaying = mediaInfo.isPlaying,
                 mediaController = mediaController
@@ -81,8 +81,8 @@ fun MediaControls(
 private fun MediaAlbumArt(albumArt: Bitmap?) {
     Box(
         modifier = Modifier
-            .size(80.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .size(96.dp)
+            .clip(RoundedCornerShape(6.dp))
             .background(Color.White.copy(alpha = 0.1f)),
         contentAlignment = Alignment.Center
     ) {
@@ -111,7 +111,7 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
         color = Color.White,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        textAlign = TextAlign.Center,
+        textAlign = TextAlign.Left,
         modifier = Modifier.fillMaxWidth()
     )
 
@@ -119,11 +119,11 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
 
     Text(
         text = artist ?: "Unknown artist",
-        fontSize = 13.sp,
-        color = Color.White.copy(alpha = 0.7f),
+        fontSize = 14.sp,
+        color = Color.White,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        textAlign = TextAlign.Center,
+        textAlign = TextAlign.Left,
         modifier = Modifier.fillMaxWidth()
     )
 }
@@ -134,7 +134,7 @@ private fun MediaControlButtons(
     mediaController: MediaController?
 ) {
     Row(
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -142,17 +142,17 @@ private fun MediaControlButtons(
             onClick = {
                 mediaController?.transportControls?.skipToPrevious()
             },
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Filled.SkipPrevious,
+                imageVector = Icons.Outlined.SkipPrevious,
                 contentDescription = "Previous",
                 tint = Color.White,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(24.dp))
 
         IconButton(
             onClick = {
@@ -167,26 +167,26 @@ private fun MediaControlButtons(
             modifier = Modifier.size(56.dp)
         ) {
             Icon(
-                imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                 contentDescription = if (isPlaying) "Pause" else "Play",
                 tint = Color.White,
                 modifier = Modifier.size(40.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(24.dp))
 
         IconButton(
             onClick = {
                 mediaController?.transportControls?.skipToNext()
             },
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Filled.SkipNext,
+                imageVector = Icons.Outlined.SkipNext,
                 contentDescription = "Next",
                 tint = Color.White,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
     }

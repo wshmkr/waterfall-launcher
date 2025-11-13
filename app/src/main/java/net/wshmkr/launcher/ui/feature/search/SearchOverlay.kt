@@ -1,7 +1,10 @@
 package net.wshmkr.launcher.ui.feature.search
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -47,6 +51,16 @@ fun SearchOverlay(
     onDismiss: () -> Unit,
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
+    BackHandler {
+        onDismiss()
+    }
+
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
@@ -95,9 +109,11 @@ fun SearchOverlay(
         }
     }
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboardController?.show()
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
     }
 
     AppLauncher(launchAppIntent = viewModel.launchAppIntent)
@@ -115,21 +131,27 @@ fun SearchOverlay(
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            SearchBar(
-                inputField = {
-                    SearchBarDefaults.InputField(
-                        query = viewModel.searchQuery,
-                        onQueryChange = viewModel::updateSearchQuery,
-                        onSearch = viewModel::onSearch,
-                        expanded = false,
-                        onExpandedChange = { },
-                        modifier = Modifier.focusRequester(focusRequester),
-                    )
-                },
-                expanded = false,
-                onExpandedChange = { },
-                modifier = Modifier.padding(vertical = 8.dp)
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(
+                    initialOffsetY = { fullHeight -> -fullHeight }
+                ),
             ) {
+                SearchBar(
+                    inputField = {
+                        SearchBarDefaults.InputField(
+                            query = viewModel.searchQuery,
+                            onQueryChange = viewModel::updateSearchQuery,
+                            onSearch = viewModel::onSearch,
+                            expanded = false,
+                            onExpandedChange = { },
+                            modifier = Modifier.focusRequester(focusRequester),
+                        )
+                    },
+                    expanded = false,
+                    onExpandedChange = { },
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) { }
             }
             LazyColumn(
                 state = listState,

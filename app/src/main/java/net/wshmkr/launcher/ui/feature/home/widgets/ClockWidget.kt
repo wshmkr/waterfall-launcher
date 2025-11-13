@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,14 +19,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import net.wshmkr.launcher.util.getCurrentDate
 import net.wshmkr.launcher.util.getCurrentTime
-import kotlinx.coroutines.delay
 
 @Composable
 fun ClockWidget() {
@@ -44,26 +45,33 @@ fun ClockWidget() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(top = 32.dp),
+        horizontalAlignment = Alignment.Start
     ) {
         Text(
             text = currentTime,
-            fontSize = 72.sp,
-            fontWeight = FontWeight.Light,
+            fontSize = 48.sp,
             color = Color.White,
-            modifier = Modifier.clickable {
-                launchClockApp(context)
-            }
+            modifier = Modifier
+                .padding(horizontal = 4.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    launchClockApp(context)
+                }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = currentDate,
-            fontSize = 18.sp,
+            fontSize = 16.sp,
             color = Color.White,
-            modifier = Modifier.clickable {
-                launchCalendarApp(context)
-            }
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable {
+                    launchCalendarApp(context)
+                }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
 }
