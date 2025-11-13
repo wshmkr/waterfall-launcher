@@ -22,15 +22,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +37,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.ListItem
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.viewmodel.HomeViewModel
@@ -76,7 +72,6 @@ fun AllAppsView(
 
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPosition)
 
-    // Scroll when activeLetter changes - this happens AFTER recomposition with new alpha values
     LaunchedEffect(viewModel.activeLetter) {
         val letter = viewModel.activeLetter
         if (letter != null && letter != STAR_SYMBOL) {
@@ -88,7 +83,7 @@ fun AllAppsView(
 
     AnimatedVisibility(
         visible = isVisible,
-        enter = fadeIn(animationSpec = tween(durationMillis = 200)),
+        enter = fadeIn(animationSpec = tween(durationMillis = 300)),
     ) {
         Box(
             modifier = Modifier

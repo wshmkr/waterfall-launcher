@@ -111,9 +111,11 @@ fun SearchOverlay(
         }
     }
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-        keyboardController?.show()
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
     }
 
     AppLauncher(launchAppIntent = viewModel.launchAppIntent)
