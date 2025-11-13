@@ -1,16 +1,20 @@
 package net.wshmkr.launcher.ui.feature.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +44,13 @@ fun FavoritesView(
 
     val context = LocalContext.current
     var showAccessibilityDialog by remember { mutableStateOf(false) }
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel.favoriteListItems.isNotEmpty()) {
+        if (viewModel.favoriteListItems.isNotEmpty()) {
+            isVisible = true
+        }
+    }
 
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
@@ -51,54 +62,59 @@ fun FavoritesView(
         )
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalSwipeDetection(
-                onSwipeUp = { viewModel.showSearchOverlay = true },
-                onSwipeDown = {
-                    if (!NotificationPanelHelper.expandNotificationPanel()) {
-                        showAccessibilityDialog = true
-                    }
-                }
-            )
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = { navController.navigate(Screen.Settings.route) }
-                )
-            },
-        contentPadding = PaddingValues(horizontal = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        userScrollEnabled = false,
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(animationSpec = tween(durationMillis = 300)),
     ) {
-        items(
-            items = viewModel.favoriteListItems,
-            key = { item ->
-                when (item) {
-                    is ListItem.ClockWidget -> "clock_widget"
-                    is ListItem.MediaWidget -> "media_widget"
-                    is ListItem.AppItem -> item.appInfo.packageName
-                    is ListItem.SectionHeader -> "header_${item.letter}"
-                }
-            },
-        ) { item ->
-            when (item) {
-                is ListItem.ClockWidget -> {
-                    ClockWidget()
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-                is ListItem.MediaWidget -> {
-                    MediaWidget()
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-                is ListItem.AppItem -> {
-                    AppListItem(
-                        appInfo = item.appInfo,
-                        viewModel = viewModel,
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalSwipeDetection(
+                    onSwipeUp = { viewModel.showSearchOverlay = true },
+                    onSwipeDown = {
+                        if (!NotificationPanelHelper.expandNotificationPanel()) {
+                            showAccessibilityDialog = true
+                        }
+                    }
+                )
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { navController.navigate(Screen.Settings.route) }
                     )
+                },
+            contentPadding = PaddingValues(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            userScrollEnabled = false,
+        ) {
+            items(
+                items = viewModel.favoriteListItems,
+                key = { item ->
+                    when (item) {
+                        is ListItem.ClockWidget -> "clock_widget"
+                        is ListItem.MediaWidget -> "media_widget"
+                        is ListItem.AppItem -> item.appInfo.packageName
+                        is ListItem.SectionHeader -> "header_${item.letter}"
+                    }
+                },
+            ) { item ->
+                when (item) {
+                    is ListItem.ClockWidget -> {
+                        ClockWidget()
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    is ListItem.MediaWidget -> {
+                        MediaWidget()
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    is ListItem.AppItem -> {
+                        AppListItem(
+                            appInfo = item.appInfo,
+                            viewModel = viewModel,
+                        )
+                    }
+                    else -> null
                 }
-                else -> null
             }
         }
     }

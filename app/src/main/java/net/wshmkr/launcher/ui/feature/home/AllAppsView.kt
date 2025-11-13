@@ -1,6 +1,10 @@
 package net.wshmkr.launcher.ui.feature.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,7 +25,12 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -41,6 +50,14 @@ fun AllAppsView(
 ) {
     BackHandler {
         viewModel.navigateToFavorites()
+    }
+
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(viewModel.allAppsListItems.isNotEmpty()) {
+        if (viewModel.allAppsListItems.isNotEmpty()) {
+            isVisible = true
+        }
     }
 
     val configuration = LocalConfiguration.current
@@ -70,55 +87,66 @@ fun AllAppsView(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0f, 0f, 0f, 0.5f))
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(animationSpec = tween(durationMillis = 200)),
     ) {
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(vertical = topPadding, horizontal = 32.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0f, 0f, 0f, 0.5f))
         ) {
-            items(
-                items = viewModel.allAppsListItems,
-                key = { item ->
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(vertical = topPadding, horizontal = 32.dp)
+            ) {
+                items(
+                    items = viewModel.allAppsListItems,
+                    key = { item ->
+                        when (item) {
+                            is ListItem.SectionHeader -> "header_${item.letter}"
+                            is ListItem.AppItem -> item.appInfo.packageName
+                            else -> item.hashCode()
+                        }
+                    },
+                ) { item ->
                     when (item) {
-                        is ListItem.SectionHeader -> "header_${item.letter}"
-                        is ListItem.AppItem -> item.appInfo.packageName
-                        else -> item.hashCode()
+                        is ListItem.SectionHeader -> {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            SectionHeaderItem(
+                                letter = item.letter,
+                                alpha = viewModel.getAlpha(item.letter),
+                            )
+                        }
+                        is ListItem.AppItem -> {
+                            AppListItem(
+                                appInfo = item.appInfo,
+                                alpha = viewModel.getAlpha(
+                                    item.appInfo.label.first().uppercaseChar().toString()
+                                ),
+                                viewModel = viewModel,
+                            )
+                        }
+                        else -> null
                     }
-                },
-            ) { item ->
-                when (item) {
-                    is ListItem.SectionHeader -> {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        SectionHeaderItem(
-                            letter = item.letter,
-                            alpha = viewModel.getAlpha(item.letter),
-                        )
-                    }
-                    is ListItem.AppItem -> {
-                        AppListItem(
-                            appInfo = item.appInfo,
-                            alpha = viewModel.getAlpha(
-                                item.appInfo.label.first().uppercaseChar().toString()
-                            ),
-                            viewModel = viewModel,
-                        )
-                    }
-                    else -> null
                 }
             }
-        }
 
-        FloatingActionButton(
-            onClick = { viewModel.showSearchOverlay = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 48.dp, end = 64.dp),
-            shape = CircleShape
-        ) {
-            Icon(Icons.Outlined.Search, "Search")
+            AnimatedVisibility(
+                visible = viewModel.activeLetter == null,
+                enter = fadeIn(animationSpec = tween(durationMillis = 200)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 200)),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 48.dp, end = 64.dp)
+            ) {
+                FloatingActionButton(
+                    onClick = { viewModel.showSearchOverlay = true },
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Outlined.Search, "Search")
+                }
+            }
         }
     }
 }
