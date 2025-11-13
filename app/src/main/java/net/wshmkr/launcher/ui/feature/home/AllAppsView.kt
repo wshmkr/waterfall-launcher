@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.feature.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,6 +39,10 @@ import net.wshmkr.launcher.viewmodel.HomeViewModel
 fun AllAppsView(
     viewModel: HomeViewModel,
 ) {
+    BackHandler {
+        viewModel.navigateToFavorites()
+    }
+
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val topPadding = screenHeight * 0.25f

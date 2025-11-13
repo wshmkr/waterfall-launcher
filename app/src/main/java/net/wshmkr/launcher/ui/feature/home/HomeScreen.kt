@@ -52,7 +52,10 @@ fun HomeScreen(
         }
 
         if (viewModel.showSearchOverlay) {
-            SearchOverlay( { viewModel.showSearchOverlay = false })
+            SearchOverlay( {
+                viewModel.navigateToFavorites()
+                viewModel.showSearchOverlay = false
+            })
         } else {
             if (viewModel.showingFavorites) {
                 FavoritesView(

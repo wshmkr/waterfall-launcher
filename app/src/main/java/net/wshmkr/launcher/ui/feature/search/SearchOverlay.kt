@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.feature.search
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -47,6 +48,10 @@ fun SearchOverlay(
     onDismiss: () -> Unit,
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
+    BackHandler {
+        onDismiss()
+    }
+
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()

@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.feature.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,6 +36,8 @@ fun FavoritesView(
     navController: NavController,
     viewModel: HomeViewModel,
 ) {
+    BackHandler(enabled = true) { }
+
     val context = LocalContext.current
     var showAccessibilityDialog by remember { mutableStateOf(false) }
 
