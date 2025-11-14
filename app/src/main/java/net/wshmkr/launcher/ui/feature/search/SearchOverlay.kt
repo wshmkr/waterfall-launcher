@@ -76,11 +76,8 @@ fun SearchOverlay(
                                        listState.firstVisibleItemScrollOffset == 0
                 
                 if (isCurrentlyAtTop && available.y > 0) {
+                    totalDragY += available.y
                     coroutineScope.launch {
-                        if (totalDragY == 0f) {
-                            offsetY.stop()
-                        }
-                        totalDragY += available.y
                         offsetY.snapTo(totalDragY)
                     }
                     return Offset(0f, available.y)

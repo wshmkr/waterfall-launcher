@@ -3,6 +3,7 @@ package net.wshmkr.launcher.ui.feature.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -151,7 +152,7 @@ fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolea
     val animatedAlpha by animateFloatAsState(
         targetValue = targetAlpha,
         animationSpec = if (isActiveLetter || targetAlpha < 1f) {
-            tween(durationMillis = 0)
+            snap()
         } else {
             tween(durationMillis = 300)
         },

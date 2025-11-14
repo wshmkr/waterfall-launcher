@@ -27,20 +27,17 @@ fun Modifier.verticalSwipeDetection(
     onSwipeDown: (() -> Unit)? = null,
 ): Modifier {
     var totalDragY by remember { mutableFloatStateOf(0f) }
-    val offsetY = remember { Animatable(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
     val coroutineScope = rememberCoroutineScope()
     
     return this
         .graphicsLayer {
-            translationY = verticalDragFeedback(offsetY.value)
+            translationY = verticalDragFeedback(offsetY)
         }
         .pointerInput(Unit) {
             detectVerticalDragGestures(
                 onDragStart = {
                     totalDragY = 0f
-                    coroutineScope.launch {
-                        offsetY.stop()
-                    }
                 },
                 onDragEnd = {
                     if (totalDragY > VERTICAL_SWIPE_SENSITIVITY && onSwipeDown != null) {
@@ -50,17 +47,18 @@ fun Modifier.verticalSwipeDetection(
                     }
                     totalDragY = 0f
                     coroutineScope.launch {
-                        offsetY.animateTo(
+                        val animatable = Animatable(offsetY)
+                        animatable.animateTo(
                             targetValue = 0f,
                             animationSpec = spring()
-                        )
+                        ) {
+                            offsetY = value
+                        }
                     }
                 },
                 onVerticalDrag = { _, dragAmount ->
                     totalDragY += dragAmount
-                    coroutineScope.launch {
-                        offsetY.snapTo(totalDragY)
-                    }
+                    offsetY = totalDragY
                 }
             )
         }

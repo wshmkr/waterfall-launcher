@@ -7,9 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -27,11 +25,11 @@ import androidx.navigation.NavController
 import net.wshmkr.launcher.model.ListItem
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.AppListItem
-import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
-import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
+import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
+import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 @Composable
@@ -51,6 +49,16 @@ fun FavoritesView(
         }
     }
 
+    val onSwipeUp = remember {{ viewModel.showSearchOverlay = true }}
+    val onSwipeDown = remember {{
+        if (!NotificationPanelHelper.expandNotificationPanel()) {
+            showAccessibilityDialog = true
+        }
+    }}
+    val onLongPress = remember(navController) {{
+        navController.navigate(Screen.Settings.route)
+    }}
+
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
             onDismiss = { showAccessibilityDialog = false },
@@ -69,16 +77,12 @@ fun FavoritesView(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalSwipeDetection(
-                    onSwipeUp = { viewModel.showSearchOverlay = true },
-                    onSwipeDown = {
-                        if (!NotificationPanelHelper.expandNotificationPanel()) {
-                            showAccessibilityDialog = true
-                        }
-                    }
+                    onSwipeUp = onSwipeUp,
+                    onSwipeDown = onSwipeDown
                 )
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onLongPress = { navController.navigate(Screen.Settings.route) }
+                        onLongPress = { onLongPress() }
                     )
                 },
             contentPadding = PaddingValues(horizontal = 32.dp),

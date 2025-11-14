@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.components.AppTitle
 import net.wshmkr.launcher.util.ONE_DAY
@@ -27,7 +28,7 @@ fun NotificationPreview(appInfo: AppInfo) {
 
     LaunchedEffect(notification) {
         notification?.let { notification ->
-            while (true) {
+            while (isActive) {
                 val age = System.currentTimeMillis() - notification.timestamp
                 val delay = when {
                     age < ONE_HOUR -> ONE_MINUTE/2
