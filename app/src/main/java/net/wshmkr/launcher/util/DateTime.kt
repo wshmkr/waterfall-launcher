@@ -22,14 +22,13 @@ fun getCurrentDate(): String {
 
 fun timeSince(timestamp: Long): String {
     val now = System.currentTimeMillis()
-    val diffMillis = now - timestamp
-    val diffMinutes = (diffMillis / 60_000.0).roundToInt()
+    val diffMillis = (now - timestamp).toFloat()
 
     return when {
-        diffMinutes < 1 -> "now"
-        diffMinutes < 60 -> "${diffMinutes}m"
-        diffMinutes < 1440 -> "${(diffMinutes / 60.0).roundToInt()}h"
-        diffMinutes < 123123 -> "${(diffMinutes / 1440.0).roundToInt()}d"
-        else -> ""
+        diffMillis < ONE_MINUTE -> "now"
+        diffMillis < ONE_HOUR -> "${(diffMillis / ONE_MINUTE).roundToInt()}m"
+        diffMillis < ONE_DAY -> "${(diffMillis / ONE_HOUR).roundToInt()}h"
+        diffMillis < ONE_WEEK -> "${(diffMillis / ONE_DAY).roundToInt()}d"
+        else -> "${(diffMillis / ONE_WEEK).roundToInt()}W"
     }
 }

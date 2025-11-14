@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.util.MediaSessionHelper
 import net.wshmkr.launcher.util.NotificationPanelHelper
@@ -44,7 +45,7 @@ fun MediaWidget() {
     val hasPermission = remember { mutableStateOf(NotificationPanelHelper.isNotificationListenerEnabled(context)) }
 
     LaunchedEffect(Unit) {
-        while (true) {
+        while (isActive) {
             hasPermission.value = NotificationPanelHelper.isNotificationListenerEnabled(context)
             if (hasPermission.value) {
                 val info = MediaSessionHelper.getActiveMediaInfo(context)

@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import net.wshmkr.launcher.util.ONE_MINUTE
 import net.wshmkr.launcher.util.getCurrentDate
 import net.wshmkr.launcher.util.getCurrentTime
 
@@ -35,8 +37,8 @@ fun ClockWidget() {
     var currentDate by remember { mutableStateOf(getCurrentDate()) }
 
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
+        while (isActive) {
+            delay(ONE_MINUTE.toLong())
             currentTime = getCurrentTime()
             currentDate = getCurrentDate()
         }
