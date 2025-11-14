@@ -5,9 +5,8 @@ import android.app.PendingIntent
 data class NotificationInfo(
     val id: Int,
     val packageName: String,
-    val title: String,
-    val text: String,
-    val bigText: String? = null,
+    val title: String? = null,
+    val text: String? = null,
     val subText: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val actions: List<NotificationAction> = emptyList(),
