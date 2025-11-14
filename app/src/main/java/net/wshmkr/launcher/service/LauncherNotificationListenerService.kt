@@ -1,5 +1,8 @@
 package net.wshmkr.launcher.service
 
+import android.app.Notification
+import android.media.session.MediaSession
+import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import net.wshmkr.launcher.model.NotificationInfo
@@ -16,12 +19,8 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        activeNotifications?.forEach { sbn ->
-            val notification = extractNotification(sbn)
-
-            if (!notification.isOngoing && !notification.isMedia) {
-                notificationRepository.addNotification(notification)
-            }
+        activeNotifications?.forEach {
+            onNotificationPosted(it)
         }
     }
 
@@ -50,15 +49,16 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     }
 
     private fun extractNotification(sbn: StatusBarNotification): NotificationInfo {
-        val androidNotification = sbn.notification
-        val extras = androidNotification.extras
+        val notification = sbn.notification
+        val extras = notification.extras
 
-        val title = extras.getCharSequence("android.title")?.toString() ?: ""
-        val text = extras.getCharSequence("android.text")?.toString() ?: ""
-        val bigText = extras.getCharSequence("android.bigText")?.toString()
-        val subText = extras.getCharSequence("android.subText")?.toString()
+        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+        var text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+        val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
 
-        val actions = androidNotification.actions?.mapNotNull { action ->
+        extractMessageText(extras)?.let { text = it }
+
+        val actions = notification.actions?.mapNotNull { action ->
             action.title?.toString()?.let { title ->
                 NotificationAction(
                     title = title,
@@ -67,21 +67,39 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             }
         } ?: emptyList()
         
-        val isOngoing = (androidNotification.flags and android.app.Notification.FLAG_ONGOING_EVENT) != 0
-        val isMedia = extras.getParcelable("android.mediaSession", android.media.session.MediaSession.Token::class.java) != null
+        val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
+        val isMedia = extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java) != null
         
         return NotificationInfo(
             id = sbn.id,
             packageName = sbn.packageName,
             title = title,
             text = text,
-            bigText = bigText,
             subText = subText,
             timestamp = sbn.postTime,
             actions = actions,
-            contentIntent = androidNotification.contentIntent,
+            contentIntent = notification.contentIntent,
             isOngoing = isOngoing,
             isMedia = isMedia
         )
+    }
+
+    private fun extractMessageText(extras: Bundle): String? {
+        if (!extras.containsKey(Notification.EXTRA_MESSAGES)) {
+            return null
+        }
+
+        val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES, Bundle::class.java)
+
+        if (!messages.isNullOrEmpty()) {
+            val lastMessageBundle = messages.last() as Bundle
+            val lastMessageText = lastMessageBundle.getCharSequence("text")
+
+            if (!lastMessageText.isNullOrBlank()) {
+                return lastMessageText.toString()
+            }
+        }
+
+        return null
     }
 }

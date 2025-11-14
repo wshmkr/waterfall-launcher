@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.AppInfo
@@ -106,6 +107,7 @@ fun AppTitle(title: String, isHidden: Boolean) {
         fontSize = 16.sp,
         color = Color.White,
         maxLines = 1,
-        fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal
+        fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,
+        overflow = TextOverflow.Ellipsis,
     )
 }
