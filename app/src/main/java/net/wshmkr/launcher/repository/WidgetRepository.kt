@@ -1,0 +1,91 @@
+package net.wshmkr.launcher.repository
+
+import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import net.wshmkr.launcher.datastore.WidgetDataSource
+import net.wshmkr.launcher.model.WidgetInfo
+import net.wshmkr.launcher.util.LauncherAppWidgetHost
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class WidgetRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val widgetDataSource: WidgetDataSource
+) {
+    private val appWidgetManager: AppWidgetManager = AppWidgetManager.getInstance(context)
+    private val appWidgetHost: AppWidgetHost = AppWidgetHost(context, 1024)
+
+    private val _widgets = MutableStateFlow<List<WidgetInfo>>(emptyList())
+    val widgets: StateFlow<List<WidgetInfo>> = _widgets.asStateFlow()
+
+    suspend fun loadWidgets() {
+        val loadedWidgets = widgetDataSource.getWidgets()
+        android.util.Log.d("WidgetRepository", "Loaded ${loadedWidgets.size} widgets from DataStore")
+        loadedWidgets.forEach { 
+            android.util.Log.d("WidgetRepository", "Widget: ID=${it.widgetId}, label=${it.label}")
+        }
+        _widgets.value = loadedWidgets
+    }
+
+    suspend fun addWidget(widgetInfo: WidgetInfo) {
+        android.util.Log.d("WidgetRepository", "Adding widget to DataStore: $widgetInfo")
+        widgetDataSource.addWidget(widgetInfo)
+        android.util.Log.d("WidgetRepository", "Widget added, reloading widgets")
+        loadWidgets()
+    }
+
+    suspend fun removeWidget(widgetId: Int) {
+        appWidgetHost.deleteAppWidgetId(widgetId)
+        widgetDataSource.removeWidget(widgetId)
+        loadWidgets()
+    }
+
+    suspend fun removeAllWidgets() {
+        android.util.Log.d("WidgetRepository", "Removing all widgets")
+        _widgets.value.forEach { widget ->
+            appWidgetHost.deleteAppWidgetId(widget.widgetId)
+        }
+        widgetDataSource.clearAllWidgets()
+        _widgets.value = emptyList()
+    }
+
+    fun allocateWidgetId(): Int {
+        return appWidgetHost.allocateAppWidgetId()
+    }
+
+    fun getAppWidgetHost(): AppWidgetHost {
+        return appWidgetHost
+    }
+
+    fun getAppWidgetManager(): AppWidgetManager {
+        return appWidgetManager
+    }
+
+    fun getAppWidgetInfo(widgetId: Int): AppWidgetProviderInfo? {
+        return appWidgetManager.getAppWidgetInfo(widgetId)
+    }
+
+    fun getPackageManager(): android.content.pm.PackageManager {
+        return context.packageManager
+    }
+
+    fun bindAppWidgetIdIfAllowed(appWidgetId: Int, provider: android.content.ComponentName): Boolean {
+        return appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider)
+    }
+
+    fun stopListening() {
+        appWidgetHost.stopListening()
+    }
+
+    fun startListening() {
+        appWidgetHost.startListening()
+    }
+}
+

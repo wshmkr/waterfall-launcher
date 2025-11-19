@@ -5,4 +5,5 @@ sealed class ListItem {
     data class AppItem(val appInfo: AppInfo) : ListItem()
     object ClockWidget : ListItem()
     object MediaWidget : ListItem()
+    object WidgetHost : ListItem()
 }
