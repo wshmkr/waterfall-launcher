@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetInfo
+import net.wshmkr.launcher.model.WidgetProviderApp
 import net.wshmkr.launcher.util.LauncherAppWidgetHost
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -78,6 +79,41 @@ class WidgetRepository @Inject constructor(
 
     fun bindAppWidgetIdIfAllowed(appWidgetId: Int, provider: android.content.ComponentName): Boolean {
         return appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider)
+    }
+
+    fun getWidgetProviderApps(): List<WidgetProviderApp> {
+        val packageManager = context.packageManager
+        val providers = try {
+            appWidgetManager.installedProviders ?: emptyList()
+        } catch (e: Exception) {
+            android.util.Log.e("WidgetRepository", "Error loading widget providers", e)
+            emptyList()
+        }
+
+        return providers
+            .groupBy { it.provider.packageName }
+            .mapNotNull { (packageName, infos) ->
+                val applicationInfo = try {
+                    packageManager.getApplicationInfo(packageName, 0)
+                } catch (e: Exception) {
+                    null
+                }
+
+                val label = when {
+                    applicationInfo != null -> applicationInfo.loadLabel(packageManager)?.toString()
+                    else -> null
+                } ?: packageName
+
+                val icon = applicationInfo?.loadIcon(packageManager)
+
+                WidgetProviderApp(
+                    packageName = packageName,
+                    label = label,
+                    icon = icon,
+                    widgets = infos
+                )
+            }
+            .sortedBy { it.label.lowercase() }
     }
 
     fun stopListening() {

@@ -99,12 +99,7 @@ fun SettingsScreen(
 
             Button(
                 onClick = {
-                    val activity = context as? MainActivity
-                    if (activity != null) {
-                        activity.requestWidgetPicker()
-                    } else {
-                        widgetViewModel.requestAddWidget()
-                    }
+                    navController.navigate(Screen.WidgetList.route)
                 }
             ) {
                 Text(

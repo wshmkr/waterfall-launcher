@@ -9,12 +9,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.hilt.navigation.compose.hiltViewModel
 import net.wshmkr.launcher.ui.feature.home.HomeScreen
 import net.wshmkr.launcher.ui.feature.settings.SettingsScreen
+import net.wshmkr.launcher.ui.feature.widgets.WidgetAppList
+import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object Settings : Screen("settings")
+    data object WidgetList : Screen("widget_list")
 }
 
 @Composable
@@ -38,6 +42,16 @@ fun AppNavigation(
             composable(Screen.Settings.route) {
                 SettingsScreen(
                     navController = navController
+                )
+            }
+            composable(Screen.WidgetList.route) {
+                val widgetViewModel: WidgetViewModel = hiltViewModel()
+                WidgetAppList(
+                    viewModel = widgetViewModel,
+                    onDismiss = { navController.popBackStack() },
+                    onWidgetSelected = {
+                        navController.popBackStack()
+                    }
                 )
             }
         }

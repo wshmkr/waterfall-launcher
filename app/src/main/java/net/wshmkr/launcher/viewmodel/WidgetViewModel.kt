@@ -1,6 +1,7 @@
 package net.wshmkr.launcher.viewmodel
 
 import android.appwidget.AppWidgetProviderInfo
+import android.graphics.drawable.Drawable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,8 +12,11 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.WidgetInfo
+import net.wshmkr.launcher.model.WidgetProviderApp
 import net.wshmkr.launcher.repository.WidgetRepository
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
@@ -20,6 +24,9 @@ class WidgetViewModel @Inject constructor(
 ) : ViewModel() {
 
     var widgets by mutableStateOf<List<WidgetInfo>>(emptyList())
+        private set
+
+    var widgetAppListItems by mutableStateOf<List<WidgetAppListItem>>(emptyList())
         private set
 
     private val _pickWidgetEvent = MutableSharedFlow<Int>(replay = 1, extraBufferCapacity = 1)
@@ -41,6 +48,10 @@ class WidgetViewModel @Inject constructor(
                 widgets = loadedWidgets
             }
         }
+
+        viewModelScope.launch {
+            loadWidgetProviders()
+        }
     }
 
     fun requestAddWidget() {
@@ -58,6 +69,11 @@ class WidgetViewModel @Inject constructor(
                 android.util.Log.e("WidgetViewModel", "Error requesting widget", e)
             }
         }
+    }
+
+    fun onWidgetProviderSelected(packageName: String) {
+        android.util.Log.d("WidgetViewModel", "Widget provider selected: $packageName")
+        requestAddWidget()
     }
 
     fun onWidgetSelected(widgetId: Int, appWidgetInfo: AppWidgetProviderInfo) {
@@ -106,9 +122,61 @@ class WidgetViewModel @Inject constructor(
         return widgetRepository
     }
 
+    private suspend fun loadWidgetProviders() {
+        val providers = withContext(Dispatchers.IO) {
+            widgetRepository.getWidgetProviderApps()
+        }
+        widgetAppListItems = buildWidgetAppListItems(providers)
+    }
+
+    private fun buildWidgetAppListItems(providers: List<WidgetProviderApp>): List<WidgetAppListItem> {
+        if (providers.isEmpty()) return emptyList()
+
+        val items = mutableListOf<WidgetAppListItem>()
+        var currentLetter: String? = null
+        val packageManager = widgetRepository.getPackageManager()
+
+        providers.forEach { provider ->
+            val letter = provider.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
+            if (letter != currentLetter) {
+                currentLetter = letter
+                items.add(WidgetAppListItem.SectionHeader(letter))
+            }
+            val widgetNames = provider.widgets.map { widgetInfo ->
+                try {
+                    widgetInfo.loadLabel(packageManager)?.toString() ?: widgetInfo.provider.className
+                } catch (e: Exception) {
+                    widgetInfo.provider.className
+                }
+            }
+            items.add(
+                WidgetAppListItem.Provider(
+                    packageName = provider.packageName,
+                    label = provider.label,
+                    icon = provider.icon,
+                    widgetCount = provider.widgets.size,
+                    widgetNames = widgetNames
+                )
+            )
+        }
+
+        return items
+    }
+
     override fun onCleared() {
         super.onCleared()
         widgetRepository.stopListening()
     }
+}
+
+sealed class WidgetAppListItem {
+    data class SectionHeader(val letter: String) : WidgetAppListItem()
+    data class Provider(
+        val packageName: String,
+        val label: String,
+        val icon: Drawable?,
+        val widgetCount: Int,
+        val widgetNames: List<String>
+    ) : WidgetAppListItem()
 }
 
