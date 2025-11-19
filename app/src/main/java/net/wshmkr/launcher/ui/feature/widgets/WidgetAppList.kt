@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.ui.feature.home.SectionHeaderItem
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
+import net.wshmkr.launcher.viewmodel.WidgetOption
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable
@@ -124,8 +125,8 @@ fun WidgetAppList(
                                     provider = listItem,
                                     isExpanded = isExpanded,
                                     onProviderClick = { toggleProvider(listItem.packageName) },
-                                    onWidgetSelected = {
-                                        viewModel.onWidgetProviderSelected(listItem.packageName)
+                                    onWidgetSelected = { option ->
+                                        viewModel.onWidgetOptionSelected(option)
                                         onWidgetSelected()
                                     }
                                 )
@@ -143,7 +144,7 @@ private fun WidgetProviderGroup(
     provider: WidgetAppListItem.Provider,
     isExpanded: Boolean,
     onProviderClick: () -> Unit,
-    onWidgetSelected: () -> Unit,
+    onWidgetSelected: (WidgetOption) -> Unit,
 ) {
     Column {
         WidgetProviderRow(
@@ -157,13 +158,13 @@ private fun WidgetProviderGroup(
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 32.dp, top = 8.dp)
             ) {
-                provider.widgetNames.forEachIndexed { index, widgetName ->
+                provider.widgets.forEachIndexed { index, widgetOption ->
                     WidgetListItem(
-                        widgetName = widgetName,
+                        widgetName = widgetOption.label,
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = onWidgetSelected
+                        onClick = { onWidgetSelected(widgetOption) }
                     )
-                    if (index != provider.widgetNames.lastIndex) {
+                    if (index != provider.widgets.lastIndex) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }

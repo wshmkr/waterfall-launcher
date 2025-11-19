@@ -27,6 +27,7 @@ import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
+import net.wshmkr.launcher.ui.feature.home.HomeOptionsMenu
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetHost
@@ -43,6 +44,7 @@ fun FavoritesView(
     val context = LocalContext.current
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
+    var showHomeOptionsMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.favoriteListItems.isNotEmpty()) {
         if (viewModel.favoriteListItems.isNotEmpty()) {
@@ -56,9 +58,7 @@ fun FavoritesView(
             showAccessibilityDialog = true
         }
     }}
-    val onLongPress = remember(navController) {{
-        navController.navigate(Screen.Settings.route)
-    }}
+    val onLongPress = { showHomeOptionsMenu = true }
 
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
@@ -123,5 +123,12 @@ fun FavoritesView(
                 }
             }
         }
+    }
+
+    if (showHomeOptionsMenu) {
+        HomeOptionsMenu(
+            navController = navController,
+            onDismiss = { showHomeOptionsMenu = false }
+        )
     }
 }

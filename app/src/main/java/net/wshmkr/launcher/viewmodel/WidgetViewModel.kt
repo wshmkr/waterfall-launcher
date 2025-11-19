@@ -71,11 +71,6 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
-    fun onWidgetProviderSelected(packageName: String) {
-        android.util.Log.d("WidgetViewModel", "Widget provider selected: $packageName")
-        requestAddWidget()
-    }
-
     fun onWidgetSelected(widgetId: Int, appWidgetInfo: AppWidgetProviderInfo) {
         viewModelScope.launch {
             val packageManager = widgetRepository.getPackageManager()
@@ -142,12 +137,16 @@ class WidgetViewModel @Inject constructor(
                 currentLetter = letter
                 items.add(WidgetAppListItem.SectionHeader(letter))
             }
-            val widgetNames = provider.widgets.map { widgetInfo ->
-                try {
+            val widgetOptions = provider.widgets.map { widgetInfo ->
+                val label = try {
                     widgetInfo.loadLabel(packageManager)?.toString() ?: widgetInfo.provider.className
                 } catch (e: Exception) {
                     widgetInfo.provider.className
                 }
+                WidgetOption(
+                    info = widgetInfo,
+                    label = label
+                )
             }
             items.add(
                 WidgetAppListItem.Provider(
@@ -155,12 +154,28 @@ class WidgetViewModel @Inject constructor(
                     label = provider.label,
                     icon = provider.icon,
                     widgetCount = provider.widgets.size,
-                    widgetNames = widgetNames
+                    widgets = widgetOptions
                 )
             )
         }
 
         return items
+    }
+
+    fun onWidgetOptionSelected(option: WidgetOption) {
+        viewModelScope.launch {
+            try {
+                val widgetId = widgetRepository.allocateWidgetId()
+                val hasPermission = widgetRepository.bindAppWidgetIdIfAllowed(widgetId, option.info.provider)
+                if (hasPermission) {
+                    onWidgetSelected(widgetId, option.info)
+                } else {
+                    _bindWidgetEvent.emit(widgetId to option.info)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("WidgetViewModel", "Error adding widget from list", e)
+            }
+        }
     }
 
     override fun onCleared() {
@@ -176,7 +191,12 @@ sealed class WidgetAppListItem {
         val label: String,
         val icon: Drawable?,
         val widgetCount: Int,
-        val widgetNames: List<String>
+        val widgets: List<WidgetOption>
     ) : WidgetAppListItem()
 }
+
+data class WidgetOption(
+    val info: AppWidgetProviderInfo,
+    val label: String
+)
 
