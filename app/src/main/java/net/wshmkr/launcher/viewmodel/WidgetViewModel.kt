@@ -167,10 +167,23 @@ class WidgetViewModel @Inject constructor(
             try {
                 val widgetId = widgetRepository.allocateWidgetId()
                 val hasPermission = widgetRepository.bindAppWidgetIdIfAllowed(widgetId, option.info.provider)
-                if (hasPermission) {
-                    onWidgetSelected(widgetId, option.info)
-                } else {
+                
+                if (!hasPermission) {
+                    // Need permission to bind this widget
+                    android.util.Log.d("WidgetViewModel", "Widget needs bind permission, emitting event")
                     _bindWidgetEvent.emit(widgetId to option.info)
+                    return@launch
+                }
+                
+                // Check if widget needs configuration
+                if (option.info.configure != null) {
+                    // Widget needs configuration - emit event for MainActivity to handle
+                    android.util.Log.d("WidgetViewModel", "Widget needs configuration, emitting bind event")
+                    _bindWidgetEvent.emit(widgetId to option.info)
+                } else {
+                    // Widget is ready to use, save it directly
+                    android.util.Log.d("WidgetViewModel", "Widget ready, saving directly")
+                    onWidgetSelected(widgetId, option.info)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("WidgetViewModel", "Error adding widget from list", e)

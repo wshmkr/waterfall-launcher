@@ -141,7 +141,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 
-                AppNavigation(navController = navController)
+                AppNavigation(
+                    navController = navController,
+                    widgetViewModel = widgetViewModel
+                )
             }
         }
     }
@@ -250,7 +253,7 @@ class MainActivity : ComponentActivity() {
     }
     
     private fun requestBindWidget(widgetId: Int, appWidgetInfo: android.appwidget.AppWidgetProviderInfo) {
-        val appWidgetManager = widgetRepository.getAppWidgetManager()
+        android.util.Log.d("MainActivity", "requestBindWidget called for widget: ${appWidgetInfo.provider}")
         
         // Try to bind the widget
         val hasPermission = widgetRepository.bindAppWidgetIdIfAllowed(
@@ -258,17 +261,33 @@ class MainActivity : ComponentActivity() {
             appWidgetInfo.provider
         )
         
-        if (hasPermission) {
-            // Permission granted, widget is bound
-            widgetViewModel.onWidgetSelected(widgetId, appWidgetInfo)
-        } else {
+        android.util.Log.d("MainActivity", "Widget bind permission: $hasPermission")
+        
+        if (!hasPermission) {
             // Need to request permission
+            android.util.Log.d("MainActivity", "Requesting bind permission")
             val bindIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, appWidgetInfo.provider)
             }
             pendingWidgetId = widgetId
             bindWidgetLauncher.launch(bindIntent)
+            return
+        }
+        
+        // Permission granted, check if widget needs configuration
+        if (appWidgetInfo.configure != null) {
+            android.util.Log.d("MainActivity", "Widget needs configuration")
+            val configIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
+                component = appWidgetInfo.configure
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            }
+            pendingWidgetId = widgetId
+            bindWidgetLauncher.launch(configIntent)
+        } else {
+            android.util.Log.d("MainActivity", "Widget ready to use, saving directly")
+            // Widget is bound and doesn't need configuration, save it
+            widgetViewModel.onWidgetSelected(widgetId, appWidgetInfo)
         }
     }
 }

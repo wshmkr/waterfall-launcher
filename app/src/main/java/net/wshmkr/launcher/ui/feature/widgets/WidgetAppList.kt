@@ -53,6 +53,8 @@ fun WidgetAppList(
     onDismiss: () -> Unit = {},
     onWidgetSelected: () -> Unit = {},
 ) {
+    android.util.Log.d("WidgetAppList", "Using ViewModel: ${viewModel.hashCode()}")
+    
     BackHandler(enabled = true) {
         onDismiss()
     }

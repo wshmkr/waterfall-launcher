@@ -24,6 +24,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    widgetViewModel: WidgetViewModel = hiltViewModel(),
 ) {
     Box(
         modifier = Modifier
@@ -45,7 +46,6 @@ fun AppNavigation(
                 )
             }
             composable(Screen.WidgetList.route) {
-                val widgetViewModel: WidgetViewModel = hiltViewModel()
                 WidgetAppList(
                     viewModel = widgetViewModel,
                     onDismiss = { navController.popBackStack() },
