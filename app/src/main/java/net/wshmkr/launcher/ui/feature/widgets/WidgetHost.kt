@@ -29,7 +29,6 @@ fun WidgetHost(
         viewModel.widgetIds.forEach { widgetId ->
             WidgetItem(
                 widgetId = widgetId,
-                onRemove = { viewModel.removeWidget(widgetId) },
                 viewModel = viewModel
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -40,7 +39,6 @@ fun WidgetHost(
 @Composable
 private fun WidgetItem(
     widgetId: Int,
-    onRemove: () -> Unit,
     viewModel: WidgetViewModel
 ) {
     AndroidView<AppWidgetHostView>(
@@ -72,6 +70,6 @@ private fun WidgetItem(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp) // todo: variable height
+            .height(180.dp) // todo: variable height
     )
 }

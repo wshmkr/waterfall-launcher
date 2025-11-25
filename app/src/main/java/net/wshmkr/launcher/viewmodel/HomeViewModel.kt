@@ -134,8 +134,8 @@ class HomeViewModel @Inject constructor(
         val items = mutableListOf<ListItem>()
         
         items.add(ListItem.ClockWidget)
-        items.add(ListItem.MediaWidget)
         items.add(ListItem.WidgetHost)
+        items.add(ListItem.MediaWidget)
         
         val favorites = appsRepository.allApps.filter { it.isFavorite }
         favorites.forEach { app ->
