@@ -22,16 +22,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import net.wshmkr.launcher.MainActivity
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
-import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable
 fun SettingsScreen(
     navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel(),
-    widgetViewModel: WidgetViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
 
@@ -84,35 +81,6 @@ fun SettingsScreen(
             ) {
                 Text(
                     text = "Remove Background",
-                    fontSize = 16.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = "Widget Controls",
-                fontSize = 18.sp,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            Button(
-                onClick = {
-                    navController.navigate(Screen.WidgetList.route)
-                }
-            ) {
-                Text(
-                    text = "Add Widget",
-                    fontSize = 16.sp
-                )
-            }
-
-            Button(
-                onClick = { widgetViewModel.removeAllWidgets() }
-            ) {
-                Text(
-                    text = "Remove All Widgets",
                     fontSize = 16.sp
                 )
             }

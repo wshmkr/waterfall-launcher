@@ -2,7 +2,6 @@ package net.wshmkr.launcher.repository
 
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
@@ -10,7 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.datastore.WidgetDataSource
-import net.wshmkr.launcher.model.WidgetProviderApp
+import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,18 +48,16 @@ class WidgetRepository @Inject constructor(
 
     fun allocateWidgetId(): Int = appWidgetHost.allocateAppWidgetId()
 
-    fun getAppWidgetInfo(widgetId: Int): AppWidgetProviderInfo? = appWidgetManager.getAppWidgetInfo(widgetId)
-
     fun bindAppWidgetIdIfAllowed(appWidgetId: Int, provider: ComponentName): Boolean =
         appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider)
 
-    fun getWidgetProviderApps(): List<WidgetProviderApp> =
+    fun getWidgetProviderApps(): List<WidgetProviderAppInfo> =
         runCatching { appWidgetManager.installedProviders }
             .getOrElse { emptyList() }
             .groupBy { it.provider.packageName }
             .mapNotNull { (packageName, infos) ->
                 val appInfo = runCatching { packageManager.getApplicationInfo(packageName, 0) }.getOrNull()
-                WidgetProviderApp(
+                WidgetProviderAppInfo(
                     packageName = packageName,
                     label = appInfo?.loadLabel(packageManager)?.toString() ?: packageName,
                     icon = appInfo?.loadIcon(packageManager),

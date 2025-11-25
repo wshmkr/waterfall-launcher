@@ -33,13 +33,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 navController = rememberNavController()
-                widgetViewModel = hiltViewModel<WidgetViewModel>()
-
-                widgetViewModel.onPickWidget = widgetPickerHelper::launchPicker
-
-                LaunchedEffect(widgetViewModel) {
-                    widgetViewModel.pickWidgetEvent.collect(widgetPickerHelper::launchPicker)
-                }
+                widgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {
                     widgetViewModel.bindWidgetEvent.collect { (widgetId, info) ->
                         widgetPickerHelper.bindOrConfigure(widgetId, info)
@@ -70,11 +64,6 @@ class MainActivity : ComponentActivity() {
             activity = this,
             widgetRepository = widgetRepository,
             lifecycleScope = lifecycleScope,
-            onWidgetSaved = { widgetId, info ->
-                if (::widgetViewModel.isInitialized) {
-                    widgetViewModel.onWidgetSelected(widgetId, info)
-                }
-            }
         )
         widgetPickerHelper.registerLaunchers()
     }

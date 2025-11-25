@@ -18,37 +18,24 @@ class WidgetPickerHelper(
     private val activity: ComponentActivity,
     private val widgetRepository: WidgetRepository,
     private val lifecycleScope: LifecycleCoroutineScope,
-    private val onWidgetSaved: ((Int, AppWidgetProviderInfo) -> Unit)? = null
 ) {
-    private lateinit var pickWidgetLauncher: ActivityResultLauncher<Intent>
-    private lateinit var bindWidgetLauncher: ActivityResultLauncher<Intent>
+    private lateinit var widgetResultLauncher: ActivityResultLauncher<Intent>
 
     private var pendingWidgetId: Int? = null
+    private var pendingWidgetInfo: AppWidgetProviderInfo? = null
+    private var pendingRequest: PendingRequest = PendingRequest.NONE
 
-    private val appWidgetManager: AppWidgetManager
-        get() = widgetRepository.appWidgetManager
-
+    private enum class PendingRequest { NONE, BIND, CONFIG }
 
     fun registerLaunchers() {
-        pickWidgetLauncher = activity.registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult(),
-            ::handlePickerResult
-        )
-        bindWidgetLauncher = activity.registerForActivityResult(
+        widgetResultLauncher = activity.registerForActivityResult(
             ActivityResultContracts.StartActivityForResult(),
             ::handleBindOrConfigureResult
         )
     }
 
-    fun launchPicker(widgetId: Int) {
-        pendingWidgetId = widgetId
-        val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_PICK).apply {
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-        }
-        pickWidgetLauncher.launch(intent)
-    }
-
     fun bindOrConfigure(widgetId: Int, info: AppWidgetProviderInfo) {
+        pendingWidgetInfo = info
         if (!tryBind(widgetId, info.provider)) {
             launchBindPermissionRequest(widgetId, info.provider)
             return
@@ -57,23 +44,8 @@ class WidgetPickerHelper(
         if (info.configure != null) {
             launchConfiguration(widgetId, info)
         } else {
-            onWidgetSaved?.invoke(widgetId, info)
-        }
-    }
-
-    private fun handlePickerResult(result: ActivityResult) {
-        if (result.resultCode != Activity.RESULT_OK) {
-            clearPendingWidget(deleteFromHost = true)
-            return
-        }
-
-        val widgetId = result.extractWidgetId() ?: return
-        val info = appWidgetManager.getAppWidgetInfo(widgetId) ?: return
-
-        if (info.configure != null) {
-            launchConfiguration(widgetId, info)
-        } else {
-            bindOrSave(widgetId, info)
+            saveWidget(widgetId)
+            pendingWidgetInfo = null
         }
     }
 
@@ -81,20 +53,28 @@ class WidgetPickerHelper(
         val widgetId = pendingWidgetId ?: return
 
         if (result.resultCode == Activity.RESULT_OK) {
-            appWidgetManager.getAppWidgetInfo(widgetId)?.let { info ->
-                saveWidget(widgetId, info)
+            when (pendingRequest) {
+                PendingRequest.BIND -> {
+                    val info = pendingWidgetInfo
+                    if (info == null) {
+                        clearPendingWidget(deleteFromHost = true)
+                        return
+                    }
+                    if (info.configure != null) {
+                        launchConfiguration(widgetId, info)
+                    } else {
+                        saveWidget(widgetId)
+                        clearPendingWidget()
+                    }
+                }
+                PendingRequest.CONFIG -> {
+                    saveWidget(widgetId)
+                    clearPendingWidget()
+                }
+                PendingRequest.NONE -> clearPendingWidget()
             }
-            clearPendingWidget()
         } else {
             clearPendingWidget(deleteFromHost = true)
-        }
-    }
-
-    private fun bindOrSave(widgetId: Int, info: AppWidgetProviderInfo) {
-        if (tryBind(widgetId, info.provider)) {
-            saveWidget(widgetId, info)
-        } else {
-            launchBindPermissionRequest(widgetId, info.provider)
         }
     }
 
@@ -104,23 +84,25 @@ class WidgetPickerHelper(
 
     private fun launchBindPermissionRequest(widgetId: Int, provider: ComponentName) {
         pendingWidgetId = widgetId
+        pendingRequest = PendingRequest.BIND
         val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider)
         }
-        bindWidgetLauncher.launch(intent)
+        widgetResultLauncher.launch(intent)
     }
 
     private fun launchConfiguration(widgetId: Int, info: AppWidgetProviderInfo) {
         pendingWidgetId = widgetId
+        pendingRequest = PendingRequest.CONFIG
         val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
             component = info.configure
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
         }
-        bindWidgetLauncher.launch(intent)
+        widgetResultLauncher.launch(intent)
     }
 
-    private fun saveWidget(widgetId: Int, info: AppWidgetProviderInfo) {
+    private fun saveWidget(widgetId: Int) {
         lifecycleScope.launch {
             widgetRepository.addWidget(widgetId)
         }
@@ -133,14 +115,7 @@ class WidgetPickerHelper(
             }
         }
         pendingWidgetId = null
-    }
-
-    private fun ActivityResult.extractWidgetId(): Int? {
-        val id = data?.getIntExtra(
-            AppWidgetManager.EXTRA_APPWIDGET_ID,
-            AppWidgetManager.INVALID_APPWIDGET_ID
-        ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
-
-        return id.takeIf { it != AppWidgetManager.INVALID_APPWIDGET_ID }
+        pendingWidgetInfo = null
+        pendingRequest = PendingRequest.NONE
     }
 }
