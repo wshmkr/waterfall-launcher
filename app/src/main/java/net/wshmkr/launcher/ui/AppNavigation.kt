@@ -18,7 +18,7 @@ import net.wshmkr.launcher.viewmodel.WidgetViewModel
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
     data object Settings : Screen("settings")
-    data object WidgetList : Screen("widget_list")
+    data object WidgetList : Screen("widgets")
 }
 
 @Composable

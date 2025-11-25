@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetInfo
 import net.wshmkr.launcher.model.WidgetProviderApp
-import net.wshmkr.launcher.util.LauncherAppWidgetHost
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,17 +27,11 @@ class WidgetRepository @Inject constructor(
 
     suspend fun loadWidgets() {
         val loadedWidgets = widgetDataSource.getWidgets()
-        android.util.Log.d("WidgetRepository", "Loaded ${loadedWidgets.size} widgets from DataStore")
-        loadedWidgets.forEach { 
-            android.util.Log.d("WidgetRepository", "Widget: ID=${it.widgetId}, label=${it.label}")
-        }
         _widgets.value = loadedWidgets
     }
 
     suspend fun addWidget(widgetInfo: WidgetInfo) {
-        android.util.Log.d("WidgetRepository", "Adding widget to DataStore: $widgetInfo")
         widgetDataSource.addWidget(widgetInfo)
-        android.util.Log.d("WidgetRepository", "Widget added, reloading widgets")
         loadWidgets()
     }
 
@@ -49,7 +42,6 @@ class WidgetRepository @Inject constructor(
     }
 
     suspend fun removeAllWidgets() {
-        android.util.Log.d("WidgetRepository", "Removing all widgets")
         _widgets.value.forEach { widget ->
             appWidgetHost.deleteAppWidgetId(widget.widgetId)
         }
@@ -86,7 +78,6 @@ class WidgetRepository @Inject constructor(
         val providers = try {
             appWidgetManager.installedProviders ?: emptyList()
         } catch (e: Exception) {
-            android.util.Log.e("WidgetRepository", "Error loading widget providers", e)
             emptyList()
         }
 
@@ -100,7 +91,7 @@ class WidgetRepository @Inject constructor(
                 }
 
                 val label = when {
-                    applicationInfo != null -> applicationInfo.loadLabel(packageManager)?.toString()
+                    applicationInfo != null -> applicationInfo.loadLabel(packageManager).toString()
                     else -> null
                 } ?: packageName
 
