@@ -9,4 +9,3 @@ data class WidgetProviderApp(
     val icon: Drawable?,
     val widgets: List<AppWidgetProviderInfo>
 )
-

@@ -11,7 +11,6 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.LifecycleCoroutineScope
 import kotlinx.coroutines.launch
-import net.wshmkr.launcher.model.WidgetInfo
 import net.wshmkr.launcher.repository.WidgetRepository
 
 
@@ -27,7 +26,7 @@ class WidgetPickerHelper(
     private var pendingWidgetId: Int? = null
 
     private val appWidgetManager: AppWidgetManager
-        get() = widgetRepository.getAppWidgetManager()
+        get() = widgetRepository.appWidgetManager
 
 
     fun registerLaunchers() {
@@ -123,25 +122,14 @@ class WidgetPickerHelper(
 
     private fun saveWidget(widgetId: Int, info: AppWidgetProviderInfo) {
         lifecycleScope.launch {
-            val label = runCatching {
-                info.loadLabel(widgetRepository.getPackageManager()).toString()
-            }.getOrElse { info.provider.className }
-
-            val widgetInfo = WidgetInfo(
-                widgetId = widgetId,
-                providerName = info.provider.flattenToString(),
-                minWidth = info.minWidth,
-                minHeight = info.minHeight,
-                label = label
-            )
-            widgetRepository.addWidget(widgetInfo)
+            widgetRepository.addWidget(widgetId)
         }
     }
 
     private fun clearPendingWidget(deleteFromHost: Boolean = false) {
         pendingWidgetId?.let { id ->
             if (deleteFromHost) {
-                widgetRepository.getAppWidgetHost().deleteAppWidgetId(id)
+                widgetRepository.appWidgetHost.deleteAppWidgetId(id)
             }
         }
         pendingWidgetId = null
@@ -156,4 +144,3 @@ class WidgetPickerHelper(
         return id.takeIf { it != AppWidgetManager.INVALID_APPWIDGET_ID }
     }
 }
-

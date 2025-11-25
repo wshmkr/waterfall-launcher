@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import net.wshmkr.launcher.model.WidgetInfo
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 
@@ -27,31 +26,27 @@ fun WidgetHost(
             .fillMaxWidth()
             .wrapContentHeight()
     ) {
-        viewModel.widgets.forEach { widget ->
+        viewModel.widgetIds.forEach { widgetId ->
             WidgetItem(
-                widget = widget,
-                onRemove = { viewModel.removeWidget(widget.widgetId) },
+                widgetId = widgetId,
+                onRemove = { viewModel.removeWidget(widgetId) },
                 viewModel = viewModel
             )
             Spacer(modifier = Modifier.height(12.dp))
         }
-
     }
 }
 
 @Composable
 private fun WidgetItem(
-    widget: WidgetInfo,
+    widgetId: Int,
     onRemove: () -> Unit,
     viewModel: WidgetViewModel
 ) {
-    // Widget content
     AndroidView<AppWidgetHostView>(
         factory = { ctx ->
             val widgetRepository = viewModel.getWidgetRepository()
-            val appWidgetManager = widgetRepository.getAppWidgetManager()
-            val appWidgetInfo = appWidgetManager.getAppWidgetInfo(widget.widgetId)
-            val host = widgetRepository.getAppWidgetHost()
+            val appWidgetInfo = widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId)
 
             if (appWidgetInfo == null) {
                 return@AndroidView AppWidgetHostView(ctx).apply {
@@ -66,8 +61,7 @@ private fun WidgetItem(
                 }
             }
 
-            // Use AppWidgetHost.createView so the host can manage RemoteViews updates
-            val widgetView = host.createView(ctx, widget.widgetId, appWidgetInfo)
+            val widgetView = widgetRepository.appWidgetHost.createView(ctx, widgetId, appWidgetInfo)
 
             widgetView.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,

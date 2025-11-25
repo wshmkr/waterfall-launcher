@@ -11,7 +11,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import net.wshmkr.launcher.model.WidgetInfo
 import net.wshmkr.launcher.model.WidgetProviderApp
 import net.wshmkr.launcher.repository.WidgetRepository
 import javax.inject.Inject
@@ -23,7 +22,7 @@ class WidgetViewModel @Inject constructor(
     private val widgetRepository: WidgetRepository
 ) : ViewModel() {
 
-    var widgets by mutableStateOf<List<WidgetInfo>>(emptyList())
+    var widgetIds by mutableStateOf<List<Int>>(emptyList())
         private set
 
     var widgetAppListItems by mutableStateOf<List<WidgetAppListItem>>(emptyList())
@@ -43,9 +42,9 @@ class WidgetViewModel @Inject constructor(
         viewModelScope.launch {
             android.util.Log.d("WidgetViewModel", "Loading widgets from repository")
             widgetRepository.loadWidgets()
-            widgetRepository.widgets.collect { loadedWidgets ->
-                android.util.Log.d("WidgetViewModel", "Received ${loadedWidgets.size} widgets from repository")
-                widgets = loadedWidgets
+            widgetRepository.widgetIds.collect { ids ->
+                android.util.Log.d("WidgetViewModel", "Received ${ids.size} widgets from repository")
+                widgetIds = ids
             }
         }
 
@@ -73,21 +72,7 @@ class WidgetViewModel @Inject constructor(
 
     fun onWidgetSelected(widgetId: Int, appWidgetInfo: AppWidgetProviderInfo) {
         viewModelScope.launch {
-            val packageManager = widgetRepository.getPackageManager()
-            val label = try {
-                appWidgetInfo.loadLabel(packageManager).toString()
-            } catch (e: Exception) {
-                appWidgetInfo.provider.className
-            }
-            
-            val widgetInfo = WidgetInfo(
-                widgetId = widgetId,
-                providerName = appWidgetInfo.provider.flattenToString(),
-                minWidth = appWidgetInfo.minWidth,
-                minHeight = appWidgetInfo.minHeight,
-                label = label
-            )
-            widgetRepository.addWidget(widgetInfo)
+            widgetRepository.addWidget(widgetId)
         }
     }
 
@@ -129,7 +114,6 @@ class WidgetViewModel @Inject constructor(
 
         val items = mutableListOf<WidgetAppListItem>()
         var currentLetter: String? = null
-        val packageManager = widgetRepository.getPackageManager()
 
         providers.forEach { provider ->
             val letter = provider.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
@@ -138,15 +122,10 @@ class WidgetViewModel @Inject constructor(
                 items.add(WidgetAppListItem.SectionHeader(letter))
             }
             val widgetOptions = provider.widgets.map { widgetInfo ->
-                val label = try {
-                    widgetInfo.loadLabel(packageManager)?.toString() ?: widgetInfo.provider.className
-                } catch (e: Exception) {
-                    widgetInfo.provider.className
-                }
-                WidgetOption(
-                    info = widgetInfo,
-                    label = label
-                )
+                val label = runCatching {
+                    widgetInfo.loadLabel(widgetRepository.packageManager)?.toString()
+                }.getOrNull() ?: widgetInfo.provider.className
+                WidgetOption(info = widgetInfo, label = label)
             }
             items.add(
                 WidgetAppListItem.Provider(
@@ -198,4 +177,3 @@ data class WidgetOption(
     val info: AppWidgetProviderInfo,
     val label: String
 )
-
