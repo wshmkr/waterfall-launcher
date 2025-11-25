@@ -162,7 +162,7 @@ private fun WidgetProviderGroup(
             ) {
                 provider.widgets.forEachIndexed { index, widgetOption ->
                     WidgetListItem(
-                        widgetName = widgetOption.label,
+                        widgetOption = widgetOption,
                         modifier = Modifier.fillMaxWidth(),
                         onClick = { onWidgetSelected(widgetOption) }
                     )
