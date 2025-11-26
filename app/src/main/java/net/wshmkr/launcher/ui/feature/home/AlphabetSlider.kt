@@ -25,8 +25,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import net.wshmkr.launcher.viewmodel.HomeViewModel
 import kotlin.collections.set
 
 const val STAR_SYMBOL = "★"
@@ -34,13 +32,18 @@ const val STAR_SYMBOL = "★"
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AlphabetSlider(
-    navController: NavController,
-    viewModel: HomeViewModel,
+    letters: List<String>,
+    activeLetter: String?,
+    onLetterSelected: (String) -> Unit,
+    onSelectionCleared: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    if (letters.isEmpty()) return
+
     val letterBounds = remember { mutableStateMapOf<Int, Float>() }
 
     fun letterAtPosition(position: Float) : String {
-        if (letterBounds.isEmpty()) return viewModel.alphabetLetters.first()
+        if (letterBounds.isEmpty()) return letters.first()
         
         val index = letterBounds.entries
             .filter { it.value <= position }
@@ -48,17 +51,17 @@ fun AlphabetSlider(
             ?.key
             ?: 0
 
-        return viewModel.alphabetLetters[index]
+        return letters[index]
     }
 
     fun Modifier.touchHandler(): Modifier = this.pointerInteropFilter { event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                viewModel.scrollToLetter(letterAtPosition(event.y))
+                onLetterSelected(letterAtPosition(event.y))
                 true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                viewModel.deselectLetter()
+                onSelectionCleared()
                 true
             }
             else -> false
@@ -66,7 +69,7 @@ fun AlphabetSlider(
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -79,8 +82,8 @@ fun AlphabetSlider(
                 .touchHandler()
         ) {
             LettersList(
-                letters = viewModel.alphabetLetters,
-                activeLetter = viewModel.activeLetter
+                letters = letters,
+                activeLetter = activeLetter
             )
         }
 
@@ -92,8 +95,8 @@ fun AlphabetSlider(
                 .touchHandler()
         ) {
             LettersList(
-                letters = viewModel.alphabetLetters,
-                activeLetter = viewModel.activeLetter,
+                letters = letters,
+                activeLetter = activeLetter,
                 onLetterPositioned = { index, top ->
                     letterBounds[index] = top
                 }

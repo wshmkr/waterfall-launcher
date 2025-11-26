@@ -2,6 +2,7 @@ package net.wshmkr.launcher.viewmodel
 
 import android.appwidget.AppWidgetProviderInfo
 import android.graphics.drawable.Drawable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -28,6 +29,18 @@ class WidgetViewModel @Inject constructor(
     var widgetAppListItems by mutableStateOf<List<WidgetAppListItem>>(emptyList())
         private set
 
+    var managedWidgets by mutableStateOf<List<ManagedWidget>>(emptyList())
+        private set
+
+    val alphabetLetters by derivedStateOf {
+        widgetAppListItems
+            .filterIsInstance<WidgetAppListItem.SectionHeader>()
+            .map { it.letter }
+    }
+
+    var activeLetter by mutableStateOf<String?>(null)
+        private set
+
     private val _bindWidgetEvent = MutableSharedFlow<Pair<Int, AppWidgetProviderInfo>>(replay = 1, extraBufferCapacity = 1)
     val bindWidgetEvent = _bindWidgetEvent.asSharedFlow()
 
@@ -36,12 +49,32 @@ class WidgetViewModel @Inject constructor(
             widgetRepository.loadWidgets()
             widgetRepository.widgetIds.collect {
                 widgetIds = it
+                refreshManagedWidgets(it)
             }
         }
 
         viewModelScope.launch {
             loadWidgetProviders()
         }
+    }
+
+    fun scrollToLetter(letter: String) {
+        activeLetter = letter
+    }
+
+    fun getScrollPosition(letter: String): Int? {
+        val index = widgetAppListItems.indexOfFirst {
+            it is WidgetAppListItem.SectionHeader && it.letter == letter
+        }
+        return if (index >= 0) index else null
+    }
+
+    fun deselectLetter() {
+        activeLetter = null
+    }
+
+    fun getAlpha(letter: String): Float {
+        return if (activeLetter == null || activeLetter == letter) 1f else 0.2f
     }
 
     fun removeWidget(widgetId: Int) {
@@ -53,10 +86,36 @@ class WidgetViewModel @Inject constructor(
     fun getWidgetRepository(): WidgetRepository = widgetRepository
 
     private suspend fun loadWidgetProviders() {
-        val providers = withContext(Dispatchers.IO) {
-            widgetRepository.getWidgetProviderApps()
+        val items = withContext(Dispatchers.IO) {
+            val providers = widgetRepository.getWidgetProviderApps()
+            buildWidgetAppListItems(providers)
         }
-        widgetAppListItems = buildWidgetAppListItems(providers)
+        widgetAppListItems = items
+    }
+
+    private suspend fun refreshManagedWidgets(ids: List<Int>) {
+        val manager = widgetRepository.appWidgetManager
+        val pm = widgetRepository.packageManager
+
+        val items = withContext(Dispatchers.IO) {
+            ids.mapNotNull { widgetId ->
+                val info = manager.getAppWidgetInfo(widgetId) ?: return@mapNotNull null
+                val appInfo = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
+                    .getOrNull()
+                val appName = appInfo?.loadLabel(pm)?.toString() ?: info.provider.packageName
+                val widgetName = runCatching { info.loadLabel(pm)?.toString() }
+                    .getOrNull() ?: info.provider.className
+                val icon = appInfo?.loadIcon(pm)
+                ManagedWidget(
+                    widgetId = widgetId,
+                    widgetName = widgetName,
+                    appName = appName,
+                    appIcon = icon
+                )
+            }
+        }
+
+        managedWidgets = items
     }
 
     private fun buildWidgetAppListItems(providers: List<WidgetProviderAppInfo>): List<WidgetAppListItem> {
@@ -122,4 +181,11 @@ sealed class WidgetAppListItem {
 data class WidgetOption(
     val info: AppWidgetProviderInfo,
     val label: String
+)
+
+data class ManagedWidget(
+    val widgetId: Int,
+    val widgetName: String,
+    val appName: String,
+    val appIcon: Drawable?
 )

@@ -6,8 +6,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import javax.inject.Inject
@@ -25,25 +27,15 @@ class WidgetRepository @Inject constructor(
     private val _widgetIds = MutableStateFlow<List<Int>>(emptyList())
     val widgetIds = _widgetIds.asStateFlow()
 
-    suspend fun loadWidgets() {
-        _widgetIds.value = widgetDataSource.getWidgetIds()
-    }
+    suspend fun loadWidgets() = updateIdsOnIo { }
 
-    suspend fun addWidget(widgetId: Int) {
+    suspend fun addWidget(widgetId: Int) = updateIdsOnIo {
         widgetDataSource.addWidget(widgetId)
-        loadWidgets()
     }
 
-    suspend fun removeWidget(widgetId: Int) {
+    suspend fun removeWidget(widgetId: Int) = updateIdsOnIo {
         appWidgetHost.deleteAppWidgetId(widgetId)
         widgetDataSource.removeWidget(widgetId)
-        loadWidgets()
-    }
-
-    suspend fun removeAllWidgets() {
-        _widgetIds.value.forEach { appWidgetHost.deleteAppWidgetId(it) }
-        widgetDataSource.clearAllWidgets()
-        _widgetIds.value = emptyList()
     }
 
     fun allocateWidgetId(): Int = appWidgetHost.allocateAppWidgetId()
@@ -68,4 +60,12 @@ class WidgetRepository @Inject constructor(
 
     fun startListening() = appWidgetHost.startListening()
     fun stopListening() = appWidgetHost.stopListening()
+
+    private suspend fun updateIdsOnIo(block: suspend () -> Unit) {
+        val updated = withContext(Dispatchers.IO) {
+            block()
+            widgetDataSource.getWidgetIds()
+        }
+        _widgetIds.value = updated
+    }
 }
