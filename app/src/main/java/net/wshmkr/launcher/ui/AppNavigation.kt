@@ -11,7 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import net.wshmkr.launcher.ui.feature.home.HomeScreen
 import net.wshmkr.launcher.ui.feature.settings.SettingsScreen
-import net.wshmkr.launcher.ui.feature.widgets.ManageWidgetsScreen
+import net.wshmkr.launcher.ui.feature.widgets.WidgetsScreen
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 sealed class Screen(val route: String) {
@@ -45,7 +45,7 @@ fun AppNavigation(
                 )
             }
             composable(Screen.WidgetList.route) {
-                ManageWidgetsScreen(
+                WidgetsScreen(
                     navController = navController,
                     viewModel = widgetViewModel
                 )

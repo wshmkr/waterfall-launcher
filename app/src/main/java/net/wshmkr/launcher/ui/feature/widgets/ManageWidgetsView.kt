@@ -1,6 +1,5 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -26,10 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,94 +34,72 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.viewmodel.ManagedWidget
-import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable
-fun ManageWidgetsScreen(
-    navController: NavController,
-    viewModel: WidgetViewModel,
+fun ManageWidgetsView(
+    managedWidgets: List<ManagedWidget>,
+    onAddWidget: () -> Unit,
+    onDeleteWidget: (Int) -> Unit,
 ) {
-    var showAddWidget by remember { mutableStateOf(false) }
-
-    BackHandler {
-        if (showAddWidget) {
-            viewModel.deselectLetter()
-            showAddWidget = false
-        } else {
-            navController.popBackStack()
-        }
-    }
-
-    val managedWidgets = viewModel.managedWidgets
     val listState = rememberLazyListState()
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+    ) {
+        Text(
+            text = "Manage Widgets",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = onAddWidget,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "Manage Widgets",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+            Text(text = "Add Widget", fontSize = 16.sp)
+        }
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = { showAddWidget = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "Add Widget", fontSize = 16.sp)
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                itemsIndexed(
-                    items = managedWidgets,
-                    key = { _, item -> item.widgetId }
-                ) { index, widget ->
-                    ManagedWidgetRow(
-                        item = widget,
-                        onDelete = { viewModel.removeWidget(widget.widgetId) },
-                    )
-                }
-            }
-
-            if (managedWidgets.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No widgets added yet",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
-                    )
-                }
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            itemsIndexed(
+                items = managedWidgets,
+                key = { _, item -> item.widgetId }
+            ) { _, widget ->
+                ManagedWidgetRow(
+                    item = widget,
+                    onDelete = { onDeleteWidget(widget.widgetId) },
+                )
             }
         }
 
-        if (showAddWidget) {
-            AddWidgetView(
-                viewModel = viewModel,
-                onDismiss = { showAddWidget = false }
-            )
+        if (managedWidgets.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No widgets added yet",
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
