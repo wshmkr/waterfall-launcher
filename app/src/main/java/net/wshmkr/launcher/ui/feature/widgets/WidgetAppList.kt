@@ -78,9 +78,14 @@ fun WidgetAppList(
 
                         is WidgetAppListItem.Provider -> {
                             val isExpanded = expandedProviders.contains(listItem.packageName)
+                            val letter = listItem.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
+                            val targetAlpha = viewModel.getAlpha(letter)
+                            val isActiveLetter = viewModel.activeLetter == letter
                             WidgetProviderGroup(
                                 provider = listItem,
                                 isExpanded = isExpanded,
+                                targetAlpha = targetAlpha,
+                                isActiveLetter = isActiveLetter,
                                 onProviderClick = { toggleProvider(listItem.packageName) },
                                 onWidgetSelected = { option ->
                                     viewModel.onWidgetOptionSelected(option)

@@ -1,5 +1,8 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,9 +17,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -32,6 +37,8 @@ import net.wshmkr.launcher.viewmodel.WidgetOption
 fun WidgetListItem(
     widgetOption: WidgetOption,
     modifier: Modifier = Modifier,
+    targetAlpha: Float = 1f,
+    isActiveLetter: Boolean,
     onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -45,8 +52,19 @@ fun WidgetListItem(
         }
     }
 
+    val animatedAlpha by animateFloatAsState(
+        targetValue = targetAlpha,
+        animationSpec = if (isActiveLetter || targetAlpha < 1f) {
+            snap()
+        } else {
+            tween(durationMillis = 300)
+        },
+        label = "widget_list_item_alpha"
+    )
+
     Column(
         modifier = modifier
+            .alpha(animatedAlpha)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White.copy(alpha = 0.05f))
             .clickable(onClick = onClick)

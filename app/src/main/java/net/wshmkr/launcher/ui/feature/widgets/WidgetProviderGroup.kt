@@ -2,6 +2,7 @@ package net.wshmkr.launcher.ui.feature.widgets
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,6 +41,8 @@ import net.wshmkr.launcher.viewmodel.WidgetOption
 fun WidgetProviderGroup(
     provider: WidgetAppListItem.Provider,
     isExpanded: Boolean,
+    targetAlpha: Float,
+    isActiveLetter: Boolean,
     onProviderClick: () -> Unit,
     onWidgetSelected: (WidgetOption) -> Unit,
 ) {
@@ -47,6 +50,8 @@ fun WidgetProviderGroup(
         WidgetProviderRow(
             provider = provider,
             isExpanded = isExpanded,
+            targetAlpha = targetAlpha,
+            isActiveLetter = isActiveLetter,
             onClick = onProviderClick
         )
         AnimatedVisibility(visible = isExpanded) {
@@ -59,6 +64,8 @@ fun WidgetProviderGroup(
                     WidgetListItem(
                         widgetOption = widgetOption,
                         modifier = Modifier.fillMaxWidth(),
+                        targetAlpha = targetAlpha,
+                        isActiveLetter = isActiveLetter,
                         onClick = { onWidgetSelected(widgetOption) }
                     )
                     if (index != provider.widgets.lastIndex) {
@@ -74,12 +81,18 @@ fun WidgetProviderGroup(
 private fun WidgetProviderRow(
     provider: WidgetAppListItem.Provider,
     isExpanded: Boolean,
+    targetAlpha: Float = 1f,
+    isActiveLetter: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
     val animatedAlpha by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(durationMillis = 250),
+        targetValue = targetAlpha,
+        animationSpec = if (isActiveLetter || targetAlpha < 1f) {
+            snap()
+        } else {
+            tween(durationMillis = 250)
+        },
         label = "widget_row_alpha"
     )
 
