@@ -67,9 +67,7 @@ fun AddWidgetView(
         exit = fadeOut(animationSpec = tween(durationMillis = 150))
     ) {
         Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(Color(0f, 0f, 0f, 0.5f))
+            modifier = modifier.fillMaxSize()
         ) {
             WidgetAppList(
                 viewModel = viewModel,

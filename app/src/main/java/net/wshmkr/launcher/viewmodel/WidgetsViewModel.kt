@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import net.wshmkr.launcher.repository.WidgetRepository
 import javax.inject.Inject
@@ -20,7 +21,8 @@ import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
-    private val widgetRepository: WidgetRepository
+    private val widgetRepository: WidgetRepository,
+    private val userSettingsDataSource: UserSettingsDataSource,
 ) : ViewModel() {
 
     var widgetIds by mutableStateOf<List<Int>>(emptyList())
@@ -30,6 +32,9 @@ class WidgetViewModel @Inject constructor(
         private set
 
     var managedWidgets by mutableStateOf<List<ManagedWidget>>(emptyList())
+        private set
+
+    var backgroundUri by mutableStateOf<String?>(null)
         private set
 
     val alphabetLetters by derivedStateOf {
@@ -55,6 +60,10 @@ class WidgetViewModel @Inject constructor(
 
         viewModelScope.launch {
             loadWidgetProviders()
+        }
+
+        viewModelScope.launch {
+            backgroundUri = userSettingsDataSource.getBackgroundUri()
         }
     }
 
@@ -84,6 +93,12 @@ class WidgetViewModel @Inject constructor(
     }
 
     fun getWidgetRepository(): WidgetRepository = widgetRepository
+
+    fun refreshBackground() {
+        viewModelScope.launch {
+            backgroundUri = userSettingsDataSource.getBackgroundUri()
+        }
+    }
 
     private suspend fun loadWidgetProviders() {
         val items = withContext(Dispatchers.IO) {

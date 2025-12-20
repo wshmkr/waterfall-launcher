@@ -1,5 +1,8 @@
 package net.wshmkr.launcher.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,17 +37,29 @@ fun AppNavigation(
             navController = navController,
             startDestination = Screen.Home.route,
         ) {
-            composable(Screen.Home.route) {
+            composable(
+                route = Screen.Home.route,
+                enterTransition = { fadeIn(animationSpec = tween(500)) },
+                exitTransition = { fadeOut(animationSpec = tween(500)) }
+            ) {
                 HomeScreen(
                     navController = navController
                 )
             }
-            composable(Screen.Settings.route) {
+            composable(
+                route = Screen.Settings.route,
+                enterTransition = { fadeIn(animationSpec = tween(500)) },
+                exitTransition = { fadeOut(animationSpec = tween(500)) }
+            ) {
                 SettingsScreen(
                     navController = navController
                 )
             }
-            composable(Screen.WidgetList.route) {
+            composable(
+                route = Screen.WidgetList.route,
+                enterTransition = { fadeIn(animationSpec = tween(500)) },
+                exitTransition = { fadeOut(animationSpec = tween(500)) }
+            ) {
                 WidgetsScreen(
                     navController = navController,
                     viewModel = widgetViewModel
