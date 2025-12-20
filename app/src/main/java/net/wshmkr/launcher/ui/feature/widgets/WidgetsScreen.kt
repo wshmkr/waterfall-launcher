@@ -44,6 +44,7 @@ fun WidgetsScreen(
                 managedWidgets = managedWidgets,
                 onAddWidget = { showAddWidget = true },
                 onDeleteWidget = { widgetId -> viewModel.removeWidget(widgetId) },
+                onCancel = { navController.popBackStack() },
             )
         }
     }

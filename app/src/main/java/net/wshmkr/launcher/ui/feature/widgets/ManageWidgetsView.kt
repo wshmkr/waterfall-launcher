@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -42,12 +43,14 @@ fun ManageWidgetsView(
     managedWidgets: List<ManagedWidget>,
     onAddWidget: () -> Unit,
     onDeleteWidget: (Int) -> Unit,
+    onCancel: () -> Unit,
 ) {
     val listState = rememberLazyListState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Text(
@@ -57,48 +60,61 @@ fun ManageWidgetsView(
             color = Color.White
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = onAddWidget,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Add Widget", fontSize = 16.sp)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        LazyColumn(
-            state = listState,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
                 .weight(1f)
+                .fillMaxWidth()
         ) {
-            itemsIndexed(
-                items = managedWidgets,
-                key = { _, item -> item.widgetId }
-            ) { _, widget ->
-                ManagedWidgetRow(
-                    item = widget,
-                    onDelete = { onDeleteWidget(widget.widgetId) },
-                )
+            LazyColumn(
+                state = listState,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                itemsIndexed(
+                    items = managedWidgets,
+                    key = { _, item -> item.widgetId }
+                ) { _, widget ->
+                    ManagedWidgetRow(
+                        item = widget,
+                        onDelete = { onDeleteWidget(widget.widgetId) },
+                    )
+                }
+            }
+
+            if (managedWidgets.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No widgets added yet",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
 
-        if (managedWidgets.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(
+                onClick = onAddWidget,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "No widgets added yet",
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontSize = 16.sp,
-                    textAlign = TextAlign.Center
-                )
+                Text(text = "Add Widget", fontSize = 16.sp)
+            }
+            Button(
+                onClick = onCancel,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Cancel", fontSize = 16.sp)
             }
         }
     }
