@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Clear
 import androidx.compose.material.icons.outlined.Delete
@@ -24,20 +25,27 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.viewmodel.LauncherViewModel
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,12 +65,13 @@ fun AppOptionsMenu(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
+                .padding(top = 18.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
@@ -74,13 +83,13 @@ fun AppOptionsMenu(
                 Text(
                     text = appInfo.label,
                     fontSize = 20.sp,
-                    maxLines = 1
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
                 )
             }
 
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),
-                color = Color.Gray.copy(alpha = 0.3f)
             )
 
             if (appInfo.isSuggested) {
@@ -188,24 +197,29 @@ fun AppOptionsMenu(
 
 @Composable
 fun MenuOption(
-    icon: ImageVector,
+    icon: ImageVector? = null,
     text: String,
     subtext: String? = null,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    switch: Boolean? = null,
+    onToggle: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(12.dp),
+            .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = text,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
+        icon?.let {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(24.dp))
+        }
         Column {
             Text(
                 text = text,
@@ -216,6 +230,16 @@ fun MenuOption(
                     text = subtext,
                     fontSize = 16.sp,
                     color = Color.Gray,
+                )
+            }
+        }
+        switch?.let {
+            Spacer(modifier = Modifier.weight(1f))
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                Switch(
+                    modifier = Modifier.scale(0.8f),
+                    checked = switch,
+                    onCheckedChange = { onToggle?.invoke() },
                 )
             }
         }

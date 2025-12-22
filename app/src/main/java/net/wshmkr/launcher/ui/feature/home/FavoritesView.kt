@@ -27,8 +27,10 @@ import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
+import net.wshmkr.launcher.ui.feature.home.HomeOptionsMenu
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
+import net.wshmkr.launcher.ui.feature.widgets.WidgetHost
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -42,6 +44,7 @@ fun FavoritesView(
     val context = LocalContext.current
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
+    var showHomeOptionsMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.favoriteListItems.isNotEmpty()) {
         if (viewModel.favoriteListItems.isNotEmpty()) {
@@ -55,9 +58,7 @@ fun FavoritesView(
             showAccessibilityDialog = true
         }
     }}
-    val onLongPress = remember(navController) {{
-        navController.navigate(Screen.Settings.route)
-    }}
+    val onLongPress = { showHomeOptionsMenu = true }
 
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
@@ -96,6 +97,7 @@ fun FavoritesView(
                     when (item) {
                         is ListItem.ClockWidget -> "clock_widget"
                         is ListItem.MediaWidget -> "media_widget"
+                        is ListItem.WidgetHost -> "widget_host"
                         is ListItem.AppItem -> item.appInfo.packageName
                         is ListItem.SectionHeader -> "header_${item.letter}"
                     }
@@ -108,6 +110,9 @@ fun FavoritesView(
                     is ListItem.MediaWidget -> {
                         MediaWidget()
                     }
+                    is ListItem.WidgetHost -> {
+                        WidgetHost()
+                    }
                     is ListItem.AppItem -> {
                         AppListItem(
                             appInfo = item.appInfo,
@@ -118,5 +123,12 @@ fun FavoritesView(
                 }
             }
         }
+    }
+
+    if (showHomeOptionsMenu) {
+        HomeOptionsMenu(
+            navController = navController,
+            onDismiss = { showHomeOptionsMenu = false }
+        )
     }
 }

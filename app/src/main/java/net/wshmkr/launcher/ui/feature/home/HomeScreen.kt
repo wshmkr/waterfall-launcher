@@ -74,8 +74,10 @@ fun HomeScreen(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 AlphabetSlider(
-                    navController = navController,
-                    viewModel = viewModel,
+                    letters = viewModel.alphabetLetters,
+                    activeLetter = viewModel.activeLetter,
+                    onLetterSelected = { letter -> viewModel.scrollToLetter(letter) },
+                    onSelectionCleared = { viewModel.deselectLetter() },
                 )
             }
         }

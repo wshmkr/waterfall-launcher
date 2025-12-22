@@ -125,4 +125,5 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
     }
+    Spacer(modifier = Modifier.height(16.dp))
 }

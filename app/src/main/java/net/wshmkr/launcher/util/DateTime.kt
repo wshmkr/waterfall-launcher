@@ -5,6 +5,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
+const val ONE_SECOND = 1_000
 const val ONE_MINUTE = 60_000
 const val ONE_HOUR = 3_600_000
 const val ONE_DAY = 86_400_000
