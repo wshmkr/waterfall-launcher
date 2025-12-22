@@ -90,6 +90,5 @@ private fun WidgetItem(
         },
         modifier = Modifier
             .fillMaxWidth(),
-        key = widgetId
     )
 }
