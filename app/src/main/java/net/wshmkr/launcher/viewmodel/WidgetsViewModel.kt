@@ -19,8 +19,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-const val MAX_WIDGETS = 3
-
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
     private val widgetRepository: WidgetRepository,
@@ -116,7 +114,8 @@ class WidgetViewModel @Inject constructor(
 
         val items = withContext(Dispatchers.IO) {
             ids.mapNotNull { widgetId ->
-                val info = manager.getAppWidgetInfo(widgetId) ?: return@mapNotNull null
+                val info = runCatching { manager.getAppWidgetInfo(widgetId) }
+                    .getOrNull() ?: return@mapNotNull null
                 val appInfo = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
                     .getOrNull()
                 val appName = appInfo?.loadLabel(pm)?.toString() ?: info.provider.packageName

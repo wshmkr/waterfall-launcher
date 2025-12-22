@@ -42,11 +42,11 @@ fun WidgetListItem(
     onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val density = context.resources.displayMetrics.densityDpi
-    val previewDrawable = remember(widgetOption.info, density, context) {
+    val densityDpi = context.resources.displayMetrics.densityDpi
+    val previewDrawable = remember(widgetOption.info, densityDpi) {
         try {
-            widgetOption.info.loadPreviewImage(context, density)
-                ?: widgetOption.info.loadIcon(context, density)
+            widgetOption.info.loadPreviewImage(context, densityDpi)
+                ?: widgetOption.info.loadIcon(context, densityDpi)
         } catch (e: Exception) {
             null
         }

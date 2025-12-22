@@ -21,17 +21,21 @@ import net.wshmkr.launcher.viewmodel.WidgetViewModel
 fun WidgetHost(
     viewModel: WidgetViewModel = hiltViewModel(LocalViewModelStoreOwner.current!!)
 ) {
+    val widgetIds = viewModel.widgetIds
+    
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
     ) {
-        viewModel.widgetIds.forEach { widgetId ->
+        widgetIds.forEachIndexed { index, widgetId ->
             WidgetItem(
                 widgetId = widgetId,
                 viewModel = viewModel
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            if (index < widgetIds.size - 1) {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
     }
 }
@@ -44,7 +48,11 @@ private fun WidgetItem(
     AndroidView<AppWidgetHostView>(
         factory = { ctx ->
             val widgetRepository = viewModel.getWidgetRepository()
-            val appWidgetInfo = widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId)
+            val appWidgetInfo = try {
+                widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId)
+            } catch (e: Exception) {
+                null
+            }
 
             if (appWidgetInfo == null) {
                 return@AndroidView AppWidgetHostView(ctx).apply {
@@ -59,7 +67,20 @@ private fun WidgetItem(
                 }
             }
 
-            val widgetView = widgetRepository.appWidgetHost.createView(ctx, widgetId, appWidgetInfo)
+            val widgetView = try {
+                widgetRepository.appWidgetHost.createView(ctx, widgetId, appWidgetInfo)
+            } catch (e: Exception) {
+                AppWidgetHostView(ctx).apply {
+                    addView(
+                        TextView(ctx).apply {
+                            text = "Error loading widget: ${e.message}"
+                            setTextColor(android.graphics.Color.WHITE)
+                            textSize = 16f
+                            setPadding(24, 24, 24, 24)
+                        }
+                    )
+                }
+            }
 
             widgetView.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,

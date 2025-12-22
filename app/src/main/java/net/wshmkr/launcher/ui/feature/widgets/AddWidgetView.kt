@@ -37,10 +37,8 @@ fun AddWidgetView(
 
     var isVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(viewModel.widgetAppListItems.isNotEmpty()) {
-        if (viewModel.widgetAppListItems.isNotEmpty()) {
-            isVisible = true
-        }
+    LaunchedEffect(viewModel.widgetAppListItems) {
+        isVisible = viewModel.widgetAppListItems.isNotEmpty()
     }
 
     val initialPosition = viewModel.activeLetter?.let { active ->

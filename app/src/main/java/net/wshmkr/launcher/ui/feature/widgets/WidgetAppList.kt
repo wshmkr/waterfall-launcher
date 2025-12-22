@@ -33,6 +33,7 @@ fun WidgetAppList(
 ) {
     val widgetListItems = viewModel.widgetAppListItems
     var expandedProviders by remember { mutableStateOf(setOf<String>()) }
+    
     fun toggleProvider(packageName: String) {
         expandedProviders = if (expandedProviders.contains(packageName)) {
             expandedProviders - packageName

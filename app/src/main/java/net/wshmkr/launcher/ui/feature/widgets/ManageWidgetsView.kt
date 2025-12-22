@@ -35,8 +35,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
-import net.wshmkr.launcher.viewmodel.MAX_WIDGETS
 import net.wshmkr.launcher.viewmodel.ManagedWidget
 
 @Composable
@@ -83,7 +83,7 @@ fun ManageWidgetsView(
                     )
                 }
 
-                if (managedWidgets.size < MAX_WIDGETS) {
+                if (managedWidgets.size < WidgetDataSource.MAX_WIDGETS) {
                     item {
                         AddWidgetRow(onClick = onAddWidget)
                     }

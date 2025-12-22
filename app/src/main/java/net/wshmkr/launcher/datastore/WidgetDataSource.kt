@@ -23,7 +23,7 @@ class WidgetDataSource @Inject constructor(
 
     companion object {
         private val WIDGETS_KEY = stringPreferencesKey("widgets")
-        const val MAX_WIDGETS = 10
+        const val MAX_WIDGETS = 3
     }
 
     suspend fun getWidgetIds(): List<Int> {
