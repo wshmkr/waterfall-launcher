@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
+import net.wshmkr.launcher.util.LauncherAppWidgetHost
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,7 +22,7 @@ class WidgetRepository @Inject constructor(
     private val widgetDataSource: WidgetDataSource
 ) {
     val appWidgetManager: AppWidgetManager = AppWidgetManager.getInstance(context)
-    val appWidgetHost: AppWidgetHost = AppWidgetHost(context, 1024)
+    val appWidgetHost: AppWidgetHost = AppWidgetHost(context, LauncherAppWidgetHost.WIDGET_HOST_ID)
     val packageManager: PackageManager = context.packageManager
 
     private val _widgetIds = MutableStateFlow<List<Int>>(emptyList())

@@ -19,8 +19,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.feature.home.AlphabetSlider
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
@@ -55,9 +55,7 @@ fun AddWidgetView(
         }
     }
 
-    val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp.dp
-    val topPadding = screenHeight * 0.25f
+    val topPadding = calculateCenteredContentTopPadding()
 
     AnimatedVisibility(
         visible = isVisible,

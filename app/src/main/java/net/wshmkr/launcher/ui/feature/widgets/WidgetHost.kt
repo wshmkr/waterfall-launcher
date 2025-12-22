@@ -13,13 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 
 @Composable
 fun WidgetHost(
-    viewModel: WidgetViewModel = hiltViewModel(LocalViewModelStoreOwner.current!!)
+    viewModel: WidgetViewModel = hiltViewModel()
 ) {
     val widgetIds = viewModel.widgetIds
     
@@ -90,6 +89,7 @@ private fun WidgetItem(
             widgetView
         },
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxWidth(),
+        key = widgetId
     )
 }
