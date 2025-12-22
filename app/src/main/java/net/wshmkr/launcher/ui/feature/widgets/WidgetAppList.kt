@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -57,15 +57,15 @@ fun WidgetAppList(
                 state = listState,
                 contentPadding = contentPadding
             ) {
-                items(
+                itemsIndexed(
                     items = widgetListItems,
-                    key = { item ->
+                    key = { _, item ->
                         when (item) {
                             is WidgetAppListItem.SectionHeader -> "widget_header_${item.letter}"
                             is WidgetAppListItem.Provider -> "widget_provider_${item.packageName}"
                         }
                     }
-                ) { listItem ->
+                ) { index, listItem ->
                     when (listItem) {
                         is WidgetAppListItem.SectionHeader -> {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -92,6 +92,10 @@ fun WidgetAppList(
                                     onWidgetSelected()
                                 }
                             )
+
+                            if (index < widgetListItems.size - 1 && widgetListItems[index + 1] is WidgetAppListItem.Provider) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
                         }
                     }
                 }

@@ -136,7 +136,8 @@ private fun WidgetProviderRow(
         Icon(
             imageVector = if (isExpanded) Icons.Outlined.ArrowDropUp else Icons.Outlined.ArrowDropDown,
             contentDescription = if (isExpanded) "Collapse Widgets" else "Expand Widgets",
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(24.dp),
+            tint = Color.White
         )
     }
 }

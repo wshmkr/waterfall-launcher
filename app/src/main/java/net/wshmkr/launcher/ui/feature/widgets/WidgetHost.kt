@@ -70,6 +70,5 @@ private fun WidgetItem(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp) // todo: variable height
     )
 }

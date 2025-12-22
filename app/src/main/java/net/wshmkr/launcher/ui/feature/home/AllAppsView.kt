@@ -34,11 +34,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.ListItem
+import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -58,9 +58,7 @@ fun AllAppsView(
         }
     }
 
-    val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp.dp
-    val topPadding = screenHeight * 0.25f
+    val topPadding = calculateCenteredContentTopPadding()
 
     val initialPosition = if (viewModel.activeLetter != null && viewModel.activeLetter != STAR_SYMBOL) {
         val header = viewModel.allAppsListItems.find { 

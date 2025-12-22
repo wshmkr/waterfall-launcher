@@ -19,6 +19,8 @@ import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+const val MAX_WIDGETS = 3
+
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
     private val widgetRepository: WidgetRepository,

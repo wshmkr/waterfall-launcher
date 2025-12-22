@@ -2,6 +2,7 @@ package net.wshmkr.launcher.ui.feature.widgets
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DragIndicator
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -31,11 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
+import net.wshmkr.launcher.viewmodel.MAX_WIDGETS
 import net.wshmkr.launcher.viewmodel.ManagedWidget
 
 @Composable
@@ -43,15 +44,15 @@ fun ManageWidgetsView(
     managedWidgets: List<ManagedWidget>,
     onAddWidget: () -> Unit,
     onDeleteWidget: (Int) -> Unit,
-    onCancel: () -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val topPadding = calculateCenteredContentTopPadding()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(start = 24.dp, end = 24.dp, top = topPadding, bottom = 16.dp)
     ) {
         Text(
             text = "Manage Widgets",
@@ -69,7 +70,7 @@ fun ManageWidgetsView(
         ) {
             LazyColumn(
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 itemsIndexed(
@@ -81,40 +82,12 @@ fun ManageWidgetsView(
                         onDelete = { onDeleteWidget(widget.widgetId) },
                     )
                 }
-            }
 
-            if (managedWidgets.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No widgets added yet",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
-                    )
+                if (managedWidgets.size < MAX_WIDGETS) {
+                    item {
+                        AddWidgetRow(onClick = onAddWidget)
+                    }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = onAddWidget,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "Add Widget", fontSize = 16.sp)
-            }
-            Button(
-                onClick = onCancel,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "Cancel", fontSize = 16.sp)
             }
         }
     }
@@ -137,7 +110,7 @@ private fun ManagedWidgetRow(
             painter = rememberDrawablePainter(drawable = item.appIcon),
             contentDescription = item.appName,
             modifier = Modifier
-                .size(48.dp)
+                .size(36.dp)
                 .clip(RoundedCornerShape(12.dp))
         )
 
@@ -171,12 +144,35 @@ private fun ManagedWidgetRow(
                 tint = Color.White
             )
         }
+    }
+}
 
+@Composable
+private fun AddWidgetRow(
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Icon(
-            imageVector = Icons.Outlined.DragIndicator,
-            contentDescription = "Reorder widget",
+            imageVector = Icons.Outlined.Add,
+            contentDescription = "Add widget",
             tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.padding(start = 4.dp)
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Text(
+            text = "Add Widget",
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }

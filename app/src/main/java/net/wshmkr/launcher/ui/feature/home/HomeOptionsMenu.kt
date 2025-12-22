@@ -66,7 +66,7 @@ fun HomeOptionsMenu(
 
             MenuOption(
                 icon = Icons.Outlined.MusicVideo,
-                text = "Media widget",
+                text = "Media controls",
                 onClick = { },
                 switch = mediaSwitch,
                 onToggle = { mediaSwitch = !mediaSwitch },
@@ -74,7 +74,7 @@ fun HomeOptionsMenu(
 
             MenuOption(
                 icon = Icons.Outlined.Widgets,
-                text = "Manage custom widgets",
+                text = "Manage widgets",
                 onClick = {
                     onDismiss()
                     navController.navigate(Screen.WidgetList.route)
