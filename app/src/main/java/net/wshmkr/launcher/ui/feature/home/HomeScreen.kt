@@ -70,7 +70,6 @@ fun HomeScreen(
             ) {
                 AlphabetSlider(
                     letters = viewModel.alphabetLetters,
-                    activeLetter = viewModel.activeLetter,
                     onLetterSelected = { letter -> viewModel.scrollToLetter(letter) },
                     onSelectionCleared = { viewModel.deselectLetter() },
                 )
