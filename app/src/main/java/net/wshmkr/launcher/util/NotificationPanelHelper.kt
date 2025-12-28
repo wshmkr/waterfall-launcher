@@ -1,10 +1,9 @@
 package net.wshmkr.launcher.util
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
-import android.text.TextUtils
+import androidx.core.app.NotificationManagerCompat
 import net.wshmkr.launcher.service.LauncherAccessibilityService
 
 object NotificationPanelHelper {
@@ -27,19 +26,7 @@ object NotificationPanelHelper {
 
     fun isNotificationListenerEnabled(context: Context): Boolean {
         val packageName = context.packageName
-        val flat = Settings.Secure.getString(
-            context.contentResolver,
-            "enabled_notification_listeners"
-        )
-        if (!TextUtils.isEmpty(flat)) {
-            val names = flat.split(":")
-            for (name in names) {
-                val componentName = ComponentName.unflattenFromString(name)
-                if (componentName != null && TextUtils.equals(packageName, componentName.packageName)) {
-                    return true
-                }
-            }
-        }
-        return false
+        val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
+        return enabledPackages.contains(packageName)
     }
 }

@@ -43,8 +43,9 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         sbn?.let { statusBarNotification ->
             val packageName = statusBarNotification.packageName
             val notificationId = statusBarNotification.id
+            val userHandle = statusBarNotification.user
 
-            notificationRepository.removeNotification(packageName, notificationId)
+            notificationRepository.removeNotification(packageName, notificationId, userHandle)
         }
     }
 
@@ -73,6 +74,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         return NotificationInfo(
             id = sbn.id,
             packageName = sbn.packageName,
+            userHandle = sbn.user,
             title = title,
             text = text,
             subText = subText,

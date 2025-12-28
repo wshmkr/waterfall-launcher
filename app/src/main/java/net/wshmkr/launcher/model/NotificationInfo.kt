@@ -1,10 +1,12 @@
 package net.wshmkr.launcher.model
 
 import android.app.PendingIntent
+import android.os.UserHandle
 
 data class NotificationInfo(
     val id: Int,
     val packageName: String,
+    val userHandle: UserHandle,
     val title: String? = null,
     val text: String? = null,
     val subText: String? = null,

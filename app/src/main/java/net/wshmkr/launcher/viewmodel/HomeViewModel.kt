@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import android.os.UserHandle
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.ListItem
@@ -25,7 +26,7 @@ class HomeViewModel @Inject constructor(
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
-    private var notifications by mutableStateOf<Map<String, List<NotificationInfo>>>(emptyMap())
+    private var notifications by mutableStateOf<Map<String, Map<UserHandle, List<NotificationInfo>>>>(emptyMap())
     
     var backgroundUri by mutableStateOf<String?>(null)
         private set
@@ -109,7 +110,7 @@ class HomeViewModel @Inject constructor(
         return if (activeLetter == null || letter == activeLetter) 1f else 0.2f
     }
 
-    private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, List<NotificationInfo>>): List<ListItem> {
+    private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<ListItem> {
         val items = mutableListOf<ListItem>()
         var currentLetter = ""
         
@@ -121,7 +122,7 @@ class HomeViewModel @Inject constructor(
                 items.add(ListItem.SectionHeader(currentLetter, items.size))
             }
 
-            val appNotifications = notifications[app.packageName] ?: emptyList()
+            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
             val appWithNotifications = app.copy(notifications = appNotifications)
             
             items.add(ListItem.AppItem(appWithNotifications))
@@ -130,7 +131,7 @@ class HomeViewModel @Inject constructor(
         return items
     }
     
-    private fun buildFavoriteListItems(notifications: Map<String, List<NotificationInfo>>): List<ListItem> {
+    private fun buildFavoriteListItems(notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<ListItem> {
         val items = mutableListOf<ListItem>()
         
         items.add(ListItem.ClockWidget)
@@ -139,7 +140,7 @@ class HomeViewModel @Inject constructor(
         
         val favorites = appsRepository.allApps.filter { it.isFavorite }
         favorites.forEach { app ->
-            val appNotifications = notifications[app.packageName] ?: emptyList()
+            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
             val appWithNotifications = app.copy(notifications = appNotifications)
             items.add(ListItem.AppItem(appWithNotifications))
         }
@@ -163,7 +164,7 @@ class HomeViewModel @Inject constructor(
             }
 
             suggestions.forEach { app ->
-                val appNotifications = notifications[app.packageName] ?: emptyList()
+                val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
                 val appWithNotifications = app.copy(notifications = appNotifications, isSuggested = true)
                 items.add(ListItem.AppItem(appWithNotifications))
             }
