@@ -2,15 +2,13 @@ package net.wshmkr.launcher.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.repository.AppsRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
-/**
- * Base ViewModel for launcher screens
- * Contains shared functionality for app launching and management
- */
+
 abstract class LauncherViewModel(
     protected val appsRepository: AppsRepository
 ) : ViewModel() {
@@ -25,21 +23,21 @@ abstract class LauncherViewModel(
         }
     }
 
-    fun toggleHidden(packageName: String) {
+    fun toggleHidden(appInfo: AppInfo) {
         viewModelScope.launch {
-            appsRepository.toggleHidden(packageName)
+            appsRepository.toggleHidden(appInfo.packageName, appInfo.userHandle)
         }
     }
 
-    fun toggleFavorite(packageName: String) {
+    fun toggleFavorite(appInfo: AppInfo) {
         viewModelScope.launch {
-            appsRepository.toggleFavorite(packageName)
+            appsRepository.toggleFavorite(appInfo.packageName, appInfo.userHandle)
         }
     }
 
-    fun toggleSuggest(packageName: String) {
+    fun toggleSuggest(appInfo: AppInfo) {
         viewModelScope.launch {
-            appsRepository.toggleSuggest(packageName)
+            appsRepository.toggleSuggest(appInfo.packageName, appInfo.userHandle)
         }
     }
 }

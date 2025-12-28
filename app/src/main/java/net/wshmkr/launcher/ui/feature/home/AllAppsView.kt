@@ -98,7 +98,7 @@ fun AllAppsView(
                     key = { item ->
                         when (item) {
                             is ListItem.SectionHeader -> "header_${item.letter}"
-                            is ListItem.AppItem -> item.appInfo.packageName
+                            is ListItem.AppItem -> item.appInfo.key
                             else -> item.hashCode()
                         }
                     },

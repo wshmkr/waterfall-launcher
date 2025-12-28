@@ -23,11 +23,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.ListItem
-import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
-import net.wshmkr.launcher.ui.feature.home.HomeOptionsMenu
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetHost
@@ -98,7 +96,7 @@ fun FavoritesView(
                         is ListItem.ClockWidget -> "clock_widget"
                         is ListItem.MediaWidget -> "media_widget"
                         is ListItem.WidgetHost -> "widget_host"
-                        is ListItem.AppItem -> item.appInfo.packageName
+                        is ListItem.AppItem -> item.appInfo.key
                         is ListItem.SectionHeader -> "header_${item.letter}"
                     }
                 },

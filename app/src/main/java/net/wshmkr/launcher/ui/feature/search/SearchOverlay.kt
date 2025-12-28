@@ -159,7 +159,7 @@ fun SearchOverlay(
             ) {
                 items(
                     items = viewModel.searchListItems,
-                    key = { item -> item.appInfo.packageName },
+                    key = { item -> item.appInfo.key },
                 ) { item ->
                     AppListItem(
                         appInfo = item.appInfo,
