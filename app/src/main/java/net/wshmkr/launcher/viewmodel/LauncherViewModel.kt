@@ -9,12 +9,16 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+data class LaunchAppIntent(
+    val packageName: String,
+    val userHandle: UserHandle
+)
 
 abstract class LauncherViewModel(
     protected val appsRepository: AppsRepository
 ) : ViewModel() {
 
-    val launchAppIntent = MutableSharedFlow<String>()
+    val launchAppIntent = MutableSharedFlow<LaunchAppIntent>()
     
     val activeProfiles: StateFlow<Set<UserHandle>> = appsRepository.activeProfiles
     
@@ -22,10 +26,10 @@ abstract class LauncherViewModel(
         return appsRepository.isProfileActive(userHandle)
     }
 
-    fun launchApp(packageName: String) {
+    fun launchApp(packageName: String, userHandle: UserHandle) {
         viewModelScope.launch {
             appsRepository.recordAppLaunch(packageName)
-            launchAppIntent.emit(packageName)
+            launchAppIntent.emit(LaunchAppIntent(packageName, userHandle))
         }
     }
 

@@ -85,7 +85,7 @@ fun AppListItem(
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = {
-                    viewModel.launchApp(appInfo.packageName)
+                    viewModel.launchApp(appInfo.packageName, appInfo.userHandle)
                 },
                 onLongClick = { showBottomSheet = true }
             )
