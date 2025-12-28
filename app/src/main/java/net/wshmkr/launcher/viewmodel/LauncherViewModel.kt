@@ -2,10 +2,11 @@ package net.wshmkr.launcher.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.os.UserHandle
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.repository.AppsRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 
@@ -13,13 +14,18 @@ abstract class LauncherViewModel(
     protected val appsRepository: AppsRepository
 ) : ViewModel() {
 
-    private val _launchAppIntent = MutableSharedFlow<String>()
-    val launchAppIntent = _launchAppIntent.asSharedFlow()
+    val launchAppIntent = MutableSharedFlow<String>()
+    
+    val activeProfiles: StateFlow<Set<UserHandle>> = appsRepository.activeProfiles
+    
+    fun isProfileActive(userHandle: UserHandle): Boolean {
+        return appsRepository.isProfileActive(userHandle)
+    }
 
     fun launchApp(packageName: String) {
         viewModelScope.launch {
             appsRepository.recordAppLaunch(packageName)
-            _launchAppIntent.emit(packageName)
+            launchAppIntent.emit(packageName)
         }
     }
 

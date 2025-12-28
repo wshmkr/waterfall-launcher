@@ -1,13 +1,18 @@
 package net.wshmkr.launcher.repository
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
 import androidx.compose.runtime.mutableStateListOf
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import net.wshmkr.launcher.datastore.AppPreferencesDataSource
 import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.model.AppInfo
@@ -25,6 +30,43 @@ class AppsRepository @Inject constructor(
     
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
+    
+    val activeProfiles = MutableStateFlow<Set<UserHandle>>(emptySet())
+    
+    private val profileStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            updateActiveProfiles()
+        }
+    }
+    
+    init {
+        updateActiveProfiles()
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
+            addAction(Intent.ACTION_MANAGED_PROFILE_UNAVAILABLE)
+            addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
+        }
+        application.registerReceiver(profileStateReceiver, filter)
+    }
+    
+    private fun updateActiveProfiles() {
+        val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() } 
+            ?: listOf(Process.myUserHandle())
+        val activeSet = userHandles.filter { isProfileActive(it) }.toSet()
+        activeProfiles.value = activeSet
+    }
+    
+    fun isProfileActive(userHandle: UserHandle): Boolean {
+        if (userHandle == Process.myUserHandle()) {
+            return true
+        }
+        
+        return try {
+            !userManager.isQuietModeEnabled(userHandle)
+        } catch (e: Exception) {
+            true
+        }
+    }
 
     suspend fun loadInstalledApps() {
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() } ?: listOf(Process.myUserHandle())

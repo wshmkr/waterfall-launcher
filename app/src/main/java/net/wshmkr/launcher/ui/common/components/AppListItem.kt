@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +63,21 @@ fun AppListItem(
         label = "app_item_alpha"
     )
 
+    val activeProfiles by viewModel.activeProfiles.collectAsState()
+    val isActiveUser = remember(appInfo.userHandle, activeProfiles) {
+        viewModel.isProfileActive(appInfo.userHandle)
+    }
+    
+    val inactiveFilter = remember(isActiveUser) {
+        if (!isActiveUser) {
+            ColorFilter.colorMatrix(ColorMatrix().apply {
+                setToSaturation(0f)
+            })
+        } else {
+            null
+        }
+    }
+
     Row(
         modifier = Modifier
             .padding(start = 8.dp, end = 32.dp)
@@ -78,7 +96,8 @@ fun AppListItem(
         Image(
             painter = rememberDrawablePainter(drawable = appInfo.icon),
             contentDescription = appInfo.label,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(40.dp),
+            colorFilter = inactiveFilter
         )
         Spacer(modifier = Modifier.width(20.dp))
         Column(
