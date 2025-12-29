@@ -7,6 +7,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.max
+import kotlin.math.min
 
 class AlphabetSliderViewModel : ViewModel() {
 
@@ -22,14 +24,19 @@ class AlphabetSliderViewModel : ViewModel() {
     var sliderVerticalOffset by mutableStateOf(0f)
         private set
 
+    var horizontalDelta by mutableStateOf(0f)
+        private set
+
+    private var touchXStart: Float? = null
+
     private data class LetterBounds(val top: Float, val bottom: Float)
 
     private val letterBounds = mutableStateMapOf<Int, LetterBounds>()
     private var letters: List<String> = emptyList()
 
     companion object {
-        private const val WAVE_AMPLITUDE = 75f
         private const val WAVE_WIDTH = 100f
+        private const val BASE_AMPLITUDE_DP = 75f
     }
 
     fun setLetters(lettersList: List<String>) {
@@ -38,9 +45,18 @@ class AlphabetSliderViewModel : ViewModel() {
         activeLetter = null
     }
 
-    fun updateTouchPosition(y: Float?, isInitialTouch: Boolean = false) {
+    fun updateTouchPosition(y: Float?, x: Float? = null, isInitialTouch: Boolean = false) {
         touchYPosition = y
         if (y != null) {
+            if (isInitialTouch) {
+                touchXStart = x
+                horizontalDelta = 0f
+            }
+
+            if (x != null && touchXStart != null) {
+                horizontalDelta = abs(x - touchXStart!!)
+            }
+
             this.isInitialTouch = isInitialTouch
             updateActiveLetter(y)
             updateSliderOffset(y)
@@ -48,6 +64,8 @@ class AlphabetSliderViewModel : ViewModel() {
             activeLetter = null
             this.isInitialTouch = false
             sliderVerticalOffset = 0f
+            touchXStart = null
+            horizontalDelta = 0f
         }
     }
 
@@ -114,7 +132,13 @@ class AlphabetSliderViewModel : ViewModel() {
         }
     }
 
-    fun calculateWaveOffset(letterY: Float, touchY: Float?, density: Float): Float {
+    fun calculateWaveOffset(
+        letterY: Float,
+        touchY: Float?,
+        density: Float,
+        horizontalDelta: Float,
+        screenWidthDp: Int
+    ): Float {
         if (touchY == null) return 0f
 
         // letterY is the current position from boundsInParent, which includes the slider offset
@@ -122,7 +146,12 @@ class AlphabetSliderViewModel : ViewModel() {
         val distance = abs(letterY - touchY)
         val distanceDp = distance / density
 
-        val offset = WAVE_AMPLITUDE * exp(-(distanceDp * distanceDp) / (WAVE_WIDTH * WAVE_WIDTH))
+        val horizontalDeltaDp = abs(horizontalDelta) / density
+        val maxAmplitudeDp = max(screenWidthDp * 0.9f, BASE_AMPLITUDE_DP)
+        val amplitude = min(horizontalDeltaDp + BASE_AMPLITUDE_DP, maxAmplitudeDp)
+
+        val waveWidth = WAVE_WIDTH + (horizontalDeltaDp * 0.3f)
+        val offset = amplitude * exp(-(distanceDp * distanceDp) / (waveWidth * waveWidth))
 
         return offset * -1
     }

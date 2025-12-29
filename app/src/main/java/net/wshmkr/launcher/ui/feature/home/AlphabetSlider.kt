@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -66,15 +67,24 @@ fun AlphabetSlider(
     }
 
     val sliderTopPosition = remember { mutableFloatStateOf(0f) }
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
 
     fun Modifier.touchHandler(): Modifier = this.pointerInteropFilter { event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                viewModel.updateTouchPosition(event.y + sliderTopPosition.floatValue, isInitialTouch = true)
+                viewModel.updateTouchPosition(
+                    y = event.y + sliderTopPosition.floatValue,
+                    x = event.x,
+                    isInitialTouch = true
+                )
                 true
             }
             MotionEvent.ACTION_MOVE -> {
-                viewModel.updateTouchPosition(event.y + sliderTopPosition.floatValue, isInitialTouch = false)
+                viewModel.updateTouchPosition(
+                    y = event.y + sliderTopPosition.floatValue,
+                    x = event.x,
+                    isInitialTouch = false
+                )
                 true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -106,7 +116,8 @@ fun AlphabetSlider(
                 activeLetter = viewModelActiveLetter,
                 touchYPosition = touchYPosition,
                 isInitialTouch = isInitialTouch,
-                viewModel = viewModel
+                viewModel = viewModel,
+                screenWidthDp = screenWidthDp
             )
         }
 
@@ -126,6 +137,7 @@ fun AlphabetSlider(
                 touchYPosition = touchYPosition,
                 isInitialTouch = isInitialTouch,
                 viewModel = viewModel,
+                screenWidthDp = screenWidthDp,
                 onLetterPositioned = { index, top, bottom ->
                     viewModel.updateLetterBounds(index, top, bottom)
                 }
@@ -141,6 +153,7 @@ private fun LettersList(
     touchYPosition: Float?,
     isInitialTouch: Boolean,
     viewModel: AlphabetSliderViewModel,
+    screenWidthDp: Int,
     onLetterPositioned: (index: Int, top: Float, bottom: Float) -> Unit = { _, _, _ -> }
 ) {
     val density = LocalDensity.current
@@ -170,7 +183,13 @@ private fun LettersList(
             val letterY = remember { mutableStateOf<Float?>(null) }
 
             val offset = if (touchYPosition != null && letterY.value != null) {
-                viewModel.calculateWaveOffset(letterY.value!!, touchYPosition, density.density)
+                viewModel.calculateWaveOffset(
+                    letterY = letterY.value!!,
+                    touchY = touchYPosition,
+                    density = density.density,
+                    horizontalDelta = viewModel.horizontalDelta,
+                    screenWidthDp = screenWidthDp
+                )
             } else {
                 0f
             }
