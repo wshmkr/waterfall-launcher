@@ -14,6 +14,8 @@ import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.feature.home.STAR_SYMBOL
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -69,6 +71,13 @@ class HomeViewModel @Inject constructor(
             notificationRepository.notifications.collect { newNotifications ->
                 notifications = newNotifications
             }
+        }
+        viewModelScope.launch {
+            appsRepository.activeProfiles
+                .drop(1)
+                .collectLatest {
+                    appsRepository.refreshAppIcons()
+                }
         }
         
         viewModelScope.launch {

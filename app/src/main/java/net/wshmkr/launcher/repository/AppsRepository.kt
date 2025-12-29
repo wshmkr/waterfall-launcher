@@ -112,6 +112,21 @@ class AppsRepository @Inject constructor(
         updateMostUsedApps()
     }
 
+    suspend fun refreshAppIcons() {
+        for (index in allApps.indices) {
+            val app = allApps[index]
+            try {
+                val activityInfo = launcherApps
+                    .getActivityList(app.packageName, app.userHandle)
+                    ?.firstOrNull()
+                val updatedIcon = activityInfo?.getBadgedIcon(0) ?: continue
+                allApps[index] = app.copy(icon = updatedIcon)
+            } catch (_: Exception) {
+                // ignore and keep current icon
+            }
+        }
+    }
+
     suspend fun updateMostUsedApps() {
         val usageList = usageDataSource.getUsageList()
 

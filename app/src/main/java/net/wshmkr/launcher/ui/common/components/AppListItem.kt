@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,9 +65,7 @@ fun AppListItem(
     )
 
     val activeProfiles by viewModel.activeProfiles.collectAsState()
-    val isActiveUser = remember(appInfo.userHandle, activeProfiles) {
-        viewModel.isProfileActive(appInfo.userHandle)
-    }
+    val isActiveUser by derivedStateOf { appInfo.userHandle in activeProfiles }
     
     val inactiveFilter = remember(isActiveUser) {
         if (!isActiveUser) {
