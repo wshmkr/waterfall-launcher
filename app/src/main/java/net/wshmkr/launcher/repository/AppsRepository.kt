@@ -12,7 +12,6 @@ import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import net.wshmkr.launcher.datastore.AppPreferencesDataSource
 import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.model.AppInfo
@@ -107,8 +106,8 @@ class AppsRepository @Inject constructor(
         allApps.sortWith(compareBy<AppInfo> { it.label.lowercase() }.thenBy { it.userHandle.hashCode() })
     }
 
-    suspend fun recordAppLaunch(packageName: String) {
-        usageDataSource.recordAppLaunch(packageName)
+    suspend fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
+        usageDataSource.recordAppLaunch(packageName, userHandle)
         updateMostUsedApps()
     }
 
@@ -131,8 +130,8 @@ class AppsRepository @Inject constructor(
         val usageList = usageDataSource.getUsageList()
 
         val usageCount = mutableMapOf<String, Int>()
-        for (packageName in usageList) {
-            usageCount[packageName] = (usageCount[packageName] ?: 0) + 1
+        for (key in usageList) {
+            usageCount[key] = (usageCount[key] ?: 0) + 1
         }
 
         val sortedByUsage = usageCount.entries

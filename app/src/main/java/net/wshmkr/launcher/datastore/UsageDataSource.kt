@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import android.os.UserHandle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import net.wshmkr.launcher.model.keyFor
 import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -46,14 +48,12 @@ class UsageDataSource @Inject constructor(
         }
     }
 
-    suspend fun recordAppLaunch(packageName: String) {
+    suspend fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
         val usageList = getUsageList()
         val deque = ArrayDeque(usageList)
 
-        // Add to front (most recent)
-        deque.addFirst(packageName)
+        deque.addFirst(keyFor(packageName, userHandle))
 
-        // Remove old records if over limit
         while (deque.size > MAX_LAUNCHES_TO_TRACK) {
             deque.removeLast()
         }

@@ -171,8 +171,8 @@ class HomeViewModel @Inject constructor(
         
         if (items.size < HOME_SCREEN_APPS + 2) {
             val remainingSlots = HOME_SCREEN_APPS + 2 - items.size
-            val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { packageName ->
-                appsRepository.allApps.find { it.packageName == packageName }
+            val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { usageKey ->
+                appsRepository.allApps.find { it.key == usageKey }
             }
             val suggestions =
                 mostUsedApps

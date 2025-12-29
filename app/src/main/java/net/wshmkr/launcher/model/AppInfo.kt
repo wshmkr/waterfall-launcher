@@ -23,5 +23,9 @@ data class AppInfo(
         get() = !notifications.isEmpty()
 
     val key: String
-        get() = packageName + "_" + userHandle.hashCode()
+        get() = keyFor(packageName, userHandle)
+}
+
+fun keyFor(packageName: String, userHandle: UserHandle): String {
+    return "${packageName}_${userHandle.hashCode()}"
 }

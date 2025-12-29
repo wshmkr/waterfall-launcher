@@ -28,7 +28,7 @@ abstract class LauncherViewModel(
 
     fun launchApp(packageName: String, userHandle: UserHandle) {
         viewModelScope.launch {
-            appsRepository.recordAppLaunch(packageName)
+            appsRepository.recordAppLaunch(packageName, userHandle)
             launchAppIntent.emit(LaunchAppIntent(packageName, userHandle))
         }
     }
