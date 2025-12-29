@@ -61,6 +61,8 @@ class HomeViewModel @Inject constructor(
 
     var showSearchOverlay by mutableStateOf(false)
 
+    private var observedStop = false
+
     init {
         viewModelScope.launch {
             appsRepository.loadInstalledApps()
@@ -94,8 +96,6 @@ class HomeViewModel @Inject constructor(
     fun scrollToLetter(letter: String) {
         activeLetter = letter
         showingFavorites = letter == STAR_SYMBOL
-        // Reset launch tracking since user is actively interacting
-        launchPending = false
         observedStop = false
     }
     
@@ -116,19 +116,16 @@ class HomeViewModel @Inject constructor(
     fun navigateToFavorites() {
         activeLetter = null
         showingFavorites = true
-        // Reset launch tracking since we're now at favorites
-        launchPending = false
+        showSearchOverlay = false
         observedStop = false
     }
 
     fun onLauncherStopped() {
-        if (launchPending) {
-            observedStop = true
-        }
+        observedStop = true
     }
 
     fun onLauncherResumed() {
-        if (launchPending && observedStop) {
+        if (observedStop) {
             navigateToFavorites()
         }
     }
