@@ -17,6 +17,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -112,6 +113,12 @@ fun SearchOverlay(
         if (isVisible) {
             focusRequester.requestFocus()
             keyboardController?.show()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearSearch()
         }
     }
 

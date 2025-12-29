@@ -45,10 +45,12 @@ fun HomeScreen(
         }
 
         if (viewModel.showSearchOverlay) {
-            SearchOverlay( {
-                viewModel.navigateToFavorites()
-                viewModel.showSearchOverlay = false
-            })
+            SearchOverlay(
+                onDismiss = {
+                    viewModel.navigateToFavorites()
+                    viewModel.showSearchOverlay = false
+                }
+            )
         } else {
             if (viewModel.showingFavorites) {
                 FavoritesView(
