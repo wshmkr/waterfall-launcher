@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,7 @@ fun AllAppsView(
     }
 
     var isVisible by remember { mutableStateOf(false) }
+    val activeProfiles by viewModel.activeProfiles.collectAsState()
 
     LaunchedEffect(viewModel.allAppsListItems.isNotEmpty()) {
         if (viewModel.allAppsListItems.isNotEmpty()) {
@@ -115,6 +117,7 @@ fun AllAppsView(
                         is ListItem.AppItem -> {
                             AppListItem(
                                 appInfo = item.appInfo,
+                                activeProfiles = activeProfiles,
                                 targetAlpha = viewModel.getAlpha(
                                     item.appInfo.label.first().uppercaseChar().toString()
                                 ),

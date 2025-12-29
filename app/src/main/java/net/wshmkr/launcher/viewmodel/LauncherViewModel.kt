@@ -21,10 +21,6 @@ abstract class LauncherViewModel(
     val launchAppIntent = MutableSharedFlow<LaunchAppIntent>()
     
     val activeProfiles: StateFlow<Set<UserHandle>> = appsRepository.activeProfiles
-    
-    fun isProfileActive(userHandle: UserHandle): Boolean {
-        return appsRepository.isProfileActive(userHandle)
-    }
 
     fun launchApp(packageName: String, userHandle: UserHandle) {
         viewModelScope.launch {

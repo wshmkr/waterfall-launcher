@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,7 @@ fun FavoritesView(
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
     var showHomeOptionsMenu by remember { mutableStateOf(false) }
+    val activeProfiles by viewModel.activeProfiles.collectAsState()
 
     LaunchedEffect(viewModel.favoriteListItems.isNotEmpty()) {
         if (viewModel.favoriteListItems.isNotEmpty()) {
@@ -114,6 +116,7 @@ fun FavoritesView(
                     is ListItem.AppItem -> {
                         AppListItem(
                             appInfo = item.appInfo,
+                            activeProfiles = activeProfiles,
                             viewModel = viewModel,
                         )
                     }

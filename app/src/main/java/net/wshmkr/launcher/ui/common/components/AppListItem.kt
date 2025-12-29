@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +31,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.os.UserHandle
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.viewmodel.LauncherViewModel
@@ -43,6 +42,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 fun AppListItem(
     viewModel: LauncherViewModel,
     appInfo: AppInfo,
+    activeProfiles: Set<UserHandle>,
     targetAlpha: Float = 1f,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -64,8 +64,9 @@ fun AppListItem(
         label = "app_item_alpha"
     )
 
-    val activeProfiles by viewModel.activeProfiles.collectAsState()
-    val isActiveUser by derivedStateOf { appInfo.userHandle in activeProfiles }
+    val isActiveUser = remember(activeProfiles, appInfo.userHandle) {
+        appInfo.userHandle in activeProfiles
+    }
     
     val inactiveFilter = remember(isActiveUser) {
         if (!isActiveUser) {
