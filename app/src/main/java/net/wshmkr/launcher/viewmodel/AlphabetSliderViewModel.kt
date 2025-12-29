@@ -19,7 +19,12 @@ class AlphabetSliderViewModel : ViewModel() {
     var activeLetter by mutableStateOf<String?>(null)
         private set
 
-    private val letterBounds = mutableStateMapOf<Int, Float>()
+    var sliderVerticalOffset by mutableStateOf(0f)
+        private set
+
+    private data class LetterBounds(val top: Float, val bottom: Float)
+
+    private val letterBounds = mutableStateMapOf<Int, LetterBounds>()
     private var letters: List<String> = emptyList()
 
     companion object {
@@ -38,14 +43,56 @@ class AlphabetSliderViewModel : ViewModel() {
         if (y != null) {
             this.isInitialTouch = isInitialTouch
             updateActiveLetter(y)
+            updateSliderOffset(y)
         } else {
             activeLetter = null
             this.isInitialTouch = false
+            sliderVerticalOffset = 0f
         }
     }
 
-    fun updateLetterBounds(index: Int, top: Float) {
-        letterBounds[index] = top
+    private fun updateSliderOffset(touchY: Float) {
+        // Letter bounds are stored as base positions (without offset)
+        val firstLetterTopBase = getFirstLetterTop()
+        val lastLetterBottomBase = getLastLetterBottom()
+
+        if (firstLetterTopBase == null || lastLetterBottomBase == null) {
+            sliderVerticalOffset = 0f
+            return
+        }
+
+        // Calculate current positions of letters (base + current offset)
+        val firstLetterTopCurrent = firstLetterTopBase + sliderVerticalOffset
+        val lastLetterBottomCurrent = lastLetterBottomBase + sliderVerticalOffset
+
+        when {
+            touchY < firstLetterTopCurrent -> {
+                // Touch is above first letter's current position - move slider up
+                sliderVerticalOffset = touchY - firstLetterTopBase
+            }
+            touchY > lastLetterBottomCurrent -> {
+                // Touch is below last letter's current position - move slider down, using bottom as the boundary
+                sliderVerticalOffset = touchY - lastLetterBottomBase
+            }
+            else -> {
+                // Touch is within current bounds; keep the existing offset so the slider
+                // doesn't snap back when the finger re-enters the original bounds.
+            }
+        }
+    }
+
+    fun updateLetterBounds(index: Int, top: Float, bottom: Float) {
+        letterBounds[index] = LetterBounds(top = top, bottom = bottom)
+    }
+
+    private fun getFirstLetterTop(): Float? {
+        return letterBounds[0]?.top
+    }
+
+    private fun getLastLetterBottom(): Float? {
+        if (letters.isEmpty()) return null
+        val lastIndex = letters.size - 1
+        return letterBounds[lastIndex]?.bottom
     }
 
     private fun updateActiveLetter(touchY: Float) {
@@ -54,10 +101,12 @@ class AlphabetSliderViewModel : ViewModel() {
             return
         }
 
+        // Letter bounds are stored as base positions, so add current offset when comparing
         val index = letterBounds.entries
-            .filter { it.value <= touchY }
-            .maxByOrNull { it.value }
-            ?.key
+            .map { it.key to (it.value.top + sliderVerticalOffset) }
+            .filter { it.second <= touchY }
+            .maxByOrNull { it.second }
+            ?.first
             ?: 0
 
         if (index < letters.size) {
@@ -68,6 +117,8 @@ class AlphabetSliderViewModel : ViewModel() {
     fun calculateWaveOffset(letterY: Float, touchY: Float?, density: Float): Float {
         if (touchY == null) return 0f
 
+        // letterY is the current position from boundsInParent, which includes the slider offset
+        // touchY is relative to the Box, so both are in the same coordinate system
         val distance = abs(letterY - touchY)
         val distanceDp = distance / density
 

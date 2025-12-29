@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -26,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -64,14 +65,16 @@ fun AlphabetSlider(
         }
     }
 
+    val sliderTopPosition = remember { mutableFloatStateOf(0f) }
+
     fun Modifier.touchHandler(): Modifier = this.pointerInteropFilter { event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                viewModel.updateTouchPosition(event.y, isInitialTouch = true)
+                viewModel.updateTouchPosition(event.y + sliderTopPosition.floatValue, isInitialTouch = true)
                 true
             }
             MotionEvent.ACTION_MOVE -> {
-                viewModel.updateTouchPosition(event.y, isInitialTouch = false)
+                viewModel.updateTouchPosition(event.y + sliderTopPosition.floatValue, isInitialTouch = false)
                 true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -92,6 +95,9 @@ fun AlphabetSlider(
         Box(
             modifier = Modifier
                 .padding(bottom = 96.dp)
+                .onGloballyPositioned { coordinates ->
+                    sliderTopPosition.floatValue = coordinates.boundsInRoot().top
+                }
                 .alpha(0f)
                 .touchHandler()
         ) {
@@ -109,6 +115,9 @@ fun AlphabetSlider(
         Box(
             modifier = Modifier
                 .padding(bottom = 96.dp)
+                .onGloballyPositioned { coordinates ->
+                    sliderTopPosition.floatValue = coordinates.boundsInRoot().top
+                }
                 .touchHandler()
         ) {
             LettersList(
@@ -117,8 +126,8 @@ fun AlphabetSlider(
                 touchYPosition = touchYPosition,
                 isInitialTouch = isInitialTouch,
                 viewModel = viewModel,
-                onLetterPositioned = { index, top ->
-                    viewModel.updateLetterBounds(index, top)
+                onLetterPositioned = { index, top, bottom ->
+                    viewModel.updateLetterBounds(index, top, bottom)
                 }
             )
         }
@@ -132,12 +141,28 @@ private fun LettersList(
     touchYPosition: Float?,
     isInitialTouch: Boolean,
     viewModel: AlphabetSliderViewModel,
-    onLetterPositioned: (index: Int, top: Float) -> Unit = { _, _ -> }
+    onLetterPositioned: (index: Int, top: Float, bottom: Float) -> Unit = { _, _, _ -> }
 ) {
     val density = LocalDensity.current
+    val sliderVerticalOffsetPx = viewModel.sliderVerticalOffset
+
+    val animatedVerticalOffset by animateFloatAsState(
+        targetValue = sliderVerticalOffsetPx,
+        animationSpec = when {
+            touchYPosition == null -> {
+                tween(durationMillis = 250)
+            }
+            else -> {
+                snap()
+            }
+        },
+        label = "sliderVerticalOffset"
+    )
 
     Column(
-        modifier = Modifier.width(40.dp),
+        modifier = Modifier
+            .width(40.dp)
+            .offset(y = (animatedVerticalOffset / density.density).dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy((-6).dp),
     ) {
@@ -169,9 +194,14 @@ private fun LettersList(
                     .fillMaxWidth()
                     .offset(x = animatedOffset.dp)
                     .onGloballyPositioned { coordinates ->
-                        val top = coordinates.boundsInParent().top
+                        val top = coordinates.boundsInRoot().top
+                        val bottom = coordinates.boundsInRoot().bottom
+
+                        val baseTop = top - animatedVerticalOffset
+                        val baseBottom = bottom - animatedVerticalOffset
+
                         letterY.value = top
-                        onLetterPositioned(index, top)
+                        onLetterPositioned(index, baseTop, baseBottom)
                     },
                 fontSize = 16.sp,
                 color = if (letter == activeLetter) Color.Red else Color.White,
