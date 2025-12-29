@@ -25,10 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.os.UserHandle
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.viewmodel.LauncherViewModel
@@ -39,6 +42,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 fun AppListItem(
     viewModel: LauncherViewModel,
     appInfo: AppInfo,
+    activeProfiles: Set<UserHandle>,
     targetAlpha: Float = 1f,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -60,6 +64,20 @@ fun AppListItem(
         label = "app_item_alpha"
     )
 
+    val isActiveUser = remember(activeProfiles, appInfo.userHandle) {
+        appInfo.userHandle in activeProfiles
+    }
+    
+    val inactiveFilter = remember(isActiveUser) {
+        if (!isActiveUser) {
+            ColorFilter.colorMatrix(ColorMatrix().apply {
+                setToSaturation(0f)
+            })
+        } else {
+            null
+        }
+    }
+
     Row(
         modifier = Modifier
             .padding(start = 8.dp, end = 32.dp)
@@ -67,7 +85,7 @@ fun AppListItem(
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = {
-                    viewModel.launchApp(appInfo.packageName)
+                    viewModel.launchApp(appInfo.packageName, appInfo.userHandle)
                 },
                 onLongClick = { showBottomSheet = true }
             )
@@ -78,7 +96,8 @@ fun AppListItem(
         Image(
             painter = rememberDrawablePainter(drawable = appInfo.icon),
             contentDescription = appInfo.label,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(40.dp),
+            colorFilter = inactiveFilter
         )
         Spacer(modifier = Modifier.width(20.dp))
         Column(

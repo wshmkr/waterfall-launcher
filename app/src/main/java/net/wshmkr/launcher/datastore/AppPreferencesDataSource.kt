@@ -1,6 +1,7 @@
 package net.wshmkr.launcher.datastore
 
 import android.content.Context
+import android.os.UserHandle
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -22,57 +23,61 @@ class AppPreferencesDataSource @Inject constructor(
     private val dataStore: DataStore<Preferences> = context.appPreferencesDataStore
     
     companion object {
-        private val KEY_FAVORITES = stringPreferencesKey("favorites")
-        private val KEY_DO_NOT_SUGGEST = stringPreferencesKey("do_not_suggest")
-        private val KEY_HIDDEN = stringPreferencesKey("hidden")
+        private const val KEY_NAME_FAVORITES = "favorites"
+        private const val KEY_NAME_DO_NOT_SUGGEST = "do_not_suggest"
+        private const val KEY_NAME_HIDDEN = "hidden"
+    }
+
+    suspend fun getFavorites(userHandle: UserHandle): Set<String> {
+        return getPackageNameSet(keyForUser(KEY_NAME_FAVORITES, userHandle))
     }
     
-    suspend fun getFavorites(): Set<String> {
-        return getPackageNameSet(KEY_FAVORITES)
+    suspend fun addToFavorites(packageName: String, userHandle: UserHandle) {
+        addToPackageNameSet(keyForUser(KEY_NAME_FAVORITES, userHandle), packageName)
     }
     
-    suspend fun addToFavorites(packageName: String) {
-        addToPackageNameSet(KEY_FAVORITES, packageName)
+    suspend fun removeFromFavorites(packageName: String, userHandle: UserHandle) {
+        removeFromPackageNameSet(keyForUser(KEY_NAME_FAVORITES, userHandle), packageName)
     }
     
-    suspend fun removeFromFavorites(packageName: String) {
-        removeFromPackageNameSet(KEY_FAVORITES, packageName)
+    suspend fun isFavorite(packageName: String, userHandle: UserHandle): Boolean {
+        return getFavorites(userHandle).contains(packageName)
     }
     
-    suspend fun isFavorite(packageName: String): Boolean {
-        return getFavorites().contains(packageName)
+    suspend fun getDoNotSuggest(userHandle: UserHandle): Set<String> {
+        return getPackageNameSet(keyForUser(KEY_NAME_DO_NOT_SUGGEST, userHandle))
     }
     
-    suspend fun getDoNotSuggest(): Set<String> {
-        return getPackageNameSet(KEY_DO_NOT_SUGGEST)
+    suspend fun addToDoNotSuggest(packageName: String, userHandle: UserHandle) {
+        addToPackageNameSet(keyForUser(KEY_NAME_DO_NOT_SUGGEST, userHandle), packageName)
     }
     
-    suspend fun addToDoNotSuggest(packageName: String) {
-        addToPackageNameSet(KEY_DO_NOT_SUGGEST, packageName)
+    suspend fun removeFromDoNotSuggest(packageName: String, userHandle: UserHandle) {
+        removeFromPackageNameSet(keyForUser(KEY_NAME_DO_NOT_SUGGEST, userHandle), packageName)
     }
     
-    suspend fun removeFromDoNotSuggest(packageName: String) {
-        removeFromPackageNameSet(KEY_DO_NOT_SUGGEST, packageName)
+    suspend fun isDoNotSuggest(packageName: String, userHandle: UserHandle): Boolean {
+        return getDoNotSuggest(userHandle).contains(packageName)
     }
     
-    suspend fun isDoNotSuggest(packageName: String): Boolean {
-        return getDoNotSuggest().contains(packageName)
+    suspend fun getHidden(userHandle: UserHandle): Set<String> {
+        return getPackageNameSet(keyForUser(KEY_NAME_HIDDEN, userHandle))
     }
     
-    suspend fun getHidden(): Set<String> {
-        return getPackageNameSet(KEY_HIDDEN)
+    suspend fun addToHidden(packageName: String, userHandle: UserHandle) {
+        addToPackageNameSet(keyForUser(KEY_NAME_HIDDEN, userHandle), packageName)
     }
     
-    suspend fun addToHidden(packageName: String) {
-        addToPackageNameSet(KEY_HIDDEN, packageName)
+    suspend fun removeFromHidden(packageName: String, userHandle: UserHandle) {
+        removeFromPackageNameSet(keyForUser(KEY_NAME_HIDDEN, userHandle), packageName)
     }
     
-    suspend fun removeFromHidden(packageName: String) {
-        removeFromPackageNameSet(KEY_HIDDEN, packageName)
+    suspend fun isHidden(packageName: String, userHandle: UserHandle): Boolean {
+        return getHidden(userHandle).contains(packageName)
     }
-    
-    suspend fun isHidden(packageName: String): Boolean {
-        return getHidden().contains(packageName)
+
+    private fun keyForUser(baseName: String, userHandle: UserHandle): Preferences.Key<String> {
+        return stringPreferencesKey("${baseName}_${userHandle.hashCode()}")
     }
 
     private suspend fun getPackageNameSet(key: Preferences.Key<String>): Set<String> {

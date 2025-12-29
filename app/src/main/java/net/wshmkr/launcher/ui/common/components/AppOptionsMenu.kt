@@ -98,7 +98,7 @@ fun AppOptionsMenu(
                     text = "Stop suggesting",
                     subtext = "Don't show below favorites",
                     onClick = {
-                        viewModel.toggleSuggest(appInfo.packageName)
+                        viewModel.toggleSuggest(appInfo)
                         onDismiss()
                     }
                 )
@@ -109,7 +109,7 @@ fun AppOptionsMenu(
                     text = "Suggest again",
                     subtext = "Suggestions appear below favorites",
                     onClick = {
-                        viewModel.toggleSuggest(appInfo.packageName)
+                        viewModel.toggleSuggest(appInfo)
                         onDismiss()
                     }
                 )
@@ -120,7 +120,7 @@ fun AppOptionsMenu(
                     icon = Icons.Outlined.Clear,
                     text = "Remove from favorites",
                     onClick = {
-                        viewModel.toggleFavorite(appInfo.packageName)
+                        viewModel.toggleFavorite(appInfo)
                         onDismiss()
                     }
                 )
@@ -129,7 +129,7 @@ fun AppOptionsMenu(
                     icon = Icons.Outlined.Star,
                     text = "Favorite",
                     onClick = {
-                        viewModel.toggleFavorite(appInfo.packageName)
+                        viewModel.toggleFavorite(appInfo)
                         onDismiss()
                     }
                 )
@@ -153,7 +153,7 @@ fun AppOptionsMenu(
                     icon = Icons.Outlined.Visibility,
                     text = "Show in app list",
                     onClick = {
-                        viewModel.toggleHidden(appInfo.packageName)
+                        viewModel.toggleHidden(appInfo)
                         onDismiss()
                     }
                 )
@@ -162,7 +162,7 @@ fun AppOptionsMenu(
                     icon = Icons.Outlined.VisibilityOff,
                     text = "Hide from app list",
                     onClick = {
-                        viewModel.toggleHidden(appInfo.packageName)
+                        viewModel.toggleHidden(appInfo)
                         onDismiss()
                     }
                 )

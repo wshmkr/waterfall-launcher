@@ -2,44 +2,48 @@ package net.wshmkr.launcher.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.os.UserHandle
+import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.repository.AppsRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-/**
- * Base ViewModel for launcher screens
- * Contains shared functionality for app launching and management
- */
+data class LaunchAppIntent(
+    val packageName: String,
+    val userHandle: UserHandle
+)
+
 abstract class LauncherViewModel(
     protected val appsRepository: AppsRepository
 ) : ViewModel() {
 
-    private val _launchAppIntent = MutableSharedFlow<String>()
-    val launchAppIntent = _launchAppIntent.asSharedFlow()
+    val launchAppIntent = MutableSharedFlow<LaunchAppIntent>()
+    
+    val activeProfiles: StateFlow<Set<UserHandle>> = appsRepository.activeProfiles
 
-    fun launchApp(packageName: String) {
+    fun launchApp(packageName: String, userHandle: UserHandle) {
         viewModelScope.launch {
-            appsRepository.recordAppLaunch(packageName)
-            _launchAppIntent.emit(packageName)
+            appsRepository.recordAppLaunch(packageName, userHandle)
+            launchAppIntent.emit(LaunchAppIntent(packageName, userHandle))
         }
     }
 
-    fun toggleHidden(packageName: String) {
+    fun toggleHidden(appInfo: AppInfo) {
         viewModelScope.launch {
-            appsRepository.toggleHidden(packageName)
+            appsRepository.toggleHidden(appInfo.packageName, appInfo.userHandle)
         }
     }
 
-    fun toggleFavorite(packageName: String) {
+    fun toggleFavorite(appInfo: AppInfo) {
         viewModelScope.launch {
-            appsRepository.toggleFavorite(packageName)
+            appsRepository.toggleFavorite(appInfo.packageName, appInfo.userHandle)
         }
     }
 
-    fun toggleSuggest(packageName: String) {
+    fun toggleSuggest(appInfo: AppInfo) {
         viewModelScope.launch {
-            appsRepository.toggleSuggest(packageName)
+            appsRepository.toggleSuggest(appInfo.packageName, appInfo.userHandle)
         }
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,11 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.ListItem
-import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
-import net.wshmkr.launcher.ui.feature.home.HomeOptionsMenu
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetHost
@@ -45,6 +44,7 @@ fun FavoritesView(
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
     var showHomeOptionsMenu by remember { mutableStateOf(false) }
+    val activeProfiles by viewModel.activeProfiles.collectAsState()
 
     LaunchedEffect(viewModel.favoriteListItems.isNotEmpty()) {
         if (viewModel.favoriteListItems.isNotEmpty()) {
@@ -98,7 +98,7 @@ fun FavoritesView(
                         is ListItem.ClockWidget -> "clock_widget"
                         is ListItem.MediaWidget -> "media_widget"
                         is ListItem.WidgetHost -> "widget_host"
-                        is ListItem.AppItem -> item.appInfo.packageName
+                        is ListItem.AppItem -> item.appInfo.key
                         is ListItem.SectionHeader -> "header_${item.letter}"
                     }
                 },
@@ -116,6 +116,7 @@ fun FavoritesView(
                     is ListItem.AppItem -> {
                         AppListItem(
                             appInfo = item.appInfo,
+                            activeProfiles = activeProfiles,
                             viewModel = viewModel,
                         )
                     }

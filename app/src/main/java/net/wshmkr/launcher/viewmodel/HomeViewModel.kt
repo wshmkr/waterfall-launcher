@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import android.os.UserHandle
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.ListItem
@@ -13,6 +14,8 @@ import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.feature.home.STAR_SYMBOL
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,7 +28,7 @@ class HomeViewModel @Inject constructor(
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
-    private var notifications by mutableStateOf<Map<String, List<NotificationInfo>>>(emptyMap())
+    private var notifications by mutableStateOf<Map<String, Map<UserHandle, List<NotificationInfo>>>>(emptyMap())
     
     var backgroundUri by mutableStateOf<String?>(null)
         private set
@@ -58,6 +61,8 @@ class HomeViewModel @Inject constructor(
 
     var showSearchOverlay by mutableStateOf(false)
 
+    private var observedStop = false
+
     init {
         viewModelScope.launch {
             appsRepository.loadInstalledApps()
@@ -68,6 +73,19 @@ class HomeViewModel @Inject constructor(
             notificationRepository.notifications.collect { newNotifications ->
                 notifications = newNotifications
             }
+        }
+
+        viewModelScope.launch {
+            var previousProfiles = appsRepository.activeProfiles.value
+            appsRepository.activeProfiles
+                .drop(1)
+                .collectLatest { newProfiles ->
+                    val changedProfiles = (newProfiles - previousProfiles) + (previousProfiles - newProfiles)
+                    if (changedProfiles.isNotEmpty()) {
+                        appsRepository.refreshAppIcons(changedProfiles)
+                    }
+                    previousProfiles = newProfiles
+                }
         }
         
         viewModelScope.launch {
@@ -84,6 +102,7 @@ class HomeViewModel @Inject constructor(
     fun scrollToLetter(letter: String) {
         activeLetter = letter
         showingFavorites = letter == STAR_SYMBOL
+        observedStop = false
     }
     
     fun getScrollPosition(letter: String): Int? {
@@ -103,13 +122,25 @@ class HomeViewModel @Inject constructor(
     fun navigateToFavorites() {
         activeLetter = null
         showingFavorites = true
+        showSearchOverlay = false
+        observedStop = false
+    }
+
+    fun onLauncherStopped() {
+        observedStop = true
+    }
+
+    fun onLauncherResumed() {
+        if (observedStop) {
+            navigateToFavorites()
+        }
     }
 
     fun getAlpha(letter: String): Float {
         return if (activeLetter == null || letter == activeLetter) 1f else 0.2f
     }
 
-    private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, List<NotificationInfo>>): List<ListItem> {
+    private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<ListItem> {
         val items = mutableListOf<ListItem>()
         var currentLetter = ""
         
@@ -121,7 +152,7 @@ class HomeViewModel @Inject constructor(
                 items.add(ListItem.SectionHeader(currentLetter, items.size))
             }
 
-            val appNotifications = notifications[app.packageName] ?: emptyList()
+            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
             val appWithNotifications = app.copy(notifications = appNotifications)
             
             items.add(ListItem.AppItem(appWithNotifications))
@@ -130,7 +161,7 @@ class HomeViewModel @Inject constructor(
         return items
     }
     
-    private fun buildFavoriteListItems(notifications: Map<String, List<NotificationInfo>>): List<ListItem> {
+    private fun buildFavoriteListItems(notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<ListItem> {
         val items = mutableListOf<ListItem>()
         
         items.add(ListItem.ClockWidget)
@@ -139,15 +170,15 @@ class HomeViewModel @Inject constructor(
         
         val favorites = appsRepository.allApps.filter { it.isFavorite }
         favorites.forEach { app ->
-            val appNotifications = notifications[app.packageName] ?: emptyList()
+            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
             val appWithNotifications = app.copy(notifications = appNotifications)
             items.add(ListItem.AppItem(appWithNotifications))
         }
         
         if (items.size < HOME_SCREEN_APPS + 2) {
             val remainingSlots = HOME_SCREEN_APPS + 2 - items.size
-            val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { packageName ->
-                appsRepository.allApps.find { it.packageName == packageName }
+            val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { usageKey ->
+                appsRepository.allApps.find { it.key == usageKey }
             }
             val suggestions =
                 mostUsedApps
@@ -163,7 +194,7 @@ class HomeViewModel @Inject constructor(
             }
 
             suggestions.forEach { app ->
-                val appNotifications = notifications[app.packageName] ?: emptyList()
+                val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
                 val appWithNotifications = app.copy(notifications = appNotifications, isSuggested = true)
                 items.add(ListItem.AppItem(appWithNotifications))
             }

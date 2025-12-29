@@ -17,7 +17,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +67,7 @@ fun SearchOverlay(
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
+    val activeProfiles by viewModel.activeProfiles.collectAsState()
 
     var totalDragY by remember { mutableFloatStateOf(0f) }
     val offsetY = remember { Animatable(0f) }
@@ -110,6 +113,12 @@ fun SearchOverlay(
         if (isVisible) {
             focusRequester.requestFocus()
             keyboardController?.show()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.clearSearch()
         }
     }
 
@@ -159,10 +168,11 @@ fun SearchOverlay(
             ) {
                 items(
                     items = viewModel.searchListItems,
-                    key = { item -> item.appInfo.packageName },
+                    key = { item -> item.appInfo.key },
                 ) { item ->
                     AppListItem(
                         appInfo = item.appInfo,
+                        activeProfiles = activeProfiles,
                         viewModel = viewModel,
                     )
                 }

@@ -38,7 +38,8 @@ class SearchViewModel @Inject constructor(
 
     fun onSearch(query: String) {
         if (searchListItems.isNotEmpty()) {
-            launchApp(searchListItems[0].appInfo.packageName)
+            val appInfo = searchListItems[0].appInfo
+            launchApp(appInfo.packageName, appInfo.userHandle)
             clearSearch()
         }
     }
