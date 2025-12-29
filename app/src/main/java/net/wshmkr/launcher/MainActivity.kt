@@ -12,7 +12,6 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import net.wshmkr.launcher.repository.WidgetRepository
 import net.wshmkr.launcher.ui.AppNavigation
-import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.util.WidgetPickerHelper
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 import javax.inject.Inject
@@ -56,7 +55,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         widgetRepository.startListening()
-        returnHome()
     }
 
     private fun initWidgetPickerHelper() {
@@ -66,17 +64,5 @@ class MainActivity : ComponentActivity() {
             lifecycleScope = lifecycleScope,
         )
         widgetPickerHelper.registerLaunchers()
-    }
-
-    private fun returnHome() {
-        if (::navController.isInitialized) {
-            val currentRoute = navController.currentDestination?.route
-            if (currentRoute != Screen.Home.route) {
-                navController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Home.route) { inclusive = true }
-                    launchSingleTop = true
-                }
-            }
-        }
     }
 }

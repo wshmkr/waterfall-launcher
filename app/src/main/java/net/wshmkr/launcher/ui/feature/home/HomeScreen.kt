@@ -30,12 +30,6 @@ fun HomeScreen(
     
     LaunchedEffect(lifecycleState.value) {
         if (lifecycleState.value == Lifecycle.State.RESUMED) {
-            if (!viewModel.showingFavorites) {
-                viewModel.navigateToFavorites()
-            }
-            if (viewModel.showSearchOverlay) {
-                viewModel.showSearchOverlay = false
-            }
             viewModel.refreshBackground()
         }
     }
