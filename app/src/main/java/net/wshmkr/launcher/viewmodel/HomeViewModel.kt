@@ -94,6 +94,9 @@ class HomeViewModel @Inject constructor(
     fun scrollToLetter(letter: String) {
         activeLetter = letter
         showingFavorites = letter == STAR_SYMBOL
+        // Reset launch tracking since user is actively interacting
+        launchPending = false
+        observedStop = false
     }
     
     fun getScrollPosition(letter: String): Int? {
@@ -113,6 +116,21 @@ class HomeViewModel @Inject constructor(
     fun navigateToFavorites() {
         activeLetter = null
         showingFavorites = true
+        // Reset launch tracking since we're now at favorites
+        launchPending = false
+        observedStop = false
+    }
+
+    fun onLauncherStopped() {
+        if (launchPending) {
+            observedStop = true
+        }
+    }
+
+    fun onLauncherResumed() {
+        if (launchPending && observedStop) {
+            navigateToFavorites()
+        }
     }
 
     fun getAlpha(letter: String): Float {

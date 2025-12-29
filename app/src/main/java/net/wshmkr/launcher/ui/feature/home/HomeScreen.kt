@@ -9,7 +9,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.core.net.toUri
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
@@ -23,7 +22,7 @@ import net.wshmkr.launcher.viewmodel.HomeViewModel
 @Composable
 fun HomeScreen(
     navController: NavController,
-    viewModel: HomeViewModel = hiltViewModel(),
+    viewModel: HomeViewModel,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycleState = lifecycleOwner.lifecycle.currentStateAsState()

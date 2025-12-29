@@ -26,8 +26,13 @@ abstract class LauncherViewModel(
         return appsRepository.isProfileActive(userHandle)
     }
 
+    var launchPending = false
+    var observedStop = false
+
     fun launchApp(packageName: String, userHandle: UserHandle) {
         viewModelScope.launch {
+            launchPending = true
+            observedStop = false
             appsRepository.recordAppLaunch(packageName)
             launchAppIntent.emit(LaunchAppIntent(packageName, userHandle))
         }

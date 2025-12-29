@@ -16,6 +16,7 @@ import net.wshmkr.launcher.ui.feature.home.HomeScreen
 import net.wshmkr.launcher.ui.feature.settings.SettingsScreen
 import net.wshmkr.launcher.ui.feature.widgets.WidgetsScreen
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
+import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -26,6 +27,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavigation(
     navController: NavHostController,
+    homeViewModel: HomeViewModel,
     widgetViewModel: WidgetViewModel
 ) {
     Box(
@@ -43,7 +45,8 @@ fun AppNavigation(
                 exitTransition = { fadeOut(animationSpec = tween(500)) }
             ) {
                 HomeScreen(
-                    navController = navController
+                    navController = navController,
+                    viewModel = homeViewModel
                 )
             }
             composable(
