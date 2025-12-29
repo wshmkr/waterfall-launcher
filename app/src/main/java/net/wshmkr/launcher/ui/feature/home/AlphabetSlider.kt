@@ -69,12 +69,12 @@ fun AlphabetSlider(
     val sliderTopPosition = remember { mutableFloatStateOf(0f) }
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
 
-    fun Modifier.touchHandler(): Modifier = this.pointerInteropFilter { event ->
+    fun Modifier.touchHandler(trackHorizontalMovement: Boolean = true): Modifier = this.pointerInteropFilter { event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 viewModel.updateTouchPosition(
                     y = event.y + sliderTopPosition.floatValue,
-                    x = event.x,
+                    x = if (trackHorizontalMovement) event.x else null,
                     isInitialTouch = true
                 )
                 true
@@ -82,7 +82,7 @@ fun AlphabetSlider(
             MotionEvent.ACTION_MOVE -> {
                 viewModel.updateTouchPosition(
                     y = event.y + sliderTopPosition.floatValue,
-                    x = event.x,
+                    x = if (trackHorizontalMovement) event.x else null,
                     isInitialTouch = false
                 )
                 true
@@ -109,7 +109,7 @@ fun AlphabetSlider(
                     sliderTopPosition.floatValue = coordinates.boundsInRoot().top
                 }
                 .alpha(0f)
-                .touchHandler()
+                .touchHandler(trackHorizontalMovement = false)
         ) {
             LettersList(
                 letters = letters,
