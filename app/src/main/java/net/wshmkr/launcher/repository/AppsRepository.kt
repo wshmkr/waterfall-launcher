@@ -111,9 +111,11 @@ class AppsRepository @Inject constructor(
         updateMostUsedApps()
     }
 
-    suspend fun refreshAppIcons() {
+    fun refreshAppIcons(profiles: Set<UserHandle>) {
         for (index in allApps.indices) {
             val app = allApps[index]
+            if (app.userHandle !in profiles) continue
+            
             try {
                 val activityInfo = launcherApps
                     .getActivityList(app.packageName, app.userHandle)

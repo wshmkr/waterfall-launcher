@@ -74,11 +74,17 @@ class HomeViewModel @Inject constructor(
                 notifications = newNotifications
             }
         }
+
         viewModelScope.launch {
+            var previousProfiles = appsRepository.activeProfiles.value
             appsRepository.activeProfiles
                 .drop(1)
-                .collectLatest {
-                    appsRepository.refreshAppIcons()
+                .collectLatest { newProfiles ->
+                    val changedProfiles = (newProfiles - previousProfiles) + (previousProfiles - newProfiles)
+                    if (changedProfiles.isNotEmpty()) {
+                        appsRepository.refreshAppIcons(changedProfiles)
+                    }
+                    previousProfiles = newProfiles
                 }
         }
         
