@@ -1,6 +1,7 @@
 package net.wshmkr.launcher.viewmodel
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -21,10 +22,10 @@ class AlphabetSliderViewModel : ViewModel() {
     var activeLetter by mutableStateOf<String?>(null)
         private set
 
-    var sliderVerticalOffset by mutableStateOf(0f)
+    var sliderVerticalOffset by mutableFloatStateOf(0f)
         private set
 
-    var horizontalDelta by mutableStateOf(0f)
+    var horizontalDelta by mutableFloatStateOf(0f)
         private set
 
     private var touchXStart: Float? = null
@@ -36,7 +37,7 @@ class AlphabetSliderViewModel : ViewModel() {
 
     companion object {
         private const val WAVE_WIDTH = 100f
-        private const val BASE_AMPLITUDE_DP = 75f
+        private const val BASE_AMPLITUDE_DP = 70f
     }
 
     fun setLetters(lettersList: List<String>) {
@@ -54,7 +55,8 @@ class AlphabetSliderViewModel : ViewModel() {
             }
 
             if (x != null && touchXStart != null) {
-                horizontalDelta = abs(x - touchXStart!!)
+                val delta = touchXStart!! - x
+                horizontalDelta = if (delta > 0f) delta else 0f
             }
 
             this.isInitialTouch = isInitialTouch
@@ -70,7 +72,6 @@ class AlphabetSliderViewModel : ViewModel() {
     }
 
     private fun updateSliderOffset(touchY: Float) {
-        // Letter bounds are stored as base positions (without offset)
         val firstLetterTopBase = getFirstLetterTop()
         val lastLetterBottomBase = getLastLetterBottom()
 
@@ -79,22 +80,17 @@ class AlphabetSliderViewModel : ViewModel() {
             return
         }
 
-        // Calculate current positions of letters (base + current offset)
-        val firstLetterTopCurrent = firstLetterTopBase + sliderVerticalOffset
-        val lastLetterBottomCurrent = lastLetterBottomBase + sliderVerticalOffset
+        val firstLetterTop = firstLetterTopBase + sliderVerticalOffset
+        val lastLetterBottom = lastLetterBottomBase + sliderVerticalOffset
 
         when {
-            touchY < firstLetterTopCurrent -> {
-                // Touch is above first letter's current position - move slider up
+            touchY < firstLetterTop -> {
                 sliderVerticalOffset = touchY - firstLetterTopBase
             }
-            touchY > lastLetterBottomCurrent -> {
-                // Touch is below last letter's current position - move slider down, using bottom as the boundary
+            touchY > lastLetterBottom -> {
                 sliderVerticalOffset = touchY - lastLetterBottomBase
             }
             else -> {
-                // Touch is within current bounds; keep the existing offset so the slider
-                // doesn't snap back when the finger re-enters the original bounds.
             }
         }
     }
@@ -119,7 +115,6 @@ class AlphabetSliderViewModel : ViewModel() {
             return
         }
 
-        // Letter bounds are stored as base positions, so add current offset when comparing
         val index = letterBounds.entries
             .map { it.key to (it.value.top + sliderVerticalOffset) }
             .filter { it.second <= touchY }
@@ -141,8 +136,6 @@ class AlphabetSliderViewModel : ViewModel() {
     ): Float {
         if (touchY == null) return 0f
 
-        // letterY is the current position from boundsInParent, which includes the slider offset
-        // touchY is relative to the Box, so both are in the same coordinate system
         val distance = abs(letterY - touchY)
         val distanceDp = distance / density
 
@@ -150,7 +143,7 @@ class AlphabetSliderViewModel : ViewModel() {
         val maxAmplitudeDp = max(screenWidthDp * 0.9f, BASE_AMPLITUDE_DP)
         val amplitude = min(horizontalDeltaDp + BASE_AMPLITUDE_DP, maxAmplitudeDp)
 
-        val waveWidth = WAVE_WIDTH + (horizontalDeltaDp * 0.3f)
+        val waveWidth = WAVE_WIDTH + (horizontalDeltaDp * 0.4f)
         val offset = amplitude * exp(-(distanceDp * distanceDp) / (waveWidth * waveWidth))
 
         return offset * -1
