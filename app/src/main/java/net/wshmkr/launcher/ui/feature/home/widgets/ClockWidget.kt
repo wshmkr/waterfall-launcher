@@ -124,20 +124,34 @@ private fun launchCalendarApp(context: Context) {
 }
 
 private fun launchWeatherApp(context: Context) {
+    val pm = context.packageManager
     try {
         val intent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_APP_WEATHER)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
-        val resolveInfo = context.packageManager.resolveActivity(intent, 0)
+        val resolveInfo = pm.resolveActivity(intent, 0)
         if (resolveInfo != null) {
             context.startActivity(intent)
-        } else {
-            val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                data = "https://www.google.com/search?q=weather".toUri()
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(webIntent)
+            return
         }
+
+        // Fall back to Samsung Weather (doesn't register CATEGORY_APP_WEATHER)
+        val samsungPackages = listOf("com.sec.android.daemonapp", "com.samsung.android.weather")
+        for (pkg in samsungPackages) {
+            val launchIntent = pm.getLaunchIntentForPackage(pkg)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(launchIntent)
+                return
+            }
+        }
+
+        // Fall back to web search
+        val webIntent = Intent(Intent.ACTION_VIEW).apply {
+            data = "https://www.google.com/search?q=weather".toUri()
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(webIntent)
     } catch (e: Exception) { }
 }
