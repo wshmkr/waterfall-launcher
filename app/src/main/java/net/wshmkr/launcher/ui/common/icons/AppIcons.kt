@@ -1,3 +1,5 @@
+@file:Suppress("ComposableNaming")
+
 package net.wshmkr.launcher.ui.common.icons
 
 import androidx.compose.runtime.Composable
