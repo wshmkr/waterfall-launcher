@@ -5,9 +5,11 @@ import android.content.Intent
 import android.provider.AlarmClock
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -63,18 +65,26 @@ fun ClockWidget() {
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = currentDate,
-            fontSize = 16.sp,
-            color = Color.White,
+        Row(
             modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .clickable {
-                    launchCalendarApp(context)
-                }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        )
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = currentDate,
+                fontSize = 16.sp,
+                color = Color.White,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        launchCalendarApp(context)
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            WeatherWidget()
+        }
     }
 }
 

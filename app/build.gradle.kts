@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.accompanist.drawablepainter)
