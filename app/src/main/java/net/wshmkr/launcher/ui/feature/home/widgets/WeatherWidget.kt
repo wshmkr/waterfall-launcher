@@ -63,6 +63,12 @@ import net.wshmkr.launcher.ui.common.icons.WeatherSnowyIcon
 private const val THIRTY_MINUTES_MS = 30 * 60 * 1000L
 private const val TAG = "WeatherWidget"
 
+// In-memory cache that survives recomposition
+private object WeatherCache {
+    var cached: CachedWeather? = null
+    var lastFetchTime: Long = 0L
+}
+
 private sealed interface WeatherState {
     data object Idle : WeatherState
     data object Loading : WeatherState
@@ -85,8 +91,16 @@ fun WeatherWidget(
 
     var hasPermission by remember { mutableStateOf(isLocationGranted(context)) }
     var location by remember { mutableStateOf<Location?>(null) }
-    var weatherState by remember { mutableStateOf<WeatherState>(WeatherState.Idle) }
-    var lastFetchTimestamp by remember { mutableStateOf(0L) }
+    // Use cached weather if available to avoid flash
+    var weatherState by remember {
+        mutableStateOf<WeatherState>(
+            WeatherCache.cached?.let {
+                WeatherState.Ready(it.temperatureF, it.weatherCode, it.sunriseTime, it.sunsetTime)
+            } ?: WeatherState.Idle
+        )
+    }
+    var lastCachedWeather by remember { mutableStateOf(WeatherCache.cached) }
+    var lastFetchTimestamp by remember { mutableStateOf(WeatherCache.lastFetchTime) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -110,17 +124,31 @@ fun WeatherWidget(
 
     val locationKey = location?.let { Pair(it.latitude, it.longitude) }
 
+    // Cache the last successfully fetched weather so we can display it while loading
+    LaunchedEffect(weatherState) {
+        if (weatherState is WeatherState.Ready) {
+            val cached = (weatherState as WeatherState.Ready).toCached()
+            lastCachedWeather = cached
+            WeatherCache.cached = cached
+        }
+    }
+
     LaunchedEffect(locationKey, hasPermission) {
         if (!hasPermission || locationKey == null) return@LaunchedEffect
         while (isActive) {
             val now = System.currentTimeMillis()
             val shouldFetch = now - lastFetchTimestamp >= THIRTY_MINUTES_MS ||
                     weatherState is WeatherState.Error ||
-                    weatherState is WeatherState.Idle
+                    (weatherState is WeatherState.Idle && WeatherCache.cached == null)
             if (shouldFetch) {
-                weatherState = WeatherState.Loading
-                weatherState = fetchWeather(locationKey.first, locationKey.second)
+                // Only show loading if we don't have cached data
+                if (lastCachedWeather == null) {
+                    weatherState = WeatherState.Loading
+                }
+                val fetched = fetchWeather(locationKey.first, locationKey.second)
+                weatherState = fetched
                 lastFetchTimestamp = System.currentTimeMillis()
+                WeatherCache.lastFetchTime = lastFetchTimestamp
             }
             delay(THIRTY_MINUTES_MS)
         }
@@ -128,6 +156,7 @@ fun WeatherWidget(
 
     WeatherContent(
         state = weatherState,
+        cachedWeather = lastCachedWeather,
         hasPermission = hasPermission,
         modifier = modifier,
         onRequestPermission = {
@@ -140,6 +169,7 @@ fun WeatherWidget(
 @Composable
 private fun WeatherContent(
     state: WeatherState,
+    cachedWeather: CachedWeather?,
     hasPermission: Boolean,
     modifier: Modifier = Modifier,
     onRequestPermission: () -> Unit,
@@ -168,11 +198,35 @@ private fun WeatherContent(
         }
 
         state is WeatherState.Loading -> {
-            Text(
-                text = "Weather…",
-                style = textStyle,
-                modifier = modifier
-            )
+            if (cachedWeather != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = modifier.then(
+                        if (onClick != null) Modifier.clickable { onClick() } else Modifier
+                    )
+                ) {
+                    Icon(
+                        painter = weatherIcon(
+                            cachedWeather.weatherCode,
+                            isNightTime(cachedWeather.sunriseTime, cachedWeather.sunsetTime)
+                        ),
+                        contentDescription = "Weather",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.size(4.dp))
+                    Text(
+                        text = "${cachedWeather.temperatureF.toInt()}°F",
+                        style = textStyle
+                    )
+                }
+            } else {
+                Text(
+                    text = "Weather…",
+                    style = textStyle,
+                    modifier = modifier
+                )
+            }
         }
 
         state is WeatherState.Ready -> {
@@ -287,6 +341,20 @@ private suspend fun <T> com.google.android.gms.tasks.Task<T>.suspendForTask(): T
             if (cont.isActive) cont.resume(null)
         }
     }
+
+private data class CachedWeather(
+    val temperatureF: Double,
+    val weatherCode: Int,
+    val sunriseTime: String?,
+    val sunsetTime: String?
+)
+
+private fun WeatherState.Ready.toCached(): CachedWeather = CachedWeather(
+    temperatureF = temperatureF,
+    weatherCode = weatherCode,
+    sunriseTime = sunriseTime,
+    sunsetTime = sunsetTime
+)
 
 @Composable
 private fun weatherIcon(code: Int, isNight: Boolean) = when (code) {
