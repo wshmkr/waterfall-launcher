@@ -7,6 +7,7 @@ import android.location.Location
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -228,7 +229,7 @@ private suspend fun fetchWeather(
     }
 }
 
-@SuppressLint("MissingPermission")
+@RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
 private suspend fun FusedLocationProviderClient.getBestAvailableLocation(): Location? {
     return lastLocation.suspendForTask()
         ?: getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).suspendForTask()
@@ -262,4 +263,3 @@ private fun weatherIcon(code: Int) = when (code) {
     95, 96, 99 -> Icons.Default.FlashOn
     else -> Icons.Default.HelpOutline
 }
-
