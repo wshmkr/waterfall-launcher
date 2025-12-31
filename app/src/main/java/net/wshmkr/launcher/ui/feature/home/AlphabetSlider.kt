@@ -18,16 +18,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -50,6 +47,9 @@ fun AlphabetSlider(
 ) {
     if (letters.isEmpty()) return
 
+    val density = LocalDensity.current
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+
     LaunchedEffect(letters) {
         viewModel.setLetters(letters)
     }
@@ -66,24 +66,25 @@ fun AlphabetSlider(
         }
     }
 
-    val sliderTopPosition = remember { mutableFloatStateOf(0f) }
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-
     fun Modifier.touchHandler(trackHorizontalMovement: Boolean = true): Modifier = this.pointerInteropFilter { event ->
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 viewModel.updateTouchPosition(
-                    y = event.y + sliderTopPosition.floatValue,
+                    y = event.y,
                     x = if (trackHorizontalMovement) event.x else null,
-                    isInitialTouch = true
+                    isInitialTouch = true,
+                    density = density.density,
+                    screenWidthDp = screenWidthDp
                 )
                 true
             }
             MotionEvent.ACTION_MOVE -> {
                 viewModel.updateTouchPosition(
-                    y = event.y + sliderTopPosition.floatValue,
+                    y = event.y,
                     x = if (trackHorizontalMovement) event.x else null,
-                    isInitialTouch = false
+                    isInitialTouch = false,
+                    density = density.density,
+                    screenWidthDp = screenWidthDp
                 )
                 true
             }
@@ -105,20 +106,10 @@ fun AlphabetSlider(
         Box(
             modifier = Modifier
                 .padding(bottom = 96.dp)
-                .onGloballyPositioned { coordinates ->
-                    sliderTopPosition.floatValue = coordinates.boundsInRoot().top
-                }
                 .alpha(0f)
                 .touchHandler(trackHorizontalMovement = false)
         ) {
-            LettersList(
-                letters = letters,
-                activeLetter = viewModelActiveLetter,
-                touchYPosition = touchYPosition,
-                isInitialTouch = isInitialTouch,
-                viewModel = viewModel,
-                screenWidthDp = screenWidthDp
-            )
+            LeftHandControls(letters = letters)
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -126,18 +117,14 @@ fun AlphabetSlider(
         Box(
             modifier = Modifier
                 .padding(bottom = 96.dp)
-                .onGloballyPositioned { coordinates ->
-                    sliderTopPosition.floatValue = coordinates.boundsInRoot().top
-                }
                 .touchHandler()
         ) {
-            LettersList(
+            AnimatedLettersList(
                 letters = letters,
                 activeLetter = viewModelActiveLetter,
                 touchYPosition = touchYPosition,
                 isInitialTouch = isInitialTouch,
                 viewModel = viewModel,
-                screenWidthDp = screenWidthDp,
                 onLetterPositioned = { index, top, bottom ->
                     viewModel.updateLetterBounds(index, top, bottom)
                 }
@@ -147,14 +134,32 @@ fun AlphabetSlider(
 }
 
 @Composable
-private fun LettersList(
+private fun LeftHandControls(letters: List<String>) {
+    Column(
+        modifier = Modifier.width(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy((-6).dp),
+    ) {
+        letters.forEach { letter ->
+            Text(
+                text = letter,
+                modifier = Modifier.fillMaxWidth(),
+                fontSize = 16.sp,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnimatedLettersList(
     letters: List<String>,
     activeLetter: String?,
     touchYPosition: Float?,
     isInitialTouch: Boolean,
     viewModel: AlphabetSliderViewModel,
-    screenWidthDp: Int,
-    onLetterPositioned: (index: Int, top: Float, bottom: Float) -> Unit = { _, _, _ -> }
+    onLetterPositioned: (index: Int, top: Float, bottom: Float) -> Unit
 ) {
     val density = LocalDensity.current
     val sliderVerticalOffsetPx = viewModel.sliderVerticalOffset
@@ -162,12 +167,8 @@ private fun LettersList(
     val animatedVerticalOffset by animateFloatAsState(
         targetValue = sliderVerticalOffsetPx,
         animationSpec = when {
-            touchYPosition == null -> {
-                tween(durationMillis = 250)
-            }
-            else -> {
-                snap()
-            }
+            touchYPosition == null -> tween(durationMillis = 250)
+            else -> snap()
         },
         label = "sliderVerticalOffset"
     )
@@ -180,31 +181,15 @@ private fun LettersList(
         verticalArrangement = Arrangement.spacedBy((-6).dp),
     ) {
         letters.forEachIndexed { index, letter ->
-            val letterY = remember { mutableStateOf<Float?>(null) }
-
-            val offset = if (touchYPosition != null && letterY.value != null) {
-                viewModel.calculateWaveOffset(
-                    letterY = letterY.value!!,
-                    touchY = touchYPosition,
-                    density = density.density,
-                    horizontalDelta = viewModel.horizontalDelta,
-                    screenWidthDp = screenWidthDp
-                )
-            } else {
-                0f
-            }
+            val targetOffset = viewModel.getWaveOffset(index)
 
             val animatedOffset by animateFloatAsState(
-                targetValue = offset,
+                targetValue = targetOffset,
                 animationSpec = when {
-                    touchYPosition == null || isInitialTouch -> {
-                        tween(durationMillis = 250)
-                    }
-                    else -> {
-                        snap()
-                    }
+                    touchYPosition == null || isInitialTouch -> tween(durationMillis = 250)
+                    else -> snap()
                 },
-                label = "waveOffset"
+                label = "waveOffset_$index"
             )
 
             Text(
@@ -213,14 +198,8 @@ private fun LettersList(
                     .fillMaxWidth()
                     .offset(x = animatedOffset.dp)
                     .onGloballyPositioned { coordinates ->
-                        val top = coordinates.boundsInRoot().top
-                        val bottom = coordinates.boundsInRoot().bottom
-
-                        val baseTop = top - animatedVerticalOffset
-                        val baseBottom = bottom - animatedVerticalOffset
-
-                        letterY.value = top
-                        onLetterPositioned(index, baseTop, baseBottom)
+                        val bounds = coordinates.boundsInParent()
+                        onLetterPositioned(index, bounds.top, bounds.bottom)
                     },
                 fontSize = 16.sp,
                 color = if (letter == activeLetter) Color.Red else Color.White,
