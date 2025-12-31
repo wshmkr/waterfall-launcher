@@ -147,7 +147,7 @@ private fun WeatherContent(
 ) {
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
         color = Color.White,
-        fontSize = 14.sp
+        fontSize = 16.sp
     )
 
     when {

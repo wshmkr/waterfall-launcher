@@ -83,14 +83,19 @@ fun ClockWidget() {
                     }
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "•",
+                fontSize = 16.sp,
+                color = Color.White
+            )
             WeatherWidget(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        launchWeatherApp(context)
+                    }
                     .padding(horizontal = 8.dp, vertical = 4.dp),
-                onClick = {
-                    launchWeatherApp(context)
-                }
+                onClick = null
             )
         }
     }
@@ -136,7 +141,7 @@ private fun launchWeatherApp(context: Context) {
             return
         }
 
-        // Fall back to Samsung Weather (doesn't register CATEGORY_APP_WEATHER)
+        // fall back to Samsung Weather (doesn't register CATEGORY_APP_WEATHER)
         val samsungPackages = listOf("com.sec.android.daemonapp", "com.samsung.android.weather")
         for (pkg in samsungPackages) {
             val launchIntent = pm.getLaunchIntentForPackage(pkg)
@@ -147,7 +152,7 @@ private fun launchWeatherApp(context: Context) {
             }
         }
 
-        // Fall back to web search
+        // fall back to web search
         val webIntent = Intent(Intent.ACTION_VIEW).apply {
             data = "https://www.google.com/search?q=weather".toUri()
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
