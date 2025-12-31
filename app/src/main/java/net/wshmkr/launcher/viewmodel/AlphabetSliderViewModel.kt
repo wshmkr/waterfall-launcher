@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import kotlin.math.abs
-import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 
@@ -169,7 +168,10 @@ class AlphabetSliderViewModel : ViewModel() {
         val amplitude = min(horizontalDeltaDp + BASE_AMPLITUDE_DP, maxAmplitudeDp)
 
         val waveWidth = WAVE_WIDTH + (horizontalDeltaDp * 0.4f)
-        val offset = amplitude * exp(-(distanceDp * distanceDp) / (waveWidth * waveWidth))
+
+        // Fast Gaussian approximation: exp(-t) ≈ 1/(1 + t + t²/2) 
+        val t = (distanceDp * distanceDp) / (waveWidth * waveWidth)
+        val offset = amplitude / (1f + t + 0.5f * t * t)
 
         return offset * -1
     }
