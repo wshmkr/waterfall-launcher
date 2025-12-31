@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import net.wshmkr.launcher.ui.common.components.AlphabetSlider
 import net.wshmkr.launcher.ui.common.components.AppLauncher
 import net.wshmkr.launcher.ui.feature.search.SearchOverlay
 import net.wshmkr.launcher.viewmodel.HomeViewModel

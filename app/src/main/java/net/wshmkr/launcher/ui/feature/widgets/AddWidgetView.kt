@@ -19,7 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
-import net.wshmkr.launcher.ui.feature.home.AlphabetSlider
+import net.wshmkr.launcher.ui.common.components.AlphabetSlider
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable

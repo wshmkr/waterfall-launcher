@@ -1,4 +1,4 @@
-package net.wshmkr.launcher.ui.feature.home
+package net.wshmkr.launcher.ui.common.components
 
 import android.view.MotionEvent
 import androidx.compose.animation.core.animateFloatAsState

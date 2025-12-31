@@ -12,7 +12,7 @@ import net.wshmkr.launcher.model.ListItem
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.NotificationRepository
-import net.wshmkr.launcher.ui.feature.home.STAR_SYMBOL
+import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
