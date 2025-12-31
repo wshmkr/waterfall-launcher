@@ -14,19 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Clear
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Done
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -37,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -45,6 +37,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.ui.common.icons.CheckIcon
+import net.wshmkr.launcher.ui.common.icons.CloseIcon
+import net.wshmkr.launcher.ui.common.icons.DeleteIcon
+import net.wshmkr.launcher.ui.common.icons.InfoIcon
+import net.wshmkr.launcher.ui.common.icons.StarIcon
+import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
+import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
 import net.wshmkr.launcher.viewmodel.LauncherViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,7 +93,7 @@ fun AppOptionsMenu(
 
             if (appInfo.isSuggested) {
                 MenuOption(
-                    icon = Icons.Outlined.Clear,
+                    icon = CloseIcon(),
                     text = "Stop suggesting",
                     subtext = "Don't show below favorites",
                     onClick = {
@@ -105,7 +104,7 @@ fun AppOptionsMenu(
             }
             if (appInfo.doNotSuggest) {
                 MenuOption(
-                    icon = Icons.Outlined.Done,
+                    icon = CheckIcon(),
                     text = "Suggest again",
                     subtext = "Suggestions appear below favorites",
                     onClick = {
@@ -117,7 +116,7 @@ fun AppOptionsMenu(
 
             if (appInfo.isFavorite) {
                 MenuOption(
-                    icon = Icons.Outlined.Clear,
+                    icon = CloseIcon(),
                     text = "Remove from favorites",
                     onClick = {
                         viewModel.toggleFavorite(appInfo)
@@ -126,7 +125,7 @@ fun AppOptionsMenu(
                 )
             } else {
                 MenuOption(
-                    icon = Icons.Outlined.Star,
+                    icon = StarIcon(),
                     text = "Favorite",
                     onClick = {
                         viewModel.toggleFavorite(appInfo)
@@ -136,7 +135,7 @@ fun AppOptionsMenu(
             }
 
             MenuOption(
-                icon = Icons.Outlined.Info,
+                icon = InfoIcon(),
                 text = "App info",
                 onClick = {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -150,7 +149,7 @@ fun AppOptionsMenu(
 
             if (appInfo.isHidden) {
                 MenuOption(
-                    icon = Icons.Outlined.Visibility,
+                    icon = VisibilityIcon(),
                     text = "Show in app list",
                     onClick = {
                         viewModel.toggleHidden(appInfo)
@@ -159,7 +158,7 @@ fun AppOptionsMenu(
                 )
             } else {
                 MenuOption(
-                    icon = Icons.Outlined.VisibilityOff,
+                    icon = VisibilityOffIcon(),
                     text = "Hide from app list",
                     onClick = {
                         viewModel.toggleHidden(appInfo)
@@ -177,7 +176,7 @@ fun AppOptionsMenu(
                 )
             } else {
                 MenuOption(
-                    icon = Icons.Outlined.Delete,
+                    icon = DeleteIcon(),
                     text = "Uninstall",
                     onClick = {
                         val intent = Intent(Intent.ACTION_DELETE).apply {
@@ -197,7 +196,7 @@ fun AppOptionsMenu(
 
 @Composable
 fun MenuOption(
-    icon: ImageVector? = null,
+    icon: Painter? = null,
     text: String,
     subtext: String? = null,
     onClick: () -> Unit,
@@ -214,7 +213,7 @@ fun MenuOption(
     ) {
         icon?.let {
             Icon(
-                imageVector = icon,
+                painter = icon,
                 contentDescription = text,
                 modifier = Modifier.size(24.dp)
             )

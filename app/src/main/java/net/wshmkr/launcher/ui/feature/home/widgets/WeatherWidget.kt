@@ -13,14 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AcUnit
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -50,6 +42,13 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import net.wshmkr.launcher.ui.common.icons.AcUnitIcon
+import net.wshmkr.launcher.ui.common.icons.CloudIcon
+import net.wshmkr.launcher.ui.common.icons.FlashOnIcon
+import net.wshmkr.launcher.ui.common.icons.HelpOutlineIcon
+import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
+import net.wshmkr.launcher.ui.common.icons.WaterDropIcon
+import net.wshmkr.launcher.ui.common.icons.WbSunnyIcon
 
 private const val THIRTY_MINUTES_MS = 30 * 60 * 1000L
 private const val TAG = "WeatherWidget"
@@ -138,7 +137,7 @@ private fun WeatherContent(
                 modifier = modifier.clickable { onRequestPermission() }
             ) {
                 Icon(
-                    imageVector = Icons.Default.LocationOn,
+                    painter = LocationOnIcon(),
                     contentDescription = "Enable location",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
@@ -162,7 +161,7 @@ private fun WeatherContent(
                 modifier = modifier
             ) {
                 Icon(
-                    imageVector = weatherIcon(state.weatherCode),
+                    painter = weatherIcon(state.weatherCode),
                     contentDescription = "Weather",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
@@ -181,7 +180,7 @@ private fun WeatherContent(
                 modifier = modifier
             ) {
                 Icon(
-                    imageVector = Icons.Default.HelpOutline,
+                    painter = HelpOutlineIcon(),
                     contentDescription = "Weather unavailable",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
@@ -253,13 +252,14 @@ private suspend fun <T> com.google.android.gms.tasks.Task<T>.suspendForTask(): T
         }
     }
 
+@Composable
 private fun weatherIcon(code: Int) = when (code) {
-    0 -> Icons.Default.WbSunny
-    1, 2 -> Icons.Default.Cloud
-    3 -> Icons.Default.Cloud
-    45, 48 -> Icons.Default.Cloud
-    51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82 -> Icons.Default.WaterDrop
-    66, 67, 71, 73, 75, 77, 85, 86 -> Icons.Default.AcUnit
-    95, 96, 99 -> Icons.Default.FlashOn
-    else -> Icons.Default.HelpOutline
+    0 -> WbSunnyIcon()
+    1, 2 -> CloudIcon()
+    3 -> CloudIcon()
+    45, 48 -> CloudIcon()
+    51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82 -> WaterDropIcon()
+    66, 67, 71, 73, 75, 77, 85, 86 -> AcUnitIcon()
+    95, 96, 99 -> FlashOnIcon()
+    else -> HelpOutlineIcon()
 }

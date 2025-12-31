@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +31,7 @@ import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import net.wshmkr.launcher.model.MediaInfo
+import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
 import net.wshmkr.launcher.util.MediaSessionHelper
 import net.wshmkr.launcher.util.NotificationPanelHelper
 
@@ -111,7 +110,7 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = Icons.Filled.MusicNote,
+            painter = MusicNoteIcon(),
             contentDescription = "Media",
             tint = Color.White.copy(alpha = 0.5f),
             modifier = Modifier.size(32.dp)
