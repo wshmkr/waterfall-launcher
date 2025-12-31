@@ -1,17 +1,12 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.content.pm.PackageManager
 import android.location.Location
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,58 +23,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import net.wshmkr.launcher.ui.common.icons.BedtimeIcon
-import net.wshmkr.launcher.ui.common.icons.ClearDayIcon
-import net.wshmkr.launcher.ui.common.icons.CloudIcon
-import net.wshmkr.launcher.ui.common.icons.FoggyIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
-import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
-import net.wshmkr.launcher.ui.common.icons.PartlyCloudyNightIcon
-import net.wshmkr.launcher.ui.common.icons.RainyIcon
-import net.wshmkr.launcher.ui.common.icons.ThunderstormIcon
-import net.wshmkr.launcher.ui.common.icons.WeatherMixIcon
-import net.wshmkr.launcher.ui.common.icons.WeatherSnowyIcon
-
-private const val THIRTY_MINUTES_MS = 30 * 60 * 1000L
-private const val TAG = "WeatherWidget"
-
-// In-memory cache that survives recomposition
-private object WeatherCache {
-    var cached: CachedWeather? = null
-    var lastFetchTime: Long = 0L
-}
-
-private sealed interface WeatherState {
-    data object Idle : WeatherState
-    data object Loading : WeatherState
-    data class Ready(
-        val temperatureF: Double,
-        val weatherCode: Int,
-        val sunriseTime: String? = null,
-        val sunsetTime: String? = null
-    ) : WeatherState
-    data class Error(val reason: String) : WeatherState
-}
+import net.wshmkr.launcher.util.WeatherHelper
+import net.wshmkr.launcher.util.WeatherHelper.CachedWeather
+import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 
 @Composable
 fun WeatherWidget(
@@ -89,34 +40,28 @@ fun WeatherWidget(
     val context = LocalContext.current
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    var hasPermission by remember { mutableStateOf(isLocationGranted(context)) }
+    var hasPermission by remember { mutableStateOf(WeatherHelper.isLocationGranted(context)) }
     var location by remember { mutableStateOf<Location?>(null) }
-    // Use cached weather if available to avoid flash
     var weatherState by remember {
         mutableStateOf<WeatherState>(
-            WeatherCache.cached?.let {
+            WeatherHelper.getCachedWeather()?.let {
                 WeatherState.Ready(it.temperatureF, it.weatherCode, it.sunriseTime, it.sunsetTime)
             } ?: WeatherState.Idle
         )
     }
-    var lastCachedWeather by remember { mutableStateOf(WeatherCache.cached) }
-    var lastFetchTimestamp by remember { mutableStateOf(WeatherCache.lastFetchTime) }
+    var lastCachedWeather by remember { mutableStateOf(WeatherHelper.getCachedWeather()) }
+    var lastFetchTimestamp by remember { mutableStateOf(WeatherHelper.getLastFetchTime()) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            hasPermission = granted
-        }
+        onResult = { granted -> hasPermission = granted }
     )
 
     LaunchedEffect(hasPermission) {
         if (hasPermission) {
-            runCatching { fusedClient.getBestAvailableLocation() }
+            runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }
                 .onSuccess { location = it }
-                .onFailure {
-                    Log.w(TAG, "Failed to get location", it)
-                    weatherState = WeatherState.Error("No location")
-                }
+                .onFailure { weatherState = WeatherState.Error("No location") }
         } else {
             weatherState = WeatherState.Idle
         }
@@ -124,12 +69,11 @@ fun WeatherWidget(
 
     val locationKey = location?.let { Pair(it.latitude, it.longitude) }
 
-    // Cache the last successfully fetched weather so we can display it while loading
     LaunchedEffect(weatherState) {
         if (weatherState is WeatherState.Ready) {
-            val cached = (weatherState as WeatherState.Ready).toCached()
+            val cached = with(WeatherHelper) { (weatherState as WeatherState.Ready).toCached() }
             lastCachedWeather = cached
-            WeatherCache.cached = cached
+            WeatherHelper.setCachedWeather(cached)
         }
     }
 
@@ -137,20 +81,17 @@ fun WeatherWidget(
         if (!hasPermission || locationKey == null) return@LaunchedEffect
         while (isActive) {
             val now = System.currentTimeMillis()
-            val shouldFetch = now - lastFetchTimestamp >= THIRTY_MINUTES_MS ||
+            val shouldFetch = now - lastFetchTimestamp >= WeatherHelper.REFRESH_INTERVAL_MS ||
                     weatherState is WeatherState.Error ||
-                    (weatherState is WeatherState.Idle && WeatherCache.cached == null)
+                    (weatherState is WeatherState.Idle && WeatherHelper.getCachedWeather() == null)
             if (shouldFetch) {
-                // Only show loading if we don't have cached data
                 if (lastCachedWeather == null) {
                     weatherState = WeatherState.Loading
                 }
-                val fetched = fetchWeather(locationKey.first, locationKey.second)
-                weatherState = fetched
+                weatherState = WeatherHelper.fetchWeather(locationKey.first, locationKey.second)
                 lastFetchTimestamp = System.currentTimeMillis()
-                WeatherCache.lastFetchTime = lastFetchTimestamp
             }
-            delay(THIRTY_MINUTES_MS)
+            delay(WeatherHelper.REFRESH_INTERVAL_MS)
         }
     }
 
@@ -206,9 +147,9 @@ private fun WeatherContent(
                     )
                 ) {
                     Icon(
-                        painter = weatherIcon(
+                        painter = WeatherHelper.getWeatherIcon(
                             cachedWeather.weatherCode,
-                            isNightTime(cachedWeather.sunriseTime, cachedWeather.sunsetTime)
+                            WeatherHelper.isNightTime(cachedWeather.sunriseTime, cachedWeather.sunsetTime)
                         ),
                         contentDescription = "Weather",
                         tint = Color.White,
@@ -237,9 +178,9 @@ private fun WeatherContent(
                 )
             ) {
                 Icon(
-                    painter = weatherIcon(
+                    painter = WeatherHelper.getWeatherIcon(
                         state.weatherCode,
-                        isNightTime(state.sunriseTime, state.sunsetTime)
+                        WeatherHelper.isNightTime(state.sunriseTime, state.sunsetTime)
                     ),
                     contentDescription = "Weather",
                     tint = Color.White,
@@ -277,137 +218,4 @@ private fun WeatherContent(
             )
         }
     }
-}
-
-private suspend fun fetchWeather(
-    latitude: Double,
-    longitude: Double
-): WeatherState = withContext(Dispatchers.IO) {
-    val url =
-        "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=fahrenheit"
-    val connection = URL(url).openConnection() as HttpURLConnection
-    return@withContext try {
-        connection.requestMethod = "GET"
-        connection.connectTimeout = 5000
-        connection.readTimeout = 5000
-        connection.useCaches = false
-
-        val response = connection.inputStream.bufferedReader().use { it.readText() }
-        val json = JSONObject(response)
-        val current = json.getJSONObject("current")
-        val temperature = current.getDouble("temperature_2m")
-        val weatherCode = current.getInt("weather_code")
-        
-        val daily = json.optJSONObject("daily")
-        val sunriseArray = daily?.optJSONArray("sunrise")
-        val sunsetArray = daily?.optJSONArray("sunset")
-        val sunriseTime = sunriseArray?.optString(0)
-        val sunsetTime = sunsetArray?.optString(0)
-
-        WeatherState.Ready(
-            temperatureF = temperature,
-            weatherCode = weatherCode,
-            sunriseTime = sunriseTime,
-            sunsetTime = sunsetTime
-        )
-    } catch (e: Exception) {
-        Log.w(TAG, "Weather fetch failed for $latitude,$longitude", e)
-        WeatherState.Error(e.message ?: "Unable to load weather")
-    } finally {
-        connection.disconnect()
-    }
-}
-
-@RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-private suspend fun FusedLocationProviderClient.getBestAvailableLocation(): Location? {
-    return lastLocation.suspendForTask()
-        ?: getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).suspendForTask()
-}
-
-private fun isLocationGranted(context: android.content.Context): Boolean {
-    return ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_FINE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
-}
-
-private suspend fun <T> com.google.android.gms.tasks.Task<T>.suspendForTask(): T? =
-    suspendCancellableCoroutine { cont ->
-        addOnSuccessListener { result -> cont.resume(result) }
-        addOnFailureListener { exception ->
-            if (cont.isActive) cont.resumeWithException(exception)
-        }
-        addOnCanceledListener {
-            if (cont.isActive) cont.resume(null)
-        }
-    }
-
-private data class CachedWeather(
-    val temperatureF: Double,
-    val weatherCode: Int,
-    val sunriseTime: String?,
-    val sunsetTime: String?
-)
-
-private fun WeatherState.Ready.toCached(): CachedWeather = CachedWeather(
-    temperatureF = temperatureF,
-    weatherCode = weatherCode,
-    sunriseTime = sunriseTime,
-    sunsetTime = sunsetTime
-)
-
-@Composable
-private fun weatherIcon(code: Int, isNight: Boolean) = when (code) {
-    0, 1 -> if (isNight) BedtimeIcon() else ClearDayIcon()
-    2 -> if (isNight) PartlyCloudyNightIcon() else PartlyCloudyDayIcon()
-    3 -> CloudIcon()
-    45, 48 -> FoggyIcon()
-    51, 53, 55 -> RainyIcon()
-    61, 63, 65, 80, 81, 82 -> RainyIcon()
-    56, 57, 66, 67, 77 -> WeatherMixIcon()
-    71, 73, 75, 85, 86 -> WeatherSnowyIcon()
-    95, 96, 99 -> ThunderstormIcon()
-    else -> HelpIcon()
-}
-
-private fun isNightTime(sunriseTime: String?, sunsetTime: String?): Boolean {
-    if (sunriseTime == null || sunsetTime == null) {
-        val calendar = Calendar.getInstance()
-        val hour = calendar.get(Calendar.HOUR_OF_DAY)
-        return hour >= 18 || hour < 6
-    }
-    
-    try {
-        val formats = listOf(
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
-        )
-        
-        var sunrise: Date? = null
-        var sunset: Date? = null
-        
-        for (format in formats) {
-            try {
-                sunrise = format.parse(sunriseTime)
-                sunset = format.parse(sunsetTime)
-                if (sunrise != null && sunset != null) break
-            } catch (e: Exception) {
-            }
-        }
-        
-        if (sunrise != null && sunset != null) {
-            val now = Date()
-            return if (sunset.after(sunrise)) {
-                now.after(sunset) || now.before(sunrise)
-            } else {
-                now.after(sunset) && now.before(sunrise)
-            }
-        }
-    } catch (e: Exception) {
-        Log.w(TAG, "Failed to parse sunrise/sunset times, using fallback", e)
-    }
-    
-    val calendar = Calendar.getInstance()
-    val hour = calendar.get(Calendar.HOUR_OF_DAY)
-    return hour >= 18 || hour < 6
 }
