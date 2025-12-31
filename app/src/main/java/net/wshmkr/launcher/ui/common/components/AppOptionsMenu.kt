@@ -41,6 +41,7 @@ import net.wshmkr.launcher.ui.common.icons.CheckIcon
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
 import net.wshmkr.launcher.ui.common.icons.DeleteIcon
 import net.wshmkr.launcher.ui.common.icons.InfoIcon
+import net.wshmkr.launcher.ui.common.icons.StarFilledIcon
 import net.wshmkr.launcher.ui.common.icons.StarIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
@@ -116,7 +117,7 @@ fun AppOptionsMenu(
 
             if (appInfo.isFavorite) {
                 MenuOption(
-                    icon = CloseIcon(),
+                    icon = StarIcon(),
                     text = "Remove from favorites",
                     onClick = {
                         viewModel.toggleFavorite(appInfo)
@@ -125,7 +126,7 @@ fun AppOptionsMenu(
                 )
             } else {
                 MenuOption(
-                    icon = StarIcon(),
+                    icon = StarFilledIcon(),
                     text = "Favorite",
                     onClick = {
                         viewModel.toggleFavorite(appInfo)

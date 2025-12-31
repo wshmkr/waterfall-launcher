@@ -42,13 +42,16 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import net.wshmkr.launcher.ui.common.icons.AcUnitIcon
+import net.wshmkr.launcher.ui.common.icons.ClearDayIcon
 import net.wshmkr.launcher.ui.common.icons.CloudIcon
-import net.wshmkr.launcher.ui.common.icons.FlashOnIcon
-import net.wshmkr.launcher.ui.common.icons.HelpOutlineIcon
+import net.wshmkr.launcher.ui.common.icons.FoggyIcon
+import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
-import net.wshmkr.launcher.ui.common.icons.WaterDropIcon
-import net.wshmkr.launcher.ui.common.icons.WbSunnyIcon
+import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
+import net.wshmkr.launcher.ui.common.icons.RainyIcon
+import net.wshmkr.launcher.ui.common.icons.ThunderstormIcon
+import net.wshmkr.launcher.ui.common.icons.WeatherMixIcon
+import net.wshmkr.launcher.ui.common.icons.WeatherSnowyIcon
 
 private const val THIRTY_MINUTES_MS = 30 * 60 * 1000L
 private const val TAG = "WeatherWidget"
@@ -180,7 +183,7 @@ private fun WeatherContent(
                 modifier = modifier
             ) {
                 Icon(
-                    painter = HelpOutlineIcon(),
+                    painter = HelpIcon(),
                     contentDescription = "Weather unavailable",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
@@ -254,12 +257,14 @@ private suspend fun <T> com.google.android.gms.tasks.Task<T>.suspendForTask(): T
 
 @Composable
 private fun weatherIcon(code: Int) = when (code) {
-    0 -> WbSunnyIcon()
-    1, 2 -> CloudIcon()
+    0, 1 -> ClearDayIcon()
+    2 -> PartlyCloudyDayIcon()
     3 -> CloudIcon()
-    45, 48 -> CloudIcon()
-    51, 53, 55, 56, 57, 61, 63, 65, 80, 81, 82 -> WaterDropIcon()
-    66, 67, 71, 73, 75, 77, 85, 86 -> AcUnitIcon()
-    95, 96, 99 -> FlashOnIcon()
-    else -> HelpOutlineIcon()
+    45, 48 -> FoggyIcon()
+    51, 53, 55 -> RainyIcon()
+    61, 63, 65, 80, 81, 82 -> RainyIcon()
+    56, 57, 66, 67, 77 -> WeatherMixIcon()
+    71, 73, 75, 85, 86 -> WeatherSnowyIcon()
+    95, 96, 99 -> ThunderstormIcon()
+    else -> HelpIcon()
 }
