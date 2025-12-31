@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.ListItem
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
+import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 @Composable
