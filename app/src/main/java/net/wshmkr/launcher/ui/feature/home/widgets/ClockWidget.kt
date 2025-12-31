@@ -31,6 +31,7 @@ import kotlinx.coroutines.isActive
 import net.wshmkr.launcher.util.ONE_SECOND
 import net.wshmkr.launcher.util.getCurrentDate
 import net.wshmkr.launcher.util.getCurrentTime
+import androidx.core.net.toUri
 
 @Composable
 fun ClockWidget() {
@@ -83,7 +84,14 @@ fun ClockWidget() {
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            WeatherWidget()
+            WeatherWidget(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                onClick = {
+                    launchWeatherApp(context)
+                }
+            )
         }
     }
 }
@@ -112,5 +120,24 @@ private fun launchCalendarApp(context: Context) {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(intent)
+    } catch (e: Exception) { }
+}
+
+private fun launchWeatherApp(context: Context) {
+    try {
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_APP_WEATHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        val resolveInfo = context.packageManager.resolveActivity(intent, 0)
+        if (resolveInfo != null) {
+            context.startActivity(intent)
+        } else {
+            val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                data = "https://www.google.com/search?q=weather".toUri()
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(webIntent)
+        }
     } catch (e: Exception) { }
 }

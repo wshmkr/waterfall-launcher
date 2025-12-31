@@ -76,7 +76,10 @@ private sealed interface WeatherState {
 }
 
 @Composable
-fun WeatherWidget(modifier: Modifier = Modifier) {
+fun WeatherWidget(
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -129,7 +132,8 @@ fun WeatherWidget(modifier: Modifier = Modifier) {
         modifier = modifier,
         onRequestPermission = {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
+        },
+        onClick = onClick
     )
 }
 
@@ -138,7 +142,8 @@ private fun WeatherContent(
     state: WeatherState,
     hasPermission: Boolean,
     modifier: Modifier = Modifier,
-    onRequestPermission: () -> Unit
+    onRequestPermission: () -> Unit,
+    onClick: (() -> Unit)? = null
 ) {
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
         color = Color.White,
@@ -173,7 +178,9 @@ private fun WeatherContent(
         state is WeatherState.Ready -> {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier
+                modifier = modifier.then(
+                    if (onClick != null) Modifier.clickable { onClick() } else Modifier
+                )
             ) {
                 Icon(
                     painter = weatherIcon(
