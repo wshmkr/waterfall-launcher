@@ -40,14 +40,21 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import net.wshmkr.launcher.ui.common.icons.BedtimeIcon
 import net.wshmkr.launcher.ui.common.icons.ClearDayIcon
 import net.wshmkr.launcher.ui.common.icons.CloudIcon
 import net.wshmkr.launcher.ui.common.icons.FoggyIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
+import net.wshmkr.launcher.ui.common.icons.PartlyCloudyNightIcon
 import net.wshmkr.launcher.ui.common.icons.RainyIcon
 import net.wshmkr.launcher.ui.common.icons.ThunderstormIcon
 import net.wshmkr.launcher.ui.common.icons.WeatherMixIcon
@@ -59,7 +66,12 @@ private const val TAG = "WeatherWidget"
 private sealed interface WeatherState {
     data object Idle : WeatherState
     data object Loading : WeatherState
-    data class Ready(val temperatureF: Double, val weatherCode: Int) : WeatherState
+    data class Ready(
+        val temperatureF: Double,
+        val weatherCode: Int,
+        val sunriseTime: String? = null,
+        val sunsetTime: String? = null
+    ) : WeatherState
     data class Error(val reason: String) : WeatherState
 }
 
@@ -164,7 +176,10 @@ private fun WeatherContent(
                 modifier = modifier
             ) {
                 Icon(
-                    painter = weatherIcon(state.weatherCode),
+                    painter = weatherIcon(
+                        state.weatherCode,
+                        isNightTime(state.sunriseTime, state.sunsetTime)
+                    ),
                     contentDescription = "Weather",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
@@ -208,7 +223,7 @@ private suspend fun fetchWeather(
     longitude: Double
 ): WeatherState = withContext(Dispatchers.IO) {
     val url =
-        "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,weather_code&temperature_unit=fahrenheit"
+        "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=fahrenheit"
     val connection = URL(url).openConnection() as HttpURLConnection
     return@withContext try {
         connection.requestMethod = "GET"
@@ -221,8 +236,19 @@ private suspend fun fetchWeather(
         val current = json.getJSONObject("current")
         val temperature = current.getDouble("temperature_2m")
         val weatherCode = current.getInt("weather_code")
+        
+        val daily = json.optJSONObject("daily")
+        val sunriseArray = daily?.optJSONArray("sunrise")
+        val sunsetArray = daily?.optJSONArray("sunset")
+        val sunriseTime = sunriseArray?.optString(0)
+        val sunsetTime = sunsetArray?.optString(0)
 
-        WeatherState.Ready(temperatureF = temperature, weatherCode = weatherCode)
+        WeatherState.Ready(
+            temperatureF = temperature,
+            weatherCode = weatherCode,
+            sunriseTime = sunriseTime,
+            sunsetTime = sunsetTime
+        )
     } catch (e: Exception) {
         Log.w(TAG, "Weather fetch failed for $latitude,$longitude", e)
         WeatherState.Error(e.message ?: "Unable to load weather")
@@ -256,9 +282,9 @@ private suspend fun <T> com.google.android.gms.tasks.Task<T>.suspendForTask(): T
     }
 
 @Composable
-private fun weatherIcon(code: Int) = when (code) {
-    0, 1 -> ClearDayIcon()
-    2 -> PartlyCloudyDayIcon()
+private fun weatherIcon(code: Int, isNight: Boolean) = when (code) {
+    0, 1 -> if (isNight) BedtimeIcon() else ClearDayIcon()
+    2 -> if (isNight) PartlyCloudyNightIcon() else PartlyCloudyDayIcon()
     3 -> CloudIcon()
     45, 48 -> FoggyIcon()
     51, 53, 55 -> RainyIcon()
@@ -267,4 +293,46 @@ private fun weatherIcon(code: Int) = when (code) {
     71, 73, 75, 85, 86 -> WeatherSnowyIcon()
     95, 96, 99 -> ThunderstormIcon()
     else -> HelpIcon()
+}
+
+private fun isNightTime(sunriseTime: String?, sunsetTime: String?): Boolean {
+    if (sunriseTime == null || sunsetTime == null) {
+        val calendar = Calendar.getInstance()
+        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        return hour >= 18 || hour < 6
+    }
+    
+    try {
+        val formats = listOf(
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
+        )
+        
+        var sunrise: Date? = null
+        var sunset: Date? = null
+        
+        for (format in formats) {
+            try {
+                sunrise = format.parse(sunriseTime)
+                sunset = format.parse(sunsetTime)
+                if (sunrise != null && sunset != null) break
+            } catch (e: Exception) {
+            }
+        }
+        
+        if (sunrise != null && sunset != null) {
+            val now = Date()
+            return if (sunset.after(sunrise)) {
+                now.after(sunset) || now.before(sunrise)
+            } else {
+                now.after(sunset) && now.before(sunrise)
+            }
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to parse sunrise/sunset times, using fallback", e)
+    }
+    
+    val calendar = Calendar.getInstance()
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    return hour >= 18 || hour < 6
 }
