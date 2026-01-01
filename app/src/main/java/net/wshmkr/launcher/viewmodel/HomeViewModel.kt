@@ -7,6 +7,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import android.os.UserHandle
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
+import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.ListItem
 import net.wshmkr.launcher.model.NotificationInfo
@@ -33,6 +34,9 @@ class HomeViewModel @Inject constructor(
     var backgroundUri by mutableStateOf<String?>(null)
         private set
 
+    var homeWidgetSettings by mutableStateOf(HomeWidgetSettings())
+        private set
+
     val allAppsListItems by derivedStateOf {
         buildListItems(appsRepository.allApps.filter { !it.isHidden }, notifications)
     }
@@ -49,9 +53,7 @@ class HomeViewModel @Inject constructor(
         }
     }
     
-    val favoriteListItems by derivedStateOf {
-        buildFavoriteListItems(notifications)
-    }
+    val favoriteListItems by derivedStateOf { buildFavoriteListItems(notifications, homeWidgetSettings) }
 
     var activeLetter by mutableStateOf<String?>(null)
         private set
@@ -90,6 +92,12 @@ class HomeViewModel @Inject constructor(
         
         viewModelScope.launch {
             backgroundUri = userSettingsDataSource.getBackgroundUri()
+        }
+
+        viewModelScope.launch {
+            userSettingsDataSource.homeWidgetSettings.collectLatest { settings ->
+                homeWidgetSettings = settings
+            }
         }
     }
     
@@ -140,6 +148,30 @@ class HomeViewModel @Inject constructor(
         return if (activeLetter == null || letter == activeLetter) 1f else 0.2f
     }
 
+    fun setShowClock(enabled: Boolean) {
+        viewModelScope.launch {
+            userSettingsDataSource.setShowClock(enabled)
+        }
+    }
+
+    fun setShowCalendar(enabled: Boolean) {
+        viewModelScope.launch {
+            userSettingsDataSource.setShowCalendar(enabled)
+        }
+    }
+
+    fun setShowWeather(enabled: Boolean) {
+        viewModelScope.launch {
+            userSettingsDataSource.setShowWeather(enabled)
+        }
+    }
+
+    fun setShowMedia(enabled: Boolean) {
+        viewModelScope.launch {
+            userSettingsDataSource.setShowMedia(enabled)
+        }
+    }
+
     private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<ListItem> {
         val items = mutableListOf<ListItem>()
         var currentLetter = ""
@@ -161,12 +193,21 @@ class HomeViewModel @Inject constructor(
         return items
     }
     
-    private fun buildFavoriteListItems(notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<ListItem> {
+    private fun buildFavoriteListItems(
+        notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>,
+        settings: HomeWidgetSettings
+    ): List<ListItem> {
         val items = mutableListOf<ListItem>()
         
-        items.add(ListItem.ClockWidget)
+        if (settings.showClock || settings.showCalendar || settings.showWeather) {
+            items.add(ListItem.ClockWidget)
+        }
+
         items.add(ListItem.WidgetHost)
-        items.add(ListItem.MediaWidget)
+
+        if (settings.showMediaControls) {
+            items.add(ListItem.MediaWidget)
+        }
         
         val favorites = appsRepository.allApps.filter { it.isFavorite }
         favorites.forEach { app ->

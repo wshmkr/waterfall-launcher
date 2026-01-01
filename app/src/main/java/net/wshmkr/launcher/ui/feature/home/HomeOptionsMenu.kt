@@ -8,10 +8,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -23,19 +19,18 @@ import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.SettingsIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
+import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeOptionsMenu(
     navController: NavController,
+    viewModel: HomeViewModel,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
-
-    var clockSwitch by remember { mutableStateOf(false) }
-    var calendarSwitch by remember { mutableStateOf(false) }
-    var mediaSwitch by remember { mutableStateOf(false) }
+    val settings = viewModel.homeWidgetSettings
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -51,33 +46,33 @@ fun HomeOptionsMenu(
             MenuOption(
                 icon = ScheduleIcon(),
                 text = "Clock",
-                onClick = { },
-                switch = clockSwitch,
-                onToggle = { clockSwitch = !clockSwitch },
+                onClick = { viewModel.setShowClock(!settings.showClock) },
+                switch = settings.showClock,
+                onToggle = { viewModel.setShowClock(!settings.showClock) },
             )
 
             MenuOption(
                 icon = CalendarTodayIcon(),
                 text = "Calendar",
-                onClick = { },
-                switch = calendarSwitch,
-                onToggle = { calendarSwitch = !calendarSwitch },
+                onClick = { viewModel.setShowCalendar(!settings.showCalendar) },
+                switch = settings.showCalendar,
+                onToggle = { viewModel.setShowCalendar(!settings.showCalendar) },
             )
 
             MenuOption(
                 icon = PartlyCloudyDayIcon(),
                 text = "Weather",
-                onClick = { },
-                switch = calendarSwitch,
-                onToggle = { calendarSwitch = !calendarSwitch },
+                onClick = { viewModel.setShowWeather(!settings.showWeather) },
+                switch = settings.showWeather,
+                onToggle = { viewModel.setShowWeather(!settings.showWeather) },
             )
 
             MenuOption(
                 icon = MusicVideoIcon(),
                 text = "Media controls",
-                onClick = { },
-                switch = mediaSwitch,
-                onToggle = { mediaSwitch = !mediaSwitch },
+                onClick = { viewModel.setShowMedia(!settings.showMediaControls) },
+                switch = settings.showMediaControls,
+                onToggle = { viewModel.setShowMedia(!settings.showMediaControls) },
             )
 
             MenuOption(

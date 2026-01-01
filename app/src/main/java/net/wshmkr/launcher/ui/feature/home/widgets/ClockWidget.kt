@@ -34,7 +34,13 @@ import net.wshmkr.launcher.util.getCurrentTime
 import androidx.core.net.toUri
 
 @Composable
-fun ClockWidget() {
+fun ClockWidget(
+    showClock: Boolean = true,
+    showCalendar: Boolean = true,
+    showWeather: Boolean = true,
+) {
+    if (!showClock && !showCalendar && !showWeather) return
+
     val context = LocalContext.current
     var currentTime by remember { mutableStateOf(getCurrentTime()) }
     var currentDate by remember { mutableStateOf(getCurrentDate()) }
@@ -53,49 +59,60 @@ fun ClockWidget() {
             .padding(top = 32.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        Text(
-            text = currentTime,
-            fontSize = 48.sp,
-            color = Color.White,
-            modifier = Modifier
-                .padding(horizontal = 4.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .clickable {
-                    launchClockApp(context)
-                }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
+        if (showClock) {
+            Text(
+                text = currentTime,
+                fontSize = 48.sp,
+                color = Color.White,
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        launchClockApp(context)
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = currentDate,
-                fontSize = 16.sp,
-                color = Color.White,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        launchCalendarApp(context)
-                    }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
-            Text(
-                text = "•",
-                fontSize = 16.sp,
-                color = Color.White
-            )
-            WeatherWidget(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        launchWeatherApp(context)
-                    }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
+            if (showCalendar) {
+                Text(
+                    text = currentDate,
+                    fontSize = 16.sp,
+                    color = Color.White,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            launchCalendarApp(context)
+                        }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
+            if (showCalendar && showWeather) {
+                Text(
+                    text = "•",
+                    fontSize = 16.sp,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 6.dp)
+                )
+            }
+
+            if (showWeather) {
+                WeatherWidget(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            launchWeatherApp(context)
+                        }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }

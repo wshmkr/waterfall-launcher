@@ -105,7 +105,11 @@ fun FavoritesView(
             ) { item ->
                 when (item) {
                     is ListItem.ClockWidget -> {
-                        ClockWidget()
+                        ClockWidget(
+                            showClock = viewModel.homeWidgetSettings.showClock,
+                            showCalendar = viewModel.homeWidgetSettings.showCalendar,
+                            showWeather = viewModel.homeWidgetSettings.showWeather,
+                        )
                     }
                     is ListItem.MediaWidget -> {
                         MediaWidget()
@@ -129,6 +133,7 @@ fun FavoritesView(
     if (showHomeOptionsMenu) {
         HomeOptionsMenu(
             navController = navController,
+            viewModel = viewModel,
             onDismiss = { showHomeOptionsMenu = false }
         )
     }
