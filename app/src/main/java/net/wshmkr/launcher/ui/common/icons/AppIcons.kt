@@ -102,6 +102,9 @@ fun CloudIcon() = painterResource(id = R.drawable.icon_cloud)
 fun FoggyIcon() = painterResource(id = R.drawable.icon_foggy)
 
 @Composable
+fun DrizzleIcon() = painterResource(id = R.drawable.icon_drizzle)
+
+@Composable
 fun RainyIcon() = painterResource(id = R.drawable.icon_rainy)
 
 @Composable

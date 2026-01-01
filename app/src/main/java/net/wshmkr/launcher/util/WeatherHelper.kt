@@ -23,6 +23,7 @@ import kotlin.coroutines.resumeWithException
 import net.wshmkr.launcher.ui.common.icons.BedtimeIcon
 import net.wshmkr.launcher.ui.common.icons.ClearDayIcon
 import net.wshmkr.launcher.ui.common.icons.CloudIcon
+import net.wshmkr.launcher.ui.common.icons.DrizzleIcon
 import net.wshmkr.launcher.ui.common.icons.FoggyIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
@@ -117,15 +118,20 @@ object WeatherHelper {
 
     @Composable
     fun getWeatherIcon(code: Int, isNight: Boolean): Painter = when (code) {
-        0, 1 -> if (isNight) BedtimeIcon() else ClearDayIcon()
-        2 -> if (isNight) PartlyCloudyNightIcon() else PartlyCloudyDayIcon()
-        3 -> CloudIcon()
-        45, 48 -> FoggyIcon()
-        51, 53, 55 -> RainyIcon()
-        61, 63, 65, 80, 81, 82 -> RainyIcon()
-        56, 57, 66, 67, 77 -> WeatherMixIcon()
-        71, 73, 75, 85, 86 -> WeatherSnowyIcon()
-        95, 96, 99 -> ThunderstormIcon()
+        0, 1 -> if (isNight) BedtimeIcon() else ClearDayIcon()                  // clear
+        2 -> if (isNight) PartlyCloudyNightIcon() else PartlyCloudyDayIcon()    // partly cloudy
+        3 -> CloudIcon()                    // cloudy
+        45, 48 -> FoggyIcon()               // fog
+        51, 53, 55 -> DrizzleIcon()         // light rain
+        61, 63, 65 -> RainyIcon()           // rain
+        80, 81, 82 -> RainyIcon()           // rain showers
+        56, 57 -> WeatherMixIcon()          // freezing drizzle
+        66, 67 -> WeatherMixIcon()          // freezing rain
+        77 -> WeatherMixIcon()              // snow grains
+        71, 73, 75 -> WeatherSnowyIcon()    // snow
+        85, 86 -> WeatherSnowyIcon()        // snow showers
+        95 -> ThunderstormIcon()            // thunderstorm
+        96, 99 -> ThunderstormIcon()        // thunderstorm with hail
         else -> HelpIcon()
     }
 
