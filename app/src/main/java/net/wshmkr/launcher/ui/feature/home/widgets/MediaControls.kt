@@ -34,8 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
-import net.wshmkr.launcher.ui.common.icons.PauseCircleIcon
-import net.wshmkr.launcher.ui.common.icons.PlayCircleIcon
+import net.wshmkr.launcher.ui.common.icons.PauseIcon
+import net.wshmkr.launcher.ui.common.icons.PlayArrowIcon
 import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
 import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
 
@@ -166,7 +166,7 @@ private fun MediaControlButtons(
             modifier = Modifier.size(56.dp)
         ) {
             Icon(
-                painter = if (isPlaying) PauseCircleIcon() else PlayCircleIcon(),
+                painter = if (isPlaying) PauseIcon() else PlayArrowIcon(),
                 contentDescription = if (isPlaying) "Pause" else "Play",
                 tint = Color.White,
                 modifier = Modifier.size(40.dp)

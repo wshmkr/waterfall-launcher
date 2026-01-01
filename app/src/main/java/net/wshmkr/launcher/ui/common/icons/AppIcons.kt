@@ -44,10 +44,10 @@ fun MusicNoteIcon() = painterResource(id = R.drawable.icon_music_note)
 fun MusicVideoIcon() = painterResource(id = R.drawable.icon_music_video)
 
 @Composable
-fun PauseCircleIcon() = painterResource(id = R.drawable.icon_pause_circle)
+fun PauseIcon() = painterResource(id = R.drawable.icon_pause)
 
 @Composable
-fun PlayCircleIcon() = painterResource(id = R.drawable.icon_play_circle)
+fun PlayArrowIcon() = painterResource(id = R.drawable.icon_play_arrow)
 
 @Composable
 fun ScheduleIcon() = painterResource(id = R.drawable.icon_schedule)
