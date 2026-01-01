@@ -1,8 +1,10 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.location.Location
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,14 +46,14 @@ fun WeatherWidget(
     var hasPermission by remember { mutableStateOf(WeatherHelper.isLocationGranted(context)) }
     var location by remember { mutableStateOf<Location?>(null) }
     var weatherState by remember {
-        mutableStateOf<WeatherState>(
+        mutableStateOf(
             WeatherHelper.getCachedWeather()?.let {
                 WeatherState.Ready(it.temperatureF, it.weatherCode, it.sunriseTime, it.sunsetTime)
             } ?: WeatherState.Idle
         )
     }
     var lastCachedWeather by remember { mutableStateOf(WeatherHelper.getCachedWeather()) }
-    var lastFetchTimestamp by remember { mutableStateOf(WeatherHelper.getLastFetchTime()) }
+    var lastFetchTimestamp by remember { mutableLongStateOf(WeatherHelper.getLastFetchTime()) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -59,9 +62,20 @@ fun WeatherWidget(
 
     LaunchedEffect(hasPermission) {
         if (hasPermission) {
-            runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }
-                .onSuccess { location = it }
-                .onFailure { weatherState = WeatherState.Error("No location") }
+            val hasFineLocation = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            val hasCoarseLocation = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasFineLocation || hasCoarseLocation) {
+                runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }
+                    .onSuccess { location = it }
+                    .onFailure { weatherState = WeatherState.Error("No location") }
+            } else {
+                weatherState = WeatherState.Error("No location permission")
+            }
         } else {
             weatherState = WeatherState.Idle
         }

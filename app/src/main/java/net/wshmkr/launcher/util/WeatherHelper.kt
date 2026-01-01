@@ -57,7 +57,7 @@ object WeatherHelper {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+    @RequiresPermission(anyOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
     suspend fun getBestAvailableLocation(client: FusedLocationProviderClient): Location? {
         return client.lastLocation.suspendForTask()
             ?: client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).suspendForTask()
