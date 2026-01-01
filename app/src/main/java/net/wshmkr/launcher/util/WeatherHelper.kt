@@ -28,10 +28,7 @@ import net.wshmkr.launcher.ui.common.icons.WeatherSnowyIcon
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import java.time.LocalTime
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -54,7 +51,11 @@ object WeatherHelper {
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     @RequiresPermission(anyOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
@@ -66,7 +67,7 @@ object WeatherHelper {
     suspend fun fetchWeather(latitude: Double, longitude: Double): WeatherState =
         withContext(Dispatchers.IO) {
             val url = "$WEATHER_API_URL?latitude=$latitude&longitude=$longitude" +
-                "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=fahrenheit"
+                "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=fahrenheit&timezone=auto"
             val connection = URL(url).openConnection() as HttpURLConnection
             try {
                 connection.requestMethod = "GET"
@@ -74,6 +75,10 @@ object WeatherHelper {
                 connection.readTimeout = 5000
                 connection.useCaches = false
 
+                val responseCode = connection.responseCode
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    return@withContext WeatherState.Error("HTTP $responseCode")
+                }
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(response)
                 val current = json.getJSONObject("current")
@@ -114,44 +119,17 @@ object WeatherHelper {
     }
 
     fun isNightTime(sunriseTime: String?, sunsetTime: String?): Boolean {
-        if (sunriseTime == null || sunsetTime == null) {
-            return isNightByHour()
-        }
+        val sunrise = sunriseTime?.substringAfter('T')?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+        val sunset = sunsetTime?.substringAfter('T')?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
 
-        try {
-            val formats = listOf(
-                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
-                SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
-            )
+        if (sunrise == null || sunset == null) return isNightByHour()
 
-            var sunrise: Date? = null
-            var sunset: Date? = null
-
-            for (format in formats) {
-                try {
-                    sunrise = format.parse(sunriseTime)
-                    sunset = format.parse(sunsetTime)
-                    if (sunrise != null && sunset != null) break
-                } catch (_: Exception) {
-                }
-            }
-
-            if (sunrise != null && sunset != null) {
-                val now = Date()
-                return if (sunset.after(sunrise)) {
-                    now.after(sunset) || now.before(sunrise)
-                } else {
-                    now.after(sunset) && now.before(sunrise)
-                }
-            }
-        } catch (_: Exception) {
-        }
-
-        return isNightByHour()
+        val now = LocalTime.now()
+        return now.isBefore(sunrise) || !now.isBefore(sunset)
     }
 
     private fun isNightByHour(): Boolean {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val hour = LocalTime.now().hour
         return hour >= 18 || hour < 6
     }
 
