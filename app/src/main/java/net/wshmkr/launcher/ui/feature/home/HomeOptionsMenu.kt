@@ -19,6 +19,7 @@ import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
+import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.SettingsIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
@@ -45,7 +46,7 @@ fun HomeOptionsMenu(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(top = 18.dp)
+                .padding(vertical = 18.dp)
         ) {
             MenuOption(
                 icon = ScheduleIcon(),
@@ -58,6 +59,14 @@ fun HomeOptionsMenu(
             MenuOption(
                 icon = CalendarTodayIcon(),
                 text = "Calendar",
+                onClick = { },
+                switch = calendarSwitch,
+                onToggle = { calendarSwitch = !calendarSwitch },
+            )
+
+            MenuOption(
+                icon = PartlyCloudyDayIcon(),
+                text = "Weather",
                 onClick = { },
                 switch = calendarSwitch,
                 onToggle = { calendarSwitch = !calendarSwitch },
@@ -86,7 +95,7 @@ fun HomeOptionsMenu(
 
             MenuOption(
                 icon = SettingsIcon(),
-                text = "Waterfall settings",
+                text = "Waterfall launcher settings",
                 onClick = {
                     onDismiss()
                     navController.navigate(Screen.Settings.route)
