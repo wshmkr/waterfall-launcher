@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.util.WeatherHelper
@@ -185,7 +186,8 @@ private fun WeatherContent(
                 modifier = modifier
             ) {
                 Icon(
-                    painter = WeatherHelper.getWeatherIcon(
+                    painter = if (state.isStale) CloudOffIcon()
+                    else WeatherHelper.getWeatherIcon(
                         state.weatherCode,
                         WeatherHelper.isNightTime(state.sunriseTime, state.sunsetTime)
                     ),
@@ -198,6 +200,10 @@ private fun WeatherContent(
                     text = "${state.temperatureF.toInt()}°F",
                     style = textStyle
                 )
+                if (state.isStale) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "stale", style = textStyle.copy(color = Color.Gray))
+                }
             }
         }
 

@@ -14,6 +14,12 @@ import com.google.android.gms.tasks.Task
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.time.LocalTime
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import net.wshmkr.launcher.ui.common.icons.BedtimeIcon
 import net.wshmkr.launcher.ui.common.icons.ClearDayIcon
 import net.wshmkr.launcher.ui.common.icons.CloudIcon
@@ -25,12 +31,6 @@ import net.wshmkr.launcher.ui.common.icons.RainyIcon
 import net.wshmkr.launcher.ui.common.icons.ThunderstormIcon
 import net.wshmkr.launcher.ui.common.icons.WeatherMixIcon
 import net.wshmkr.launcher.ui.common.icons.WeatherSnowyIcon
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.time.LocalTime
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 object WeatherHelper {
     const val REFRESH_INTERVAL_MS = 30 * 60 * 1000L
@@ -77,7 +77,7 @@ object WeatherHelper {
 
                 val responseCode = connection.responseCode
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    return@withContext WeatherState.Error("HTTP $responseCode")
+                    return@withContext cachedOrError("HTTP $responseCode")
                 }
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(response)
@@ -98,11 +98,22 @@ object WeatherHelper {
                     sunsetTime = sunsetTime
                 )
             } catch (e: Exception) {
-                WeatherState.Error(e.message ?: "Unable to load weather")
+                cachedOrError(e.message ?: "Unable to load weather")
             } finally {
                 connection.disconnect()
             }
         }
+
+    private fun cachedOrError(reason: String): WeatherState =
+        getCachedWeather()?.let {
+            WeatherState.Ready(
+                temperatureF = it.temperatureF,
+                weatherCode = it.weatherCode,
+                sunriseTime = it.sunriseTime,
+                sunsetTime = it.sunsetTime,
+                isStale = true
+            )
+        } ?: WeatherState.Error(reason)
 
     @Composable
     fun getWeatherIcon(code: Int, isNight: Boolean): Painter = when (code) {
@@ -151,7 +162,8 @@ object WeatherHelper {
             val temperatureF: Double,
             val weatherCode: Int,
             val sunriseTime: String? = null,
-            val sunsetTime: String? = null
+            val sunsetTime: String? = null,
+            val isStale: Boolean = false,
         ) : WeatherState
         data class Error(val reason: String) : WeatherState
     }
