@@ -1,22 +1,21 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.location.Location
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,10 +35,7 @@ import net.wshmkr.launcher.util.WeatherHelper.CachedWeather
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 
 @Composable
-fun WeatherWidget(
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
-) {
+fun WeatherWidget(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -52,8 +48,6 @@ fun WeatherWidget(
             } ?: WeatherState.Idle
         )
     }
-    var lastCachedWeather by remember { mutableStateOf(WeatherHelper.getCachedWeather()) }
-    var lastFetchTimestamp by remember { mutableLongStateOf(WeatherHelper.getLastFetchTime()) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -62,20 +56,15 @@ fun WeatherWidget(
 
     LaunchedEffect(hasPermission) {
         if (hasPermission) {
-            val hasFineLocation = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-            val hasCoarseLocation = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (hasFineLocation || hasCoarseLocation) {
-                runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }
-                    .onSuccess { location = it }
-                    .onFailure { weatherState = WeatherState.Error("No location") }
-            } else {
-                weatherState = WeatherState.Error("No location permission")
-            }
+            runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }
+                .onSuccess { loc ->
+                    if (loc != null) {
+                        location = loc
+                    } else {
+                        weatherState = WeatherState.Error("No location")
+                    }
+                }
+                .onFailure { weatherState = WeatherState.Error("No location") }
         } else {
             weatherState = WeatherState.Idle
         }
@@ -83,27 +72,26 @@ fun WeatherWidget(
 
     val locationKey = location?.let { Pair(it.latitude, it.longitude) }
 
-    LaunchedEffect(weatherState) {
-        if (weatherState is WeatherState.Ready) {
-            val cached = with(WeatherHelper) { (weatherState as WeatherState.Ready).toCached() }
-            lastCachedWeather = cached
-            WeatherHelper.setCachedWeather(cached)
-        }
-    }
-
     LaunchedEffect(locationKey, hasPermission) {
         if (!hasPermission || locationKey == null) return@LaunchedEffect
         while (isActive) {
             val now = System.currentTimeMillis()
-            val shouldFetch = now - lastFetchTimestamp >= WeatherHelper.REFRESH_INTERVAL_MS ||
+            val lastFetch = WeatherHelper.getLastFetchTime()
+            val shouldFetch = now - lastFetch >= WeatherHelper.REFRESH_INTERVAL_MS ||
                     weatherState is WeatherState.Error ||
                     (weatherState is WeatherState.Idle && WeatherHelper.getCachedWeather() == null)
+
             if (shouldFetch) {
-                if (lastCachedWeather == null) {
+                val cachedWeather = WeatherHelper.getCachedWeather()
+                if (cachedWeather == null) {
                     weatherState = WeatherState.Loading
                 }
-                weatherState = WeatherHelper.fetchWeather(locationKey.first, locationKey.second)
-                lastFetchTimestamp = System.currentTimeMillis()
+                val result = WeatherHelper.fetchWeather(locationKey.first, locationKey.second)
+                if (result is WeatherState.Ready) {
+                    val cached = with(WeatherHelper) { result.toCached() }
+                    WeatherHelper.setCachedWeather(cached)
+                }
+                weatherState = result
             }
             delay(WeatherHelper.REFRESH_INTERVAL_MS)
         }
@@ -111,13 +99,12 @@ fun WeatherWidget(
 
     WeatherContent(
         state = weatherState,
-        cachedWeather = lastCachedWeather,
+        cachedWeather = WeatherHelper.getCachedWeather(),
         hasPermission = hasPermission,
         modifier = modifier,
         onRequestPermission = {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        },
-        onClick = onClick
+        }
     )
 }
 
@@ -127,8 +114,7 @@ private fun WeatherContent(
     cachedWeather: CachedWeather?,
     hasPermission: Boolean,
     modifier: Modifier = Modifier,
-    onRequestPermission: () -> Unit,
-    onClick: (() -> Unit)? = null
+    onRequestPermission: () -> Unit
 ) {
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
         color = Color.White,
@@ -147,7 +133,7 @@ private fun WeatherContent(
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.size(4.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(text = "Enable location", style = textStyle)
             }
         }
@@ -156,9 +142,7 @@ private fun WeatherContent(
             if (cachedWeather != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = modifier.then(
-                        if (onClick != null) Modifier.clickable { onClick() } else Modifier
-                    )
+                    modifier = modifier
                 ) {
                     Icon(
                         painter = WeatherHelper.getWeatherIcon(
@@ -169,17 +153,17 @@ private fun WeatherContent(
                         tint = Color.White,
                         modifier = Modifier.size(18.dp)
                     )
-                    Spacer(modifier = Modifier.size(4.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${cachedWeather.temperatureF.toInt()}°F",
                         style = textStyle
                     )
                 }
             } else {
-                Text(
-                    text = "Weather…",
-                    style = textStyle,
-                    modifier = modifier
+                CircularProgressIndicator(
+                    modifier = modifier.size(18.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
                 )
             }
         }
@@ -187,9 +171,7 @@ private fun WeatherContent(
         state is WeatherState.Ready -> {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier.then(
-                    if (onClick != null) Modifier.clickable { onClick() } else Modifier
-                )
+                modifier = modifier
             ) {
                 Icon(
                     painter = WeatherHelper.getWeatherIcon(
@@ -200,7 +182,7 @@ private fun WeatherContent(
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.size(4.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${state.temperatureF.toInt()}°F",
                     style = textStyle
@@ -219,16 +201,16 @@ private fun WeatherContent(
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.size(4.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(text = "Weather unavailable", style = textStyle)
             }
         }
 
         else -> {
-            Text(
-                text = "Locating…",
-                style = textStyle,
-                modifier = modifier
+            CircularProgressIndicator(
+                modifier = modifier.size(18.dp),
+                color = Color.White,
+                strokeWidth = 2.dp
             )
         }
     }

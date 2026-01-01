@@ -94,8 +94,7 @@ fun ClockWidget() {
                     .clickable {
                         launchWeatherApp(context)
                     }
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                onClick = null
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
     }
