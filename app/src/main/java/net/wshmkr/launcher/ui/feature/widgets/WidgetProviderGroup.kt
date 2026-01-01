@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDropDown
-import androidx.compose.material.icons.outlined.ArrowDropUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
+import net.wshmkr.launcher.ui.common.icons.ArrowDropUpIcon
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
@@ -134,7 +133,7 @@ private fun WidgetProviderRow(
             )
         }
         Icon(
-            imageVector = if (isExpanded) Icons.Outlined.ArrowDropUp else Icons.Outlined.ArrowDropDown,
+            painter = if (isExpanded) ArrowDropUpIcon() else ArrowDropDownIcon(),
             contentDescription = if (isExpanded) "Collapse Widgets" else "Expand Widgets",
             modifier = Modifier.size(24.dp),
             tint = Color.White

@@ -3,12 +3,6 @@ package net.wshmkr.launcher.ui.feature.home
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccessTime
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.MusicVideo
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
@@ -23,6 +17,11 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
+import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
+import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
+import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
+import net.wshmkr.launcher.ui.common.icons.SettingsIcon
+import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,7 +48,7 @@ fun HomeOptionsMenu(
                 .padding(top = 18.dp)
         ) {
             MenuOption(
-                icon = Icons.Outlined.AccessTime,
+                icon = ScheduleIcon(),
                 text = "Clock",
                 onClick = { },
                 switch = clockSwitch,
@@ -57,7 +56,7 @@ fun HomeOptionsMenu(
             )
 
             MenuOption(
-                icon = Icons.Outlined.CalendarToday,
+                icon = CalendarTodayIcon(),
                 text = "Calendar",
                 onClick = { },
                 switch = calendarSwitch,
@@ -65,7 +64,7 @@ fun HomeOptionsMenu(
             )
 
             MenuOption(
-                icon = Icons.Outlined.MusicVideo,
+                icon = MusicVideoIcon(),
                 text = "Media controls",
                 onClick = { },
                 switch = mediaSwitch,
@@ -73,7 +72,7 @@ fun HomeOptionsMenu(
             )
 
             MenuOption(
-                icon = Icons.Outlined.Widgets,
+                icon = WidgetsIcon(),
                 text = "Manage widgets",
                 onClick = {
                     onDismiss()
@@ -86,7 +85,7 @@ fun HomeOptionsMenu(
             )
 
             MenuOption(
-                icon = Icons.Outlined.Settings,
+                icon = SettingsIcon(),
                 text = "Waterfall settings",
                 onClick = {
                     onDismiss()

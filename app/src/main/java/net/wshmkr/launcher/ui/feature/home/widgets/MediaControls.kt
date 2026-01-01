@@ -17,12 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -39,6 +33,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.MediaInfo
+import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
+import net.wshmkr.launcher.ui.common.icons.PauseIcon
+import net.wshmkr.launcher.ui.common.icons.PlayArrowIcon
+import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
+import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
 
 
 @Composable
@@ -94,7 +93,7 @@ private fun MediaAlbumArt(albumArt: Bitmap?) {
                 contentScale = ContentScale.Crop
             )
         } ?: Icon(
-            imageVector = Icons.Filled.MusicNote,
+            painter = MusicNoteIcon(),
             contentDescription = "No album art",
             tint = Color.White.copy(alpha = 0.3f),
             modifier = Modifier.size(40.dp)
@@ -145,7 +144,7 @@ private fun MediaControlButtons(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Outlined.SkipPrevious,
+                painter = SkipPreviousIcon(),
                 contentDescription = "Previous",
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)
@@ -167,7 +166,7 @@ private fun MediaControlButtons(
             modifier = Modifier.size(56.dp)
         ) {
             Icon(
-                imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                painter = if (isPlaying) PauseIcon() else PlayArrowIcon(),
                 contentDescription = if (isPlaying) "Pause" else "Play",
                 tint = Color.White,
                 modifier = Modifier.size(40.dp)
@@ -183,7 +182,7 @@ private fun MediaControlButtons(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Outlined.SkipNext,
+                painter = SkipNextIcon(),
                 contentDescription = "Next",
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)

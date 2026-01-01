@@ -19,9 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -37,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
+import net.wshmkr.launcher.ui.common.icons.AddIcon
+import net.wshmkr.launcher.ui.common.icons.DeleteIcon
 import net.wshmkr.launcher.viewmodel.ManagedWidget
 
 @Composable
@@ -139,7 +138,7 @@ private fun ManagedWidgetRow(
 
         IconButton(onClick = onDelete) {
             Icon(
-                imageVector = Icons.Outlined.Delete,
+                painter = DeleteIcon(),
                 contentDescription = "Remove widget",
                 tint = Color.White
             )
@@ -160,7 +159,7 @@ private fun AddWidgetRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.Outlined.Add,
+            painter = AddIcon(),
             contentDescription = "Add widget",
             tint = Color.White.copy(alpha = 0.7f),
             modifier = Modifier.size(24.dp)

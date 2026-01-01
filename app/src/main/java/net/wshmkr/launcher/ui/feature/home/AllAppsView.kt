@@ -19,8 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -42,6 +40,7 @@ import net.wshmkr.launcher.model.ListItem
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
+import net.wshmkr.launcher.ui.common.icons.SearchIcon
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 @Composable
@@ -142,7 +141,7 @@ fun AllAppsView(
                     onClick = { viewModel.showSearchOverlay = true },
                     shape = CircleShape
                 ) {
-                    Icon(Icons.Outlined.Search, "Search")
+                    Icon(painter = SearchIcon(), contentDescription = "Search")
                 }
             }
         }
