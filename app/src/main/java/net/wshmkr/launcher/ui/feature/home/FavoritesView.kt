@@ -22,10 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import net.wshmkr.launcher.model.ListItem
+import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
@@ -48,8 +47,8 @@ fun FavoritesView(
     var showHomeOptionsMenu by remember { mutableStateOf(false) }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
 
-    LaunchedEffect(viewModel.favoriteListItems.isNotEmpty()) {
-        if (viewModel.favoriteListItems.isNotEmpty()) {
+    LaunchedEffect(viewModel.favoriteApps.isNotEmpty()) {
+        if (viewModel.favoriteApps.isNotEmpty()) {
             isVisible = true
         }
     }
@@ -76,7 +75,6 @@ fun FavoritesView(
         visible = isVisible,
         enter = fadeIn(animationSpec = tween(durationMillis = 300)),
     ) {
-        val spacerHeight = LocalConfiguration.current.screenHeightDp.dp * 0.25f
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -93,44 +91,35 @@ fun FavoritesView(
             horizontalAlignment = Alignment.CenterHorizontally,
             userScrollEnabled = false,
         ) {
-            item { Spacer(modifier = Modifier.height(spacerHeight)) }
+            item { Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding())) }
+
+            item(key = "clock_widget") {
+                ClockWidget(
+                    showClock = viewModel.homeWidgetSettings.showClock,
+                    showCalendar = viewModel.homeWidgetSettings.showCalendar,
+                    showWeather = viewModel.homeWidgetSettings.showWeather,
+                )
+            }
+
+            item(key = "widget_host") {
+                WidgetHost()
+            }
+
+            item(key = "media_widget") {
+                MediaWidget(
+                    enabled = viewModel.homeWidgetSettings.showMediaControls,
+                )
+            }
+
             items(
-                items = viewModel.favoriteListItems,
-                key = { item ->
-                    when (item) {
-                        is ListItem.ClockWidget -> "clock_widget"
-                        is ListItem.MediaWidget -> "media_widget"
-                        is ListItem.WidgetHost -> "widget_host"
-                        is ListItem.AppItem -> item.appInfo.key
-                        is ListItem.SectionHeader -> "header_${item.letter}"
-                    }
-                },
+                items = viewModel.favoriteApps,
+                key = { item -> item.key },
             ) { item ->
-                when (item) {
-                    is ListItem.ClockWidget -> {
-                        ClockWidget(
-                            showClock = viewModel.homeWidgetSettings.showClock,
-                            showCalendar = viewModel.homeWidgetSettings.showCalendar,
-                            showWeather = viewModel.homeWidgetSettings.showWeather,
-                        )
-                    }
-                    is ListItem.MediaWidget -> {
-                        MediaWidget(
-                            enabled = viewModel.homeWidgetSettings.showMediaControls
-                        )
-                    }
-                    is ListItem.WidgetHost -> {
-                        WidgetHost()
-                    }
-                    is ListItem.AppItem -> {
-                        AppListItem(
-                            appInfo = item.appInfo,
-                            activeProfiles = activeProfiles,
-                            viewModel = viewModel,
-                        )
-                    }
-                    else -> null
-                }
+                AppListItem(
+                    appInfo = item,
+                    activeProfiles = activeProfiles,
+                    viewModel = viewModel,
+                )
             }
         }
     }

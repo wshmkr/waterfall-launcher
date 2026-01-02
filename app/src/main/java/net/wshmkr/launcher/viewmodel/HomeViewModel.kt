@@ -9,7 +9,7 @@ import android.os.UserHandle
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.AppInfo
-import net.wshmkr.launcher.model.ListItem
+import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.NotificationRepository
@@ -53,7 +53,7 @@ class HomeViewModel @Inject constructor(
         }
     }
     
-    val favoriteListItems by derivedStateOf { buildFavoriteListItems(notifications, homeWidgetSettings) }
+    val favoriteApps by derivedStateOf { buildFavoriteAppsList(notifications) }
 
     var activeLetter by mutableStateOf<String?>(null)
         private set
@@ -117,8 +117,8 @@ class HomeViewModel @Inject constructor(
         if (letter == STAR_SYMBOL) return null
         
         val header = allAppsListItems.find { 
-            it is ListItem.SectionHeader && it.letter == letter 
-        } as? ListItem.SectionHeader
+            it is AppListItem.SectionHeader && it.letter == letter
+        } as? AppListItem.SectionHeader
         
         return header?.position
     }
@@ -172,8 +172,8 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<ListItem> {
-        val items = mutableListOf<ListItem>()
+    private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<AppListItem> {
+        val items = mutableListOf<AppListItem>()
         var currentLetter = ""
         
         for (app in apps) {
@@ -181,40 +181,32 @@ class HomeViewModel @Inject constructor(
             
             if (firstChar != currentLetter) {
                 currentLetter = firstChar
-                items.add(ListItem.SectionHeader(currentLetter, items.size))
+                items.add(AppListItem.SectionHeader(currentLetter, items.size))
             }
 
             val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
             val appWithNotifications = app.copy(notifications = appNotifications)
             
-            items.add(ListItem.AppItem(appWithNotifications))
+            items.add(AppListItem.AppItem(appWithNotifications))
         }
         
         return items
     }
     
-    private fun buildFavoriteListItems(
-        notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>,
-        settings: HomeWidgetSettings
-    ): List<ListItem> {
-        val items = mutableListOf<ListItem>()
-        
-        if (settings.showClock || settings.showCalendar || settings.showWeather) {
-            items.add(ListItem.ClockWidget)
-        }
+    private fun buildFavoriteAppsList(
+        notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>
+    ): List<AppInfo> {
+        val apps = mutableListOf<AppInfo>()
 
-        items.add(ListItem.WidgetHost)
-        items.add(ListItem.MediaWidget)
-        
         val favorites = appsRepository.allApps.filter { it.isFavorite }
         favorites.forEach { app ->
             val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
             val appWithNotifications = app.copy(notifications = appNotifications)
-            items.add(ListItem.AppItem(appWithNotifications))
+            apps.add(appWithNotifications)
         }
-        
-        if (items.size < HOME_SCREEN_APPS + 2) {
-            val remainingSlots = HOME_SCREEN_APPS + 2 - items.size
+
+        if (apps.size < HOME_SCREEN_APPS) {
+            val remainingSlots = HOME_SCREEN_APPS - apps.size
             val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { usageKey ->
                 appsRepository.allApps.find { it.key == usageKey }
             }
@@ -234,10 +226,10 @@ class HomeViewModel @Inject constructor(
             suggestions.forEach { app ->
                 val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
                 val appWithNotifications = app.copy(notifications = appNotifications, isSuggested = true)
-                items.add(ListItem.AppItem(appWithNotifications))
+                apps.add(appWithNotifications)
             }
         }
 
-        return items
+        return apps
     }
 }

@@ -4,7 +4,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import net.wshmkr.launcher.model.ListItem
+import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.repository.AppsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -24,7 +24,7 @@ class SearchViewModel @Inject constructor(
                 .filter { app ->
                     app.label.split(" ").any { it.startsWith(searchQuery, ignoreCase = true) }
                 }
-                .map { ListItem.AppItem(it) }
+                .map { AppListItem.AppItem(it) }
         }
     }
 

@@ -36,7 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import net.wshmkr.launcher.model.ListItem
+import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
@@ -64,8 +64,8 @@ fun AllAppsView(
 
     val initialPosition = if (viewModel.activeLetter != null && viewModel.activeLetter != STAR_SYMBOL) {
         val header = viewModel.allAppsListItems.find { 
-            it is ListItem.SectionHeader && it.letter == viewModel.activeLetter 
-        } as? ListItem.SectionHeader
+            it is AppListItem.SectionHeader && it.letter == viewModel.activeLetter
+        } as? AppListItem.SectionHeader
         header?.position ?: 0
     } else {
         0
@@ -99,14 +99,13 @@ fun AllAppsView(
                     items = viewModel.allAppsListItems,
                     key = { item ->
                         when (item) {
-                            is ListItem.SectionHeader -> "header_${item.letter}"
-                            is ListItem.AppItem -> item.appInfo.key
-                            else -> item.hashCode()
+                            is AppListItem.SectionHeader -> "header_${item.letter}"
+                            is AppListItem.AppItem -> item.appInfo.key
                         }
                     },
                 ) { item ->
                     when (item) {
-                        is ListItem.SectionHeader -> {
+                        is AppListItem.SectionHeader -> {
                             Spacer(modifier = Modifier.height(8.dp))
                             SectionHeaderItem(
                                 letter = item.letter,
@@ -114,7 +113,7 @@ fun AllAppsView(
                                 isActiveLetter = item.letter == viewModel.activeLetter,
                             )
                         }
-                        is ListItem.AppItem -> {
+                        is AppListItem.AppItem -> {
                             AppListItem(
                                 appInfo = item.appInfo,
                                 activeProfiles = activeProfiles,
@@ -124,7 +123,6 @@ fun AllAppsView(
                                 viewModel = viewModel,
                             )
                         }
-                        else -> null
                     }
                 }
             }
