@@ -52,7 +52,7 @@ fun MediaControls(
             .padding(8.dp)
             .clip(RoundedCornerShape(8.dp))
             .clickable { onMediaAppClick() }
-            .padding(8.dp),
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         MediaAlbumArt(albumArt = mediaInfo.albumArt)

@@ -36,7 +36,11 @@ import net.wshmkr.launcher.util.MediaSessionHelper
 import net.wshmkr.launcher.util.NotificationPanelHelper
 
 @Composable
-fun MediaWidget() {
+fun MediaWidget(enabled: Boolean = true) {
+    if (!enabled) {
+        return Spacer(modifier = Modifier.height(16.dp))
+    }
+
     val context = LocalContext.current
     var mediaInfo by remember { mutableStateOf<MediaInfo?>(null) }
     var mediaController by remember { mutableStateOf<MediaController?>(null) }
@@ -106,7 +110,7 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             .clickable { onRequestPermission() }
             .background(Color.Black.copy(alpha = 0.5f))
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -124,5 +128,4 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             modifier = Modifier.fillMaxWidth()
         )
     }
-    Spacer(modifier = Modifier.height(16.dp))
 }

@@ -204,10 +204,7 @@ class HomeViewModel @Inject constructor(
         }
 
         items.add(ListItem.WidgetHost)
-
-        if (settings.showMediaControls) {
-            items.add(ListItem.MediaWidget)
-        }
+        items.add(ListItem.MediaWidget)
         
         val favorites = appsRepository.allApps.filter { it.isFavorite }
         favorites.forEach { app ->

@@ -6,10 +6,8 @@ import android.provider.AlarmClock
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -55,8 +53,7 @@ fun ClockWidget(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 32.dp),
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.Start
     ) {
         if (showClock) {
@@ -70,48 +67,51 @@ fun ClockWidget(
                     .clickable {
                         launchClockApp(context)
                     }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showCalendar) {
-                Text(
-                    text = currentDate,
-                    fontSize = 16.sp,
-                    color = Color.White,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-                            launchCalendarApp(context)
-                        }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
 
-            if (showCalendar && showWeather) {
-                Text(
-                    text = "•",
-                    fontSize = 16.sp,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 6.dp)
-                )
-            }
+        if (showCalendar || showWeather) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .heightIn(min = 32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showCalendar) {
+                    Text(
+                        text = currentDate,
+                        fontSize = 16.sp,
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                launchCalendarApp(context)
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
 
-            if (showWeather) {
-                WeatherWidget(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-                            launchWeatherApp(context)
-                        }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+                if (showCalendar && showWeather) {
+                    Text(
+                        text = "•",
+                        fontSize = 16.sp,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 2.dp)
+                    )
+                }
+
+                if (showWeather) {
+                    WeatherWidget(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                launchWeatherApp(context)
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
         }
     }
