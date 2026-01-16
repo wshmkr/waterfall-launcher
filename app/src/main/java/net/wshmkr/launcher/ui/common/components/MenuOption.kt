@@ -26,6 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+
+enum class MenuOptionTextSize {
+    Small, Medium, Large
+}
+
 @Composable
 fun MenuOption(
     icon: Painter? = null,
@@ -35,7 +40,20 @@ fun MenuOption(
     color: Color = Color.Black,
     indent: Int = 0,
     endContent: (@Composable () -> Unit)? = null,
+    textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
 ) {
+    val fontSize = when (textSize) {
+        MenuOptionTextSize.Small -> 16.sp
+        MenuOptionTextSize.Medium -> 18.sp
+        MenuOptionTextSize.Large -> 20.sp
+    }
+
+    val subtextSize = when (textSize) {
+        MenuOptionTextSize.Small -> 14.sp
+        MenuOptionTextSize.Medium -> 16.sp
+        MenuOptionTextSize.Large -> 18.sp
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -63,13 +81,13 @@ fun MenuOption(
         ) {
             Text(
                 text = text,
-                fontSize = 18.sp,
+                fontSize = fontSize,
                 color = color,
             )
             subtext?.let {
                 Text(
                     text = subtext,
-                    fontSize = 16.sp,
+                    fontSize = subtextSize,
                     color = Color.Gray,
                 )
             }

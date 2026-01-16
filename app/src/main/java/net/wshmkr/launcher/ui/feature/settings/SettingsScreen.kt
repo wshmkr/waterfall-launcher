@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,13 +21,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.MenuOption
 import net.wshmkr.launcher.ui.common.components.MenuOptionSwitch
+import net.wshmkr.launcher.ui.common.components.MenuOptionTextSize
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
@@ -72,11 +74,31 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding()))
 
-            Text("Permissions", color = Color.White)
+            Text(
+                text = "Permissions",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold
+            )
 
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Home Screen", color = Color.White)
+            Text(
+                text = "Placeholder",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 14.sp
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Home Screen",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             MenuOption(
                 icon = WallpaperIcon(),
@@ -86,6 +108,8 @@ fun SettingsScreen(
                     imagePickerLauncher.launch(arrayOf("image/*"))
                 }
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             MenuOption(
                 icon = ScheduleIcon(),
@@ -102,6 +126,7 @@ fun SettingsScreen(
 
             MenuOption(
                 text = "Time format",
+                textSize = MenuOptionTextSize.Small,
                 indent = 1,
                 color = Color.White,
                 onClick = { use24Hour = !use24Hour },
@@ -115,7 +140,7 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
 
             MenuOption(
                 icon = CalendarTodayIcon(),
@@ -130,7 +155,7 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
 
             MenuOption(
                 icon = PartlyCloudyDayIcon(),
@@ -147,6 +172,7 @@ fun SettingsScreen(
 
             MenuOption(
                 text = "Temperature unit",
+                textSize = MenuOptionTextSize.Small,
                 indent = 1,
                 color = Color.White,
                 onClick = { useFahrenheit = !useFahrenheit },
@@ -162,6 +188,7 @@ fun SettingsScreen(
 
             MenuOption(
                 text = "Auto-determine location",
+                textSize = MenuOptionTextSize.Small,
                 indent = 1,
                 color = Color.White,
                 onClick = { useAutoLocation = !useAutoLocation },
@@ -173,7 +200,7 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
 
             MenuOption(
                 icon = MusicVideoIcon(),
@@ -188,7 +215,7 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(8.dp))
 
             MenuOption(
                 icon = WidgetsIcon(),
