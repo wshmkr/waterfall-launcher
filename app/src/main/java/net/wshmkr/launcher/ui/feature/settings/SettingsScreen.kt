@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -64,6 +66,9 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.Center
         ) {
             val settings = viewModel.homeWidgetSettings
+            var useFahrenheit by remember { mutableStateOf(false) }
+            var use24Hour by remember { mutableStateOf(false) }
+            var useAutoLocation by remember { mutableStateOf(false) }
 
             Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding()))
 
@@ -88,20 +93,6 @@ fun SettingsScreen(
                 color = Color.White,
                 onClick = { viewModel.setShowClock(!settings.showClock) },
                 endContent = {
-                    Switch(
-                        modifier = Modifier.scale(0.8f),
-                        checked = true,
-                        onCheckedChange = {},
-                    )
-                }
-            )
-
-            MenuOption(
-                text = "24-Hour",
-                indent = 1,
-                color = Color.White,
-                onClick = { /* TODO hook up 24h setting */ },
-                endContent = {
                     MenuOptionSwitch(
                         checked = settings.showClock,
                         onCheckedChange = { viewModel.setShowClock(it) }
@@ -110,10 +101,18 @@ fun SettingsScreen(
             )
 
             MenuOption(
-                text = "Time Zone",
+                text = "Time format",
                 indent = 1,
                 color = Color.White,
-                onClick = { /* TODO hook up time zone setting */ },
+                onClick = { use24Hour = !use24Hour },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = use24Hour,
+                        onCheckedChange = { use24Hour = it },
+                        offText = "12",
+                        onText = "24"
+                    )
+                }
             )
 
             HorizontalDivider()
@@ -147,15 +146,31 @@ fun SettingsScreen(
             )
 
             MenuOption(
-                text = "Temperature degrees?",
+                text = "Temperature unit",
+                indent = 1,
                 color = Color.White,
-                onClick = { viewModel.setShowWeather(!settings.showWeather) },
+                onClick = { useFahrenheit = !useFahrenheit },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = useFahrenheit,
+                        onCheckedChange = { useFahrenheit = it },
+                        offText = "°C",
+                        onText = "°F"
+                    )
+                }
             )
 
             MenuOption(
-                text = "Location",
+                text = "Auto-determine location",
+                indent = 1,
                 color = Color.White,
-                onClick = { viewModel.setShowWeather(!settings.showWeather) },
+                onClick = { useAutoLocation = !useAutoLocation },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = useAutoLocation,
+                        onCheckedChange = { useAutoLocation = it }
+                    )
+                }
             )
 
             HorizontalDivider()
