@@ -77,6 +77,9 @@ fun VisibilityIcon() = painterResource(id = R.drawable.icon_visibility)
 fun VisibilityOffIcon() = painterResource(id = R.drawable.icon_visibility_off)
 
 @Composable
+fun WallpaperIcon() = painterResource(id = R.drawable.icon_wallpaper)
+
+@Composable
 fun WidgetsIcon() = painterResource(id = R.drawable.icon_widgets)
 
 // Weather Icons

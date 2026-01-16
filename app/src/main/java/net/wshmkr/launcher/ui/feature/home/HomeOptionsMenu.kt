@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
+import net.wshmkr.launcher.ui.common.components.MenuOptionSwitch
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
@@ -47,32 +48,48 @@ fun HomeOptionsMenu(
                 icon = ScheduleIcon(),
                 text = "Clock",
                 onClick = { viewModel.setShowClock(!settings.showClock) },
-                switch = settings.showClock,
-                onToggle = { viewModel.setShowClock(!settings.showClock) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showClock,
+                        onCheckedChange = { viewModel.setShowClock(it) }
+                    )
+                }
             )
 
             MenuOption(
                 icon = CalendarTodayIcon(),
                 text = "Calendar",
                 onClick = { viewModel.setShowCalendar(!settings.showCalendar) },
-                switch = settings.showCalendar,
-                onToggle = { viewModel.setShowCalendar(!settings.showCalendar) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showCalendar,
+                        onCheckedChange = { viewModel.setShowCalendar(it) }
+                    )
+                }
             )
 
             MenuOption(
                 icon = PartlyCloudyDayIcon(),
                 text = "Weather",
                 onClick = { viewModel.setShowWeather(!settings.showWeather) },
-                switch = settings.showWeather,
-                onToggle = { viewModel.setShowWeather(!settings.showWeather) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showWeather,
+                        onCheckedChange = { viewModel.setShowWeather(it) }
+                    )
+                }
             )
 
             MenuOption(
                 icon = MusicVideoIcon(),
                 text = "Media controls",
                 onClick = { viewModel.setShowMedia(!settings.showMediaControls) },
-                switch = settings.showMediaControls,
-                onToggle = { viewModel.setShowMedia(!settings.showMediaControls) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showMediaControls,
+                        onCheckedChange = { viewModel.setShowMedia(it) }
+                    )
+                }
             )
 
             MenuOption(
