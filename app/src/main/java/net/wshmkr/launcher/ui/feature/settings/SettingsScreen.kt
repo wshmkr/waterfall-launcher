@@ -69,7 +69,7 @@ fun SettingsScreen(
         val enabledListeners = NotificationManagerCompat.getEnabledListenerPackages(context)
         isNotificationAccessEnabled = enabledListeners.contains(context.packageName)
 
-        isLocationEnabled = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+        isLocationEnabled = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
@@ -314,7 +314,7 @@ fun SettingsScreen(
                         }
                         context.startActivity(intent)
                     } else {
-                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     }
                 },
                 endContent = {

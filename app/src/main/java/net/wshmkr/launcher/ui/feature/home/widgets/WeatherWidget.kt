@@ -50,20 +50,9 @@ fun WeatherWidget(modifier: Modifier = Modifier) {
         )
     }
 
-    val coarsePermissionLauncher = rememberLauncherForActivityResult(
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted -> hasPermission = granted }
-    )
-
-    val finePermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            if (granted) {
-                hasPermission = true
-            } else {
-                coarsePermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
-        }
     )
 
     LaunchedEffect(hasPermission) {
@@ -115,7 +104,7 @@ fun WeatherWidget(modifier: Modifier = Modifier) {
         hasPermission = hasPermission,
         modifier = modifier,
         onRequestPermission = {
-            finePermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
     )
 }
