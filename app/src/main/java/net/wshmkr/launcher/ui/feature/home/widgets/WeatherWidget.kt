@@ -38,12 +38,19 @@ import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 @Composable
 fun WeatherWidget(
     modifier: Modifier = Modifier,
-    useFahrenheit: Boolean = false
+    useFahrenheit: Boolean = false,
+    weatherLocationLatitude: Double? = null,
+    weatherLocationLongitude: Double? = null,
 ) {
     val context = LocalContext.current
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    var hasPermission by remember { mutableStateOf(WeatherHelper.isLocationGranted(context)) }
+    val hasStaticLocation = weatherLocationLatitude != null && weatherLocationLongitude != null
+    var hasPermission by remember(hasStaticLocation) {
+        mutableStateOf(
+            if (hasStaticLocation) true else WeatherHelper.isLocationGranted(context)
+        )
+    }
     var location by remember { mutableStateOf<Location?>(null) }
     val cachedSnapshot = WeatherHelper.getCachedWeather()
     val usableCachedWeather = cachedSnapshot?.takeIf { it.isFahrenheit == useFahrenheit }
@@ -66,7 +73,11 @@ fun WeatherWidget(
         onResult = { granted -> hasPermission = granted }
     )
 
-    LaunchedEffect(hasPermission) {
+    LaunchedEffect(hasPermission, hasStaticLocation) {
+        if (hasStaticLocation) {
+            location = null
+            return@LaunchedEffect
+        }
         if (hasPermission) {
             runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }
                 .onSuccess { loc ->
@@ -82,7 +93,13 @@ fun WeatherWidget(
         }
     }
 
-    val locationKey = remember(location) { location?.let { it.latitude to it.longitude } }
+    val locationKey = remember(location, weatherLocationLatitude, weatherLocationLongitude) {
+        if (hasStaticLocation) {
+            weatherLocationLatitude!! to weatherLocationLongitude!!
+        } else {
+            location?.let { it.latitude to it.longitude }
+        }
+    }
 
     LaunchedEffect(locationKey, hasPermission, useFahrenheit) {
         if (!hasPermission || locationKey == null) return@LaunchedEffect
@@ -122,7 +139,9 @@ fun WeatherWidget(
         hasPermission = hasPermission,
         modifier = modifier,
         onRequestPermission = {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (!hasStaticLocation) {
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
         }
     )
 }

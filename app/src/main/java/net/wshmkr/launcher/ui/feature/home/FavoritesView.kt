@@ -100,6 +100,8 @@ fun FavoritesView(
                     showWeather = viewModel.homeWidgetSettings.showWeather,
                     use24Hour = viewModel.homeWidgetSettings.use24Hour,
                     useFahrenheit = viewModel.homeWidgetSettings.useFahrenheit,
+                    weatherLocationLatitude = viewModel.homeWidgetSettings.weatherLocationLatitude,
+                    weatherLocationLongitude = viewModel.homeWidgetSettings.weatherLocationLongitude,
                 )
             }
 
