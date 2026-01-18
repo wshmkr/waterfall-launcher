@@ -1,9 +1,11 @@
 package net.wshmkr.launcher.ui.feature.settings
 
+import android.Manifest
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,8 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,13 +26,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
-import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.MenuOption
 import net.wshmkr.launcher.ui.common.components.MenuOptionSwitch
 import net.wshmkr.launcher.ui.common.components.MenuOptionTextSize
@@ -45,6 +53,43 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var isAccessibilityEnabled by remember { mutableStateOf(false) }
+    var isNotificationAccessEnabled by remember { mutableStateOf(false) }
+    var isLocationEnabled by remember { mutableStateOf(false) }
+
+    fun checkPermissions() {
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: ""
+        isAccessibilityEnabled = enabledServices.contains(context.packageName)
+
+        val enabledListeners = NotificationManagerCompat.getEnabledListenerPackages(context)
+        isNotificationAccessEnabled = enabledListeners.contains(context.packageName)
+
+        isLocationEnabled = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        isLocationEnabled = isGranted
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                checkPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -57,39 +102,22 @@ fun SettingsScreen(
             viewModel.setBackgroundUri(it)
         }
     }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 24.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .verticalScroll(rememberScrollState())
         ) {
             val settings = viewModel.homeWidgetSettings
             var useFahrenheit by remember { mutableStateOf(false) }
             var use24Hour by remember { mutableStateOf(false) }
             var useAutoLocation by remember { mutableStateOf(false) }
-
-            Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding()))
-
-            Text(
-                text = "Permissions",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Placeholder",
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 14.sp
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
 
             Text(
                 text = "Home Screen",
@@ -225,6 +253,88 @@ fun SettingsScreen(
                     navController.navigate(Screen.WidgetList.route)
                 }
             )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Permissions",
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            MenuOption(
+                text = "Accessibility service",
+                subtext = "Used for notification drawer control",
+                color = Color.White,
+                onClick = {
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    context.startActivity(intent)
+                },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = isAccessibilityEnabled,
+                        onCheckedChange = {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+            )
+
+            MenuOption(
+                text = "Notification access",
+                subtext = "Used for media controls",
+                color = Color.White,
+                onClick = {
+                    val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                    context.startActivity(intent)
+                },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = isNotificationAccessEnabled,
+                        onCheckedChange = {
+                            val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            context.startActivity(intent)
+                        }
+                    )
+                }
+            )
+
+            MenuOption(
+                text = "Location access",
+                subtext = "Used for weather",
+                color = Color.White,
+                onClick = {
+                    if (isLocationEnabled) {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                        context.startActivity(intent)
+                    } else {
+                        locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    }
+                },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = isLocationEnabled,
+                        onCheckedChange = {
+                            if (isLocationEnabled) {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            } else {
+                                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            }
+                        }
+                    )
+                }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
