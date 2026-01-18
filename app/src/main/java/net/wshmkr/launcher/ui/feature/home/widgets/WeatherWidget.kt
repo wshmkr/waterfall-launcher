@@ -52,8 +52,21 @@ fun WeatherWidget(
         )
     }
     var location by remember { mutableStateOf<Location?>(null) }
+    val locationKey = remember(location, weatherLocationLatitude, weatherLocationLongitude) {
+        if (hasStaticLocation) {
+            weatherLocationLatitude!! to weatherLocationLongitude!!
+        } else {
+            location?.let { it.latitude to it.longitude }
+        }
+    }
     val cachedSnapshot = WeatherHelper.getCachedWeather()
-    val usableCachedWeather = cachedSnapshot?.takeIf { it.isFahrenheit == useFahrenheit }
+    val cachedMatchesUnit = cachedSnapshot?.isFahrenheit == useFahrenheit
+    val cachedMatchesLocation = cachedSnapshot?.let { snapshot ->
+        locationKey?.let { key ->
+            snapshot.latitude == key.first && snapshot.longitude == key.second
+        }
+    } ?: false
+    val usableCachedWeather = cachedSnapshot?.takeIf { cachedMatchesUnit && cachedMatchesLocation }
     var weatherState by remember(useFahrenheit) {
         mutableStateOf(
             usableCachedWeather?.let {
@@ -67,6 +80,10 @@ fun WeatherWidget(
             } ?: WeatherState.Idle
         )
     }
+    val locationSettingsKey = remember {
+        mutableStateOf(weatherLocationLatitude to weatherLocationLongitude)
+    }
+    val unitSettingsKey = remember { mutableStateOf(useFahrenheit) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -93,11 +110,20 @@ fun WeatherWidget(
         }
     }
 
-    val locationKey = remember(location, weatherLocationLatitude, weatherLocationLongitude) {
-        if (hasStaticLocation) {
-            weatherLocationLatitude!! to weatherLocationLongitude!!
-        } else {
-            location?.let { it.latitude to it.longitude }
+    LaunchedEffect(weatherLocationLatitude, weatherLocationLongitude) {
+        val newKey = weatherLocationLatitude to weatherLocationLongitude
+        if (locationSettingsKey.value != newKey) {
+            WeatherHelper.clearCache()
+            weatherState = WeatherState.Idle
+            locationSettingsKey.value = newKey
+        }
+    }
+
+    LaunchedEffect(useFahrenheit) {
+        if (unitSettingsKey.value != useFahrenheit) {
+            WeatherHelper.clearCache()
+            weatherState = WeatherState.Idle
+            unitSettingsKey.value = useFahrenheit
         }
     }
 
@@ -107,24 +133,41 @@ fun WeatherWidget(
             val now = System.currentTimeMillis()
             val lastFetch = WeatherHelper.getLastFetchTime()
             val cachedRefresh = WeatherHelper.getCachedWeather()
-            val cachedMatchesUnit = cachedRefresh?.isFahrenheit == useFahrenheit
+            val cachedMatchesUnitNow = cachedRefresh?.isFahrenheit == useFahrenheit
+            val cachedMatchesLocationNow = cachedRefresh?.let {
+                it.latitude == locationKey.first && it.longitude == locationKey.second
+            } ?: false
             val shouldFetch = now - lastFetch >= WeatherHelper.REFRESH_INTERVAL_MS ||
                     weatherState is WeatherState.Error ||
                     (weatherState is WeatherState.Idle && cachedRefresh == null) ||
-                    !cachedMatchesUnit
+                    !cachedMatchesUnitNow ||
+                    !cachedMatchesLocationNow
 
             if (shouldFetch) {
-                val cachedForDisplay = if (cachedMatchesUnit) cachedRefresh else null
+                val activeLocationKey = if (!hasStaticLocation) {
+                    val refreshedLocation = runCatching {
+                        WeatherHelper.getBestAvailableLocation(fusedClient)
+                    }.getOrNull()
+                    refreshedLocation?.let { latest ->
+                        location = latest
+                        latest.latitude to latest.longitude
+                    } ?: locationKey
+                } else {
+                    locationKey
+                }
+                val cachedForDisplay = if (cachedMatchesUnitNow && cachedMatchesLocationNow) cachedRefresh else null
                 if (cachedForDisplay == null) {
                     weatherState = WeatherState.Loading
                 }
                 val result = WeatherHelper.fetchWeather(
-                    locationKey.first,
-                    locationKey.second,
+                    activeLocationKey.first,
+                    activeLocationKey.second,
                     useFahrenheit
                 )
                 if (result is WeatherState.Ready) {
-                    val updatedCache = with(WeatherHelper) { result.toCached() }
+                    val updatedCache = with(WeatherHelper) {
+                        result.toCached(activeLocationKey.first, activeLocationKey.second)
+                    }
                     WeatherHelper.setCachedWeather(updatedCache)
                 }
                 weatherState = result

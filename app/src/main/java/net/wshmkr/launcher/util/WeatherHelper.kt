@@ -51,6 +51,11 @@ object WeatherHelper {
         lastFetchTime = System.currentTimeMillis()
     }
 
+    fun clearCache() {
+        cachedWeather = null
+        lastFetchTime = 0L
+    }
+
     fun isLocationGranted(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
@@ -82,7 +87,7 @@ object WeatherHelper {
 
                 val responseCode = connection.responseCode
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    return@withContext cachedOrError("HTTP $responseCode")
+                    return@withContext cachedOrError(latitude, longitude, useFahrenheit, "HTTP $responseCode")
                 }
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(response)
@@ -104,7 +109,7 @@ object WeatherHelper {
                     isFahrenheit = useFahrenheit
                 )
             } catch (e: Exception) {
-                cachedOrError(e.message ?: "Unable to load weather")
+                cachedOrError(latitude, longitude, useFahrenheit, e.message ?: "Unable to load weather")
             } finally {
                 connection.disconnect()
             }
@@ -157,8 +162,17 @@ object WeatherHelper {
         }
     }
 
-    private fun cachedOrError(reason: String): WeatherState =
-        getCachedWeather()?.let {
+    private fun cachedOrError(
+        latitude: Double,
+        longitude: Double,
+        useFahrenheit: Boolean,
+        reason: String
+    ): WeatherState =
+        getCachedWeather()?.takeIf {
+            it.latitude == latitude &&
+                it.longitude == longitude &&
+                it.isFahrenheit == useFahrenheit
+        }?.let {
             WeatherState.Ready(
                 temperature = it.temperature,
                 weatherCode = it.weatherCode,
@@ -233,7 +247,9 @@ object WeatherHelper {
         val weatherCode: Int,
         val sunriseTime: String?,
         val sunsetTime: String?,
-        val isFahrenheit: Boolean
+        val isFahrenheit: Boolean,
+        val latitude: Double,
+        val longitude: Double
     )
 
     data class GeocodingResult(
@@ -247,12 +263,14 @@ object WeatherHelper {
             get() = listOfNotNull(name, admin1, country).joinToString(", ")
     }
 
-    fun WeatherState.Ready.toCached(): CachedWeather = CachedWeather(
+    fun WeatherState.Ready.toCached(latitude: Double, longitude: Double): CachedWeather = CachedWeather(
         temperature = temperature,
         weatherCode = weatherCode,
         sunriseTime = sunriseTime,
         sunsetTime = sunsetTime,
-        isFahrenheit = isFahrenheit
+        isFahrenheit = isFahrenheit,
+        latitude = latitude,
+        longitude = longitude
     )
 }
 
