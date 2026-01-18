@@ -98,6 +98,8 @@ fun FavoritesView(
                     showClock = viewModel.homeWidgetSettings.showClock,
                     showCalendar = viewModel.homeWidgetSettings.showCalendar,
                     showWeather = viewModel.homeWidgetSettings.showWeather,
+                    use24Hour = viewModel.homeWidgetSettings.use24Hour,
+                    useFahrenheit = viewModel.homeWidgetSettings.useFahrenheit,
                 )
             }
 

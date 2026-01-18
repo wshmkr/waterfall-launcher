@@ -36,16 +36,27 @@ import net.wshmkr.launcher.util.WeatherHelper.CachedWeather
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 
 @Composable
-fun WeatherWidget(modifier: Modifier = Modifier) {
+fun WeatherWidget(
+    modifier: Modifier = Modifier,
+    useFahrenheit: Boolean = false
+) {
     val context = LocalContext.current
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     var hasPermission by remember { mutableStateOf(WeatherHelper.isLocationGranted(context)) }
     var location by remember { mutableStateOf<Location?>(null) }
-    var weatherState by remember {
+    val cachedSnapshot = WeatherHelper.getCachedWeather()
+    val usableCachedWeather = cachedSnapshot?.takeIf { it.isFahrenheit == useFahrenheit }
+    var weatherState by remember(useFahrenheit) {
         mutableStateOf(
-            WeatherHelper.getCachedWeather()?.let {
-                WeatherState.Ready(it.temperatureF, it.weatherCode, it.sunriseTime, it.sunsetTime)
+            usableCachedWeather?.let {
+                WeatherState.Ready(
+                    temperature = it.temperature,
+                    weatherCode = it.weatherCode,
+                    sunriseTime = it.sunriseTime,
+                    sunsetTime = it.sunsetTime,
+                    isFahrenheit = it.isFahrenheit
+                )
             } ?: WeatherState.Idle
         )
     }
@@ -73,24 +84,31 @@ fun WeatherWidget(modifier: Modifier = Modifier) {
 
     val locationKey = remember(location) { location?.let { it.latitude to it.longitude } }
 
-    LaunchedEffect(locationKey, hasPermission) {
+    LaunchedEffect(locationKey, hasPermission, useFahrenheit) {
         if (!hasPermission || locationKey == null) return@LaunchedEffect
         while (isActive) {
             val now = System.currentTimeMillis()
             val lastFetch = WeatherHelper.getLastFetchTime()
+            val cachedRefresh = WeatherHelper.getCachedWeather()
+            val cachedMatchesUnit = cachedRefresh?.isFahrenheit == useFahrenheit
             val shouldFetch = now - lastFetch >= WeatherHelper.REFRESH_INTERVAL_MS ||
                     weatherState is WeatherState.Error ||
-                    (weatherState is WeatherState.Idle && WeatherHelper.getCachedWeather() == null)
+                    (weatherState is WeatherState.Idle && cachedRefresh == null) ||
+                    !cachedMatchesUnit
 
             if (shouldFetch) {
-                val cachedWeather = WeatherHelper.getCachedWeather()
-                if (cachedWeather == null) {
+                val cachedForDisplay = if (cachedMatchesUnit) cachedRefresh else null
+                if (cachedForDisplay == null) {
                     weatherState = WeatherState.Loading
                 }
-                val result = WeatherHelper.fetchWeather(locationKey.first, locationKey.second)
+                val result = WeatherHelper.fetchWeather(
+                    locationKey.first,
+                    locationKey.second,
+                    useFahrenheit
+                )
                 if (result is WeatherState.Ready) {
-                    val cached = with(WeatherHelper) { result.toCached() }
-                    WeatherHelper.setCachedWeather(cached)
+                    val updatedCache = with(WeatherHelper) { result.toCached() }
+                    WeatherHelper.setCachedWeather(updatedCache)
                 }
                 weatherState = result
             }
@@ -100,7 +118,7 @@ fun WeatherWidget(modifier: Modifier = Modifier) {
 
     WeatherContent(
         state = weatherState,
-        cachedWeather = WeatherHelper.getCachedWeather(),
+        cachedWeather = usableCachedWeather,
         hasPermission = hasPermission,
         modifier = modifier,
         onRequestPermission = {
@@ -156,7 +174,7 @@ private fun WeatherContent(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${cachedWeather.temperatureF.toInt()}°F",
+                        text = "${cachedWeather.temperature.toInt()}°${if (cachedWeather.isFahrenheit) "F" else "C"}",
                         style = textStyle
                     )
                 }
@@ -186,7 +204,7 @@ private fun WeatherContent(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "${state.temperatureF.toInt()}°F",
+                    text = "${state.temperature.toInt()}°${if (state.isFahrenheit) "F" else "C"}",
                     style = textStyle
                 )
                 if (state.isStale) {

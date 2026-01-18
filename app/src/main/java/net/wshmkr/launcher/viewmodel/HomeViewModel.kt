@@ -172,6 +172,18 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun setUse24Hour(enabled: Boolean) {
+        viewModelScope.launch {
+            userSettingsDataSource.setUse24Hour(enabled)
+        }
+    }
+
+    fun setUseFahrenheit(enabled: Boolean) {
+        viewModelScope.launch {
+            userSettingsDataSource.setUseFahrenheit(enabled)
+        }
+    }
+
     private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()
         var currentLetter = ""

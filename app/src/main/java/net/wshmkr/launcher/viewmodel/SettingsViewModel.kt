@@ -64,5 +64,13 @@ class SettingsViewModel @Inject constructor(
     fun setShowMedia(enabled: Boolean) {
         viewModelScope.launch { userSettingsDataSource.setShowMedia(enabled) }
     }
+
+    fun setUse24Hour(enabled: Boolean) {
+        viewModelScope.launch { userSettingsDataSource.setUse24Hour(enabled) }
+    }
+
+    fun setUseFahrenheit(enabled: Boolean) {
+        viewModelScope.launch { userSettingsDataSource.setUseFahrenheit(enabled) }
+    }
 }
 

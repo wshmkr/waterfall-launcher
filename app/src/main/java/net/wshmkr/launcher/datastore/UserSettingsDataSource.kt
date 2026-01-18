@@ -1,6 +1,7 @@
 package net.wshmkr.launcher.datastore
 
 import android.content.Context
+import android.text.format.DateFormat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -11,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import net.wshmkr.launcher.model.HomeWidgetSettings
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,14 +30,20 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_SHOW_CALENDAR = booleanPreferencesKey("show_calendar")
         private val KEY_SHOW_WEATHER = booleanPreferencesKey("show_weather")
         private val KEY_SHOW_MEDIA = booleanPreferencesKey("show_media_controls")
+        private val KEY_USE_24_HOUR = booleanPreferencesKey("use_24_hour")
+        private val KEY_USE_FAHRENHEIT = booleanPreferencesKey("use_fahrenheit")
     }
 
     val homeWidgetSettings = dataStore.data.map { preferences ->
+        val defaultUse24Hour = DateFormat.is24HourFormat(context)
+        val defaultUseFahrenheit = Locale.getDefault().country == "US"
         HomeWidgetSettings(
             showClock = preferences[KEY_SHOW_CLOCK] ?: true,
             showCalendar = preferences[KEY_SHOW_CALENDAR] ?: true,
             showWeather = preferences[KEY_SHOW_WEATHER] ?: true,
             showMediaControls = preferences[KEY_SHOW_MEDIA] ?: true,
+            use24Hour = preferences[KEY_USE_24_HOUR] ?: defaultUse24Hour,
+            useFahrenheit = preferences[KEY_USE_FAHRENHEIT] ?: defaultUseFahrenheit,
         )
     }
 
@@ -61,6 +69,8 @@ class UserSettingsDataSource @Inject constructor(
             preferences[KEY_SHOW_CALENDAR] = settings.showCalendar
             preferences[KEY_SHOW_WEATHER] = settings.showWeather
             preferences[KEY_SHOW_MEDIA] = settings.showMediaControls
+            preferences[KEY_USE_24_HOUR] = settings.use24Hour
+            preferences[KEY_USE_FAHRENHEIT] = settings.useFahrenheit
         }
     }
 
@@ -85,6 +95,18 @@ class UserSettingsDataSource @Inject constructor(
     suspend fun setShowMedia(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[KEY_SHOW_MEDIA] = enabled
+        }
+    }
+
+    suspend fun setUse24Hour(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_USE_24_HOUR] = enabled
+        }
+    }
+
+    suspend fun setUseFahrenheit(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_USE_FAHRENHEIT] = enabled
         }
     }
 }

@@ -8,10 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -37,9 +33,6 @@ fun HomeScreenSettings(
     viewModel: SettingsViewModel
 ) {
     val settings = viewModel.homeWidgetSettings
-    var useFahrenheit by remember { mutableStateOf(false) }
-    var use24Hour by remember { mutableStateOf(false) }
-
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -90,11 +83,11 @@ fun HomeScreenSettings(
         textSize = MenuOptionTextSize.Small,
         indent = 1,
         color = Color.White,
-        onClick = { use24Hour = !use24Hour },
+        onClick = { viewModel.setUse24Hour(!settings.use24Hour) },
         endContent = {
             MenuOptionSwitch(
-                checked = use24Hour,
-                onCheckedChange = { use24Hour = it },
+                checked = settings.use24Hour,
+                onCheckedChange = { viewModel.setUse24Hour(it) },
                 offText = "12",
                 onText = "24"
             )
@@ -136,11 +129,11 @@ fun HomeScreenSettings(
         textSize = MenuOptionTextSize.Small,
         indent = 1,
         color = Color.White,
-        onClick = { useFahrenheit = !useFahrenheit },
+        onClick = { viewModel.setUseFahrenheit(!settings.useFahrenheit) },
         endContent = {
             MenuOptionSwitch(
-                checked = useFahrenheit,
-                onCheckedChange = { useFahrenheit = it },
+                checked = settings.useFahrenheit,
+                onCheckedChange = { viewModel.setUseFahrenheit(it) },
                 offText = "°C",
                 onText = "°F"
             )

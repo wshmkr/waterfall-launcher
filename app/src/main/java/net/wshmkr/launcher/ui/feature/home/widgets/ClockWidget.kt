@@ -36,17 +36,19 @@ fun ClockWidget(
     showClock: Boolean = true,
     showCalendar: Boolean = true,
     showWeather: Boolean = true,
+    use24Hour: Boolean = false,
+    useFahrenheit: Boolean = false,
 ) {
     if (!showClock && !showCalendar && !showWeather) return
 
     val context = LocalContext.current
-    var currentTime by remember { mutableStateOf(getCurrentTime()) }
+    var currentTime by remember { mutableStateOf(getCurrentTime(use24Hour)) }
     var currentDate by remember { mutableStateOf(getCurrentDate()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(use24Hour) {
         while (isActive) {
             delay(ONE_SECOND.toLong())
-            currentTime = getCurrentTime()
+            currentTime = getCurrentTime(use24Hour)
             currentDate = getCurrentDate()
         }
     }
@@ -104,12 +106,13 @@ fun ClockWidget(
 
                 if (showWeather) {
                     WeatherWidget(
-                        modifier = Modifier
+                        Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .clickable {
                                 launchWeatherApp(context)
                             }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        useFahrenheit
                     )
                 }
             }

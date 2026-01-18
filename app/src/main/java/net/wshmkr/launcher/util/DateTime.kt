@@ -11,8 +11,9 @@ const val ONE_HOUR = 3_600_000
 const val ONE_DAY = 86_400_000
 const val ONE_WEEK = 604_800_000
 
-fun getCurrentTime(): String {
-    val format = SimpleDateFormat("h:mm", Locale.getDefault())
+fun getCurrentTime(use24Hour: Boolean): String {
+    val pattern = if (use24Hour) "HH:mm" else "h:mm"
+    val format = SimpleDateFormat(pattern, Locale.getDefault())
     return format.format(Date())
 }
 

@@ -5,5 +5,7 @@ data class HomeWidgetSettings(
     val showCalendar: Boolean = true,
     val showWeather: Boolean = true,
     val showMediaControls: Boolean = true,
+    val use24Hour: Boolean = false,
+    val useFahrenheit: Boolean = false,
 )
 
