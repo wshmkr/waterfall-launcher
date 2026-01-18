@@ -272,5 +272,16 @@ object WeatherHelper {
         latitude = latitude,
         longitude = longitude
     )
+
+    fun isCacheValid(
+        latitude: Double,
+        longitude: Double,
+        useFahrenheit: Boolean
+    ): Boolean {
+        val cached = cachedWeather ?: return false
+        return cached.isFahrenheit == useFahrenheit &&
+            cached.latitude == latitude &&
+            cached.longitude == longitude
+    }
 }
 
