@@ -6,10 +6,8 @@ import android.provider.AlarmClock
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -34,68 +32,90 @@ import net.wshmkr.launcher.util.getCurrentTime
 import androidx.core.net.toUri
 
 @Composable
-fun ClockWidget() {
+fun ClockWidget(
+    showClock: Boolean = true,
+    showCalendar: Boolean = true,
+    showWeather: Boolean = true,
+    use24Hour: Boolean = false,
+    useFahrenheit: Boolean = false,
+) {
+    if (!showClock && !showCalendar && !showWeather) return
+
     val context = LocalContext.current
-    var currentTime by remember { mutableStateOf(getCurrentTime()) }
+    var currentTime by remember { mutableStateOf(getCurrentTime(use24Hour)) }
     var currentDate by remember { mutableStateOf(getCurrentDate()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(use24Hour) {
         while (isActive) {
             delay(ONE_SECOND.toLong())
-            currentTime = getCurrentTime()
+            currentTime = getCurrentTime(use24Hour)
             currentDate = getCurrentDate()
         }
     }
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 32.dp),
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.Start
     ) {
-        Text(
-            text = currentTime,
-            fontSize = 48.sp,
-            color = Color.White,
-            modifier = Modifier
-                .padding(horizontal = 4.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .clickable {
-                    launchClockApp(context)
-                }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        if (showClock) {
             Text(
-                text = currentDate,
-                fontSize = 16.sp,
+                text = currentTime,
+                fontSize = 48.sp,
                 color = Color.White,
                 modifier = Modifier
+                    .padding(horizontal = 4.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
-                        launchCalendarApp(context)
+                        launchClockApp(context)
                     }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp)
             )
-            Text(
-                text = "•",
-                fontSize = 16.sp,
-                color = Color.White
-            )
-            WeatherWidget(
+        }
+
+        if (showCalendar || showWeather) {
+            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        launchWeatherApp(context)
-                    }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .heightIn(min = 32.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showCalendar) {
+                    Text(
+                        text = currentDate,
+                        fontSize = 16.sp,
+                        color = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                launchCalendarApp(context)
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                if (showCalendar && showWeather) {
+                    Text(
+                        text = "•",
+                        fontSize = 16.sp,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 2.dp)
+                    )
+                }
+
+                if (showWeather) {
+                    WeatherWidget(
+                        Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                launchWeatherApp(context)
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        useFahrenheit
+                    )
+                }
+            }
         }
     }
 }

@@ -51,24 +51,25 @@ object WeatherHelper {
     fun isLocationGranted(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
-    @RequiresPermission(anyOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+    @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
     suspend fun getBestAvailableLocation(client: FusedLocationProviderClient): Location? {
         return client.lastLocation.suspendForTask()
             ?: client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).suspendForTask()
     }
 
-    suspend fun fetchWeather(latitude: Double, longitude: Double): WeatherState =
+    suspend fun fetchWeather(
+        latitude: Double,
+        longitude: Double,
+        useFahrenheit: Boolean
+    ): WeatherState =
         withContext(Dispatchers.IO) {
+            val temperatureUnit = if (useFahrenheit) "fahrenheit" else "celsius"
             val url = "$WEATHER_API_URL?latitude=$latitude&longitude=$longitude" +
-                "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=fahrenheit&timezone=auto"
+                "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=$temperatureUnit&timezone=auto"
             val connection = URL(url).openConnection() as HttpURLConnection
             try {
                 connection.requestMethod = "GET"
@@ -93,10 +94,11 @@ object WeatherHelper {
                 val sunsetTime = sunsetArray?.optString(0)
 
                 WeatherState.Ready(
-                    temperatureF = temperature,
+                    temperature = temperature,
                     weatherCode = weatherCode,
                     sunriseTime = sunriseTime,
-                    sunsetTime = sunsetTime
+                    sunsetTime = sunsetTime,
+                    isFahrenheit = useFahrenheit
                 )
             } catch (e: Exception) {
                 cachedOrError(e.message ?: "Unable to load weather")
@@ -108,11 +110,12 @@ object WeatherHelper {
     private fun cachedOrError(reason: String): WeatherState =
         getCachedWeather()?.let {
             WeatherState.Ready(
-                temperatureF = it.temperatureF,
+                temperature = it.temperature,
                 weatherCode = it.weatherCode,
                 sunriseTime = it.sunriseTime,
                 sunsetTime = it.sunsetTime,
-                isStale = true
+                isStale = true,
+                isFahrenheit = it.isFahrenheit
             )
         } ?: WeatherState.Error(reason)
 
@@ -165,27 +168,30 @@ object WeatherHelper {
         data object Idle : WeatherState
         data object Loading : WeatherState
         data class Ready(
-            val temperatureF: Double,
+            val temperature: Double,
             val weatherCode: Int,
             val sunriseTime: String? = null,
             val sunsetTime: String? = null,
             val isStale: Boolean = false,
+            val isFahrenheit: Boolean = false,
         ) : WeatherState
         data class Error(val reason: String) : WeatherState
     }
 
     data class CachedWeather(
-        val temperatureF: Double,
+        val temperature: Double,
         val weatherCode: Int,
         val sunriseTime: String?,
-        val sunsetTime: String?
+        val sunsetTime: String?,
+        val isFahrenheit: Boolean
     )
 
     fun WeatherState.Ready.toCached(): CachedWeather = CachedWeather(
-        temperatureF = temperatureF,
+        temperature = temperature,
         weatherCode = weatherCode,
         sunriseTime = sunriseTime,
-        sunsetTime = sunsetTime
+        sunsetTime = sunsetTime,
+        isFahrenheit = isFahrenheit
     )
 }
 

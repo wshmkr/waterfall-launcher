@@ -8,33 +8,30 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
+import net.wshmkr.launcher.ui.common.components.MenuOptionSwitch
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
+import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.SettingsIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
+import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeOptionsMenu(
     navController: NavController,
+    viewModel: HomeViewModel,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
-
-    var clockSwitch by remember { mutableStateOf(false) }
-    var calendarSwitch by remember { mutableStateOf(false) }
-    var mediaSwitch by remember { mutableStateOf(false) }
+    val settings = viewModel.homeWidgetSettings
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -45,30 +42,54 @@ fun HomeOptionsMenu(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(top = 18.dp)
+                .padding(vertical = 18.dp)
         ) {
             MenuOption(
                 icon = ScheduleIcon(),
                 text = "Clock",
-                onClick = { },
-                switch = clockSwitch,
-                onToggle = { clockSwitch = !clockSwitch },
+                onClick = { viewModel.setShowClock(!settings.showClock) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showClock,
+                        onCheckedChange = { viewModel.setShowClock(it) }
+                    )
+                }
             )
 
             MenuOption(
                 icon = CalendarTodayIcon(),
                 text = "Calendar",
-                onClick = { },
-                switch = calendarSwitch,
-                onToggle = { calendarSwitch = !calendarSwitch },
+                onClick = { viewModel.setShowCalendar(!settings.showCalendar) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showCalendar,
+                        onCheckedChange = { viewModel.setShowCalendar(it) }
+                    )
+                }
+            )
+
+            MenuOption(
+                icon = PartlyCloudyDayIcon(),
+                text = "Weather",
+                onClick = { viewModel.setShowWeather(!settings.showWeather) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showWeather,
+                        onCheckedChange = { viewModel.setShowWeather(it) }
+                    )
+                }
             )
 
             MenuOption(
                 icon = MusicVideoIcon(),
                 text = "Media controls",
-                onClick = { },
-                switch = mediaSwitch,
-                onToggle = { mediaSwitch = !mediaSwitch },
+                onClick = { viewModel.setShowMedia(!settings.showMediaControls) },
+                endContent = {
+                    MenuOptionSwitch(
+                        checked = settings.showMediaControls,
+                        onCheckedChange = { viewModel.setShowMedia(it) }
+                    )
+                }
             )
 
             MenuOption(
@@ -86,7 +107,7 @@ fun HomeOptionsMenu(
 
             MenuOption(
                 icon = SettingsIcon(),
-                text = "Waterfall settings",
+                text = "Waterfall launcher settings",
                 onClick = {
                     onDismiss()
                     navController.navigate(Screen.Settings.route)

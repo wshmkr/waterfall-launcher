@@ -5,9 +5,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -23,7 +24,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import net.wshmkr.launcher.model.ListItem
+import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
@@ -46,8 +47,8 @@ fun FavoritesView(
     var showHomeOptionsMenu by remember { mutableStateOf(false) }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
 
-    LaunchedEffect(viewModel.favoriteListItems.isNotEmpty()) {
-        if (viewModel.favoriteListItems.isNotEmpty()) {
+    LaunchedEffect(viewModel.favoriteApps.isNotEmpty()) {
+        if (viewModel.favoriteApps.isNotEmpty()) {
             isVisible = true
         }
     }
@@ -88,40 +89,39 @@ fun FavoritesView(
                 },
             contentPadding = PaddingValues(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
             userScrollEnabled = false,
         ) {
+            item { Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding())) }
+
+            item(key = "clock_widget") {
+                ClockWidget(
+                    showClock = viewModel.homeWidgetSettings.showClock,
+                    showCalendar = viewModel.homeWidgetSettings.showCalendar,
+                    showWeather = viewModel.homeWidgetSettings.showWeather,
+                    use24Hour = viewModel.homeWidgetSettings.use24Hour,
+                    useFahrenheit = viewModel.homeWidgetSettings.useFahrenheit,
+                )
+            }
+
+            item(key = "widget_host") {
+                WidgetHost()
+            }
+
+            item(key = "media_widget") {
+                MediaWidget(
+                    enabled = viewModel.homeWidgetSettings.showMediaControls,
+                )
+            }
+
             items(
-                items = viewModel.favoriteListItems,
-                key = { item ->
-                    when (item) {
-                        is ListItem.ClockWidget -> "clock_widget"
-                        is ListItem.MediaWidget -> "media_widget"
-                        is ListItem.WidgetHost -> "widget_host"
-                        is ListItem.AppItem -> item.appInfo.key
-                        is ListItem.SectionHeader -> "header_${item.letter}"
-                    }
-                },
+                items = viewModel.favoriteApps,
+                key = { item -> item.key },
             ) { item ->
-                when (item) {
-                    is ListItem.ClockWidget -> {
-                        ClockWidget()
-                    }
-                    is ListItem.MediaWidget -> {
-                        MediaWidget()
-                    }
-                    is ListItem.WidgetHost -> {
-                        WidgetHost()
-                    }
-                    is ListItem.AppItem -> {
-                        AppListItem(
-                            appInfo = item.appInfo,
-                            activeProfiles = activeProfiles,
-                            viewModel = viewModel,
-                        )
-                    }
-                    else -> null
-                }
+                AppListItem(
+                    appInfo = item,
+                    activeProfiles = activeProfiles,
+                    viewModel = viewModel,
+                )
             }
         }
     }
@@ -129,6 +129,7 @@ fun FavoritesView(
     if (showHomeOptionsMenu) {
         HomeOptionsMenu(
             navController = navController,
+            viewModel = viewModel,
             onDismiss = { showHomeOptionsMenu = false }
         )
     }
