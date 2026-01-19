@@ -14,7 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import net.wshmkr.launcher.ui.feature.home.HomeScreen
 import net.wshmkr.launcher.ui.feature.settings.SettingsScreen
-import net.wshmkr.launcher.ui.feature.settings.WeatherLocationSettingsScreen
+import net.wshmkr.launcher.ui.feature.settings.WeatherLocationOverlay
 import net.wshmkr.launcher.ui.feature.widgets.WidgetsScreen
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 import net.wshmkr.launcher.viewmodel.HomeViewModel
@@ -75,7 +75,7 @@ fun AppNavigation(
                 enterTransition = { fadeIn(animationSpec = tween(500)) },
                 exitTransition = { fadeOut(animationSpec = tween(500)) }
             ) {
-                WeatherLocationSettingsScreen(
+                WeatherLocationOverlay(
                     navController = navController,
                 )
             }
