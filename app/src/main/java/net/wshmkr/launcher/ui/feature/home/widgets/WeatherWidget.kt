@@ -76,22 +76,7 @@ fun WeatherWidget(
                 continue
             }
 
-            val cacheMatchesCurrent = WeatherHelper.isCacheValid(currentKey.first, currentKey.second, useFahrenheit)
-            val isStale = System.currentTimeMillis() - WeatherHelper.getLastFetchTime() >= WeatherHelper.REFRESH_INTERVAL_MS
-            val shouldFetch = !cacheMatchesCurrent || isStale || weatherState is WeatherState.Error
-
-            if (shouldFetch) {
-                if (!cacheMatchesCurrent) {
-                    weatherState = WeatherState.Loading
-                }
-                val result = WeatherHelper.fetchWeather(currentKey.first, currentKey.second, useFahrenheit)
-                if (result is WeatherState.Ready) {
-                    with(WeatherHelper) {
-                        setCachedWeather(result.toCached(currentKey.first, currentKey.second))
-                    }
-                }
-                weatherState = result
-            }
+            weatherState = WeatherHelper.getWeather(currentKey.first, currentKey.second, useFahrenheit)
 
             delay(WeatherHelper.REFRESH_INTERVAL_MS)
         }

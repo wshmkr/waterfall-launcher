@@ -69,6 +69,35 @@ object WeatherHelper {
             ?: client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).suspendForTask()
     }
 
+    suspend fun getWeather(
+        latitude: Double,
+        longitude: Double,
+        useFahrenheit: Boolean
+    ): WeatherState {
+        val cached = cachedWeather
+        val cacheMatches = cached?.let {
+            it.latitude == latitude &&
+                it.longitude == longitude &&
+                it.isFahrenheit == useFahrenheit
+        } == true
+        val isFresh = cacheMatches && System.currentTimeMillis() - lastFetchTime < REFRESH_INTERVAL_MS
+        if (isFresh) {
+            return cached!!.toReady(isStale = false)
+        }
+
+        val result = fetchWeather(latitude, longitude, useFahrenheit)
+        if (result is WeatherState.Ready) {
+            setCachedWeather(result.toCached(latitude, longitude))
+            return result
+        }
+
+        return if (cacheMatches) {
+            cached!!.toReady(isStale = true)
+        } else {
+            result
+        }
+    }
+
     suspend fun fetchWeather(
         latitude: Double,
         longitude: Double,
@@ -172,16 +201,8 @@ object WeatherHelper {
             it.latitude == latitude &&
                 it.longitude == longitude &&
                 it.isFahrenheit == useFahrenheit
-        }?.let {
-            WeatherState.Ready(
-                temperature = it.temperature,
-                weatherCode = it.weatherCode,
-                sunriseTime = it.sunriseTime,
-                sunsetTime = it.sunsetTime,
-                isStale = true,
-                isFahrenheit = it.isFahrenheit
-            )
-        } ?: WeatherState.Error(reason)
+        }?.toReady(isStale = true)
+            ?: WeatherState.Error(reason)
 
     @Composable
     fun getWeatherIcon(code: Int, isNight: Boolean): Painter = when (code) {
@@ -271,6 +292,15 @@ object WeatherHelper {
         isFahrenheit = isFahrenheit,
         latitude = latitude,
         longitude = longitude
+    )
+
+    private fun CachedWeather.toReady(isStale: Boolean): WeatherState.Ready = WeatherState.Ready(
+        temperature = temperature,
+        weatherCode = weatherCode,
+        sunriseTime = sunriseTime,
+        sunsetTime = sunsetTime,
+        isStale = isStale,
+        isFahrenheit = isFahrenheit
     )
 
     fun isCacheValid(
