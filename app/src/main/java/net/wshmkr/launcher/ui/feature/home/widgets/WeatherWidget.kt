@@ -1,7 +1,7 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.Manifest
-import android.location.Location
+import android.annotation.SuppressLint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -32,97 +32,64 @@ import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.util.WeatherHelper
-import net.wshmkr.launcher.util.WeatherHelper.CachedWeather
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 
+@SuppressLint("MissingPermission")
 @Composable
 fun WeatherWidget(
     modifier: Modifier = Modifier,
-    useFahrenheit: Boolean = false
+    useFahrenheit: Boolean = false,
+    weatherLocationLatitude: Double? = null,
+    weatherLocationLongitude: Double? = null,
 ) {
     val context = LocalContext.current
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    var hasPermission by remember { mutableStateOf(WeatherHelper.isLocationGranted(context)) }
-    var location by remember { mutableStateOf<Location?>(null) }
-    val cachedSnapshot = WeatherHelper.getCachedWeather()
-    val usableCachedWeather = cachedSnapshot?.takeIf { it.isFahrenheit == useFahrenheit }
-    var weatherState by remember(useFahrenheit) {
-        mutableStateOf(
-            usableCachedWeather?.let {
-                WeatherState.Ready(
-                    temperature = it.temperature,
-                    weatherCode = it.weatherCode,
-                    sunriseTime = it.sunriseTime,
-                    sunsetTime = it.sunsetTime,
-                    isFahrenheit = it.isFahrenheit
-                )
-            } ?: WeatherState.Idle
-        )
+    val hasStaticLocation = weatherLocationLatitude != null && weatherLocationLongitude != null
+    var hasPermission by remember(hasStaticLocation) {
+        mutableStateOf(if (hasStaticLocation) true else WeatherHelper.isLocationGranted(context))
     }
+    var weatherState by remember(useFahrenheit) { mutableStateOf<WeatherState>(WeatherState.Idle) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted -> hasPermission = granted }
     )
 
-    LaunchedEffect(hasPermission) {
-        if (hasPermission) {
-            runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }
-                .onSuccess { loc ->
-                    if (loc != null) {
-                        location = loc
-                    } else {
-                        weatherState = WeatherState.Error("No location")
-                    }
-                }
-                .onFailure { weatherState = WeatherState.Error("No location") }
-        } else {
+    LaunchedEffect(hasPermission, hasStaticLocation, useFahrenheit, weatherLocationLatitude, weatherLocationLongitude) {
+        if (!hasPermission) {
             weatherState = WeatherState.Idle
+            return@LaunchedEffect
         }
-    }
 
-    val locationKey = remember(location) { location?.let { it.latitude to it.longitude } }
-
-    LaunchedEffect(locationKey, hasPermission, useFahrenheit) {
-        if (!hasPermission || locationKey == null) return@LaunchedEffect
         while (isActive) {
-            val now = System.currentTimeMillis()
-            val lastFetch = WeatherHelper.getLastFetchTime()
-            val cachedRefresh = WeatherHelper.getCachedWeather()
-            val cachedMatchesUnit = cachedRefresh?.isFahrenheit == useFahrenheit
-            val shouldFetch = now - lastFetch >= WeatherHelper.REFRESH_INTERVAL_MS ||
-                    weatherState is WeatherState.Error ||
-                    (weatherState is WeatherState.Idle && cachedRefresh == null) ||
-                    !cachedMatchesUnit
-
-            if (shouldFetch) {
-                val cachedForDisplay = if (cachedMatchesUnit) cachedRefresh else null
-                if (cachedForDisplay == null) {
-                    weatherState = WeatherState.Loading
-                }
-                val result = WeatherHelper.fetchWeather(
-                    locationKey.first,
-                    locationKey.second,
-                    useFahrenheit
-                )
-                if (result is WeatherState.Ready) {
-                    val updatedCache = with(WeatherHelper) { result.toCached() }
-                    WeatherHelper.setCachedWeather(updatedCache)
-                }
-                weatherState = result
+            val currentKey = if (hasStaticLocation) {
+                weatherLocationLatitude to weatherLocationLongitude
+            } else {
+                val loc = runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }.getOrNull()
+                loc?.let { it.latitude to it.longitude }
             }
+
+            if (currentKey == null) {
+                weatherState = WeatherState.Error("No location")
+                delay(WeatherHelper.REFRESH_INTERVAL_MS)
+                continue
+            }
+
+            weatherState = WeatherHelper.getWeather(currentKey.first, currentKey.second, useFahrenheit)
+
             delay(WeatherHelper.REFRESH_INTERVAL_MS)
         }
     }
 
     WeatherContent(
         state = weatherState,
-        cachedWeather = usableCachedWeather,
         hasPermission = hasPermission,
         modifier = modifier,
         onRequestPermission = {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            if (!hasStaticLocation) {
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
         }
     )
 }
@@ -130,7 +97,6 @@ fun WeatherWidget(
 @Composable
 private fun WeatherContent(
     state: WeatherState,
-    cachedWeather: CachedWeather?,
     hasPermission: Boolean,
     modifier: Modifier = Modifier,
     onRequestPermission: () -> Unit
@@ -158,33 +124,11 @@ private fun WeatherContent(
         }
 
         state is WeatherState.Loading -> {
-            if (cachedWeather != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = modifier
-                ) {
-                    Icon(
-                        painter = WeatherHelper.getWeatherIcon(
-                            cachedWeather.weatherCode,
-                            WeatherHelper.isNightTime(cachedWeather.sunriseTime, cachedWeather.sunsetTime)
-                        ),
-                        contentDescription = "Weather",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${cachedWeather.temperature.toInt()}°${if (cachedWeather.isFahrenheit) "F" else "C"}",
-                        style = textStyle
-                    )
-                }
-            } else {
-                CircularProgressIndicator(
-                    modifier = modifier.size(18.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
-            }
+            CircularProgressIndicator(
+                modifier = modifier.size(18.dp),
+                color = Color.White,
+                strokeWidth = 2.dp
+            )
         }
 
         state is WeatherState.Ready -> {

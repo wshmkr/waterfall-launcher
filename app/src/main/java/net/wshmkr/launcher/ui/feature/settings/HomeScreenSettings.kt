@@ -140,6 +140,25 @@ fun HomeScreenSettings(
         }
     )
 
+    val hasStaticWeatherLocation =
+        settings.weatherLocationLatitude != null &&
+            settings.weatherLocationLongitude != null &&
+            !settings.weatherLocationName.isNullOrBlank()
+    val weatherLocationLabel = if (hasStaticWeatherLocation) {
+        settings.weatherLocationName
+    } else {
+        "Device location"
+    }
+
+    MenuOption(
+        text = "Weather location",
+        subtext = weatherLocationLabel,
+        textSize = MenuOptionTextSize.Small,
+        indent = 1,
+        color = Color.White,
+        onClick = { navController.navigate(Screen.WeatherLocation.route) },
+    )
+
     Spacer(modifier = Modifier.height(8.dp))
 
     MenuOption(

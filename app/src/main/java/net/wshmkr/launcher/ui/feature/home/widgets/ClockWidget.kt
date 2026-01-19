@@ -38,6 +38,8 @@ fun ClockWidget(
     showWeather: Boolean = true,
     use24Hour: Boolean = false,
     useFahrenheit: Boolean = false,
+    weatherLocationLatitude: Double? = null,
+    weatherLocationLongitude: Double? = null,
 ) {
     if (!showClock && !showCalendar && !showWeather) return
 
@@ -112,7 +114,9 @@ fun ClockWidget(
                                 launchWeatherApp(context)
                             }
                             .padding(horizontal = 8.dp, vertical = 4.dp),
-                        useFahrenheit
+                        useFahrenheit,
+                        weatherLocationLatitude,
+                        weatherLocationLongitude,
                     )
                 }
             }

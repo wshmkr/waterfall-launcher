@@ -17,7 +17,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.time.LocalTime
+import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import net.wshmkr.launcher.ui.common.icons.BedtimeIcon
@@ -36,6 +38,7 @@ import net.wshmkr.launcher.ui.common.icons.WeatherSnowyIcon
 object WeatherHelper {
     const val REFRESH_INTERVAL_MS = 30 * 60 * 1000L
     private const val WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast"
+    private const val GEOCODING_API_URL = "https://geocoding-api.open-meteo.com/v1/search"
 
     private var cachedWeather: CachedWeather? = null
     private var lastFetchTime: Long = 0L
@@ -46,6 +49,11 @@ object WeatherHelper {
     fun setCachedWeather(weather: CachedWeather) {
         cachedWeather = weather
         lastFetchTime = System.currentTimeMillis()
+    }
+
+    fun clearCache() {
+        cachedWeather = null
+        lastFetchTime = 0L
     }
 
     fun isLocationGranted(context: Context): Boolean {
@@ -59,6 +67,35 @@ object WeatherHelper {
     suspend fun getBestAvailableLocation(client: FusedLocationProviderClient): Location? {
         return client.lastLocation.suspendForTask()
             ?: client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).suspendForTask()
+    }
+
+    suspend fun getWeather(
+        latitude: Double,
+        longitude: Double,
+        useFahrenheit: Boolean
+    ): WeatherState {
+        val cached = cachedWeather
+        val cacheMatches = cached?.let {
+            it.latitude == latitude &&
+                it.longitude == longitude &&
+                it.isFahrenheit == useFahrenheit
+        } == true
+        val isFresh = cacheMatches && System.currentTimeMillis() - lastFetchTime < REFRESH_INTERVAL_MS
+        if (isFresh) {
+            return cached!!.toReady(isStale = false)
+        }
+
+        val result = fetchWeather(latitude, longitude, useFahrenheit)
+        if (result is WeatherState.Ready) {
+            setCachedWeather(result.toCached(latitude, longitude))
+            return result
+        }
+
+        return if (cacheMatches) {
+            cached!!.toReady(isStale = true)
+        } else {
+            result
+        }
     }
 
     suspend fun fetchWeather(
@@ -79,7 +116,7 @@ object WeatherHelper {
 
                 val responseCode = connection.responseCode
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    return@withContext cachedOrError("HTTP $responseCode")
+                    return@withContext cachedOrError(latitude, longitude, useFahrenheit, "HTTP $responseCode")
                 }
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(response)
@@ -101,23 +138,71 @@ object WeatherHelper {
                     isFahrenheit = useFahrenheit
                 )
             } catch (e: Exception) {
-                cachedOrError(e.message ?: "Unable to load weather")
+                cachedOrError(latitude, longitude, useFahrenheit, e.message ?: "Unable to load weather")
             } finally {
                 connection.disconnect()
             }
         }
 
-    private fun cachedOrError(reason: String): WeatherState =
-        getCachedWeather()?.let {
-            WeatherState.Ready(
-                temperature = it.temperature,
-                weatherCode = it.weatherCode,
-                sunriseTime = it.sunriseTime,
-                sunsetTime = it.sunsetTime,
-                isStale = true,
-                isFahrenheit = it.isFahrenheit
-            )
-        } ?: WeatherState.Error(reason)
+    suspend fun fetchGeocodingResults(
+        query: String,
+        language: String = Locale.getDefault().language
+    ): List<GeocodingResult> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) return@withContext emptyList()
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val url = "$GEOCODING_API_URL?name=$encodedQuery&count=10&language=$language&format=json"
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            connection.useCaches = false
+
+            val responseCode = connection.responseCode
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                return@withContext emptyList()
+            }
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            val json = JSONObject(response)
+            val results = json.optJSONArray("results") ?: return@withContext emptyList()
+            buildList {
+                for (index in 0 until results.length()) {
+                    val item = results.optJSONObject(index) ?: continue
+                    val name = item.optString("name").takeIf { it.isNotBlank() } ?: continue
+                    val latitude = item.optDouble("latitude")
+                    val longitude = item.optDouble("longitude")
+                    val admin1 = item.optString("admin1").takeIf { it.isNotBlank() }
+                    val country = item.optString("country").takeIf { it.isNotBlank() }
+                    add(
+                        GeocodingResult(
+                            name = name,
+                            latitude = latitude,
+                            longitude = longitude,
+                            admin1 = admin1,
+                            country = country
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            emptyList()
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun cachedOrError(
+        latitude: Double,
+        longitude: Double,
+        useFahrenheit: Boolean,
+        reason: String
+    ): WeatherState =
+        getCachedWeather()?.takeIf {
+            it.latitude == latitude &&
+                it.longitude == longitude &&
+                it.isFahrenheit == useFahrenheit
+        }?.toReady(isStale = true)
+            ?: WeatherState.Error(reason)
 
     @Composable
     fun getWeatherIcon(code: Int, isNight: Boolean): Painter = when (code) {
@@ -183,15 +268,50 @@ object WeatherHelper {
         val weatherCode: Int,
         val sunriseTime: String?,
         val sunsetTime: String?,
-        val isFahrenheit: Boolean
+        val isFahrenheit: Boolean,
+        val latitude: Double,
+        val longitude: Double
     )
 
-    fun WeatherState.Ready.toCached(): CachedWeather = CachedWeather(
+    data class GeocodingResult(
+        val name: String,
+        val latitude: Double,
+        val longitude: Double,
+        val admin1: String?,
+        val country: String?,
+    ) {
+        val displayName: String
+            get() = listOfNotNull(name, admin1, country).joinToString(", ")
+    }
+
+    fun WeatherState.Ready.toCached(latitude: Double, longitude: Double): CachedWeather = CachedWeather(
         temperature = temperature,
         weatherCode = weatherCode,
         sunriseTime = sunriseTime,
         sunsetTime = sunsetTime,
+        isFahrenheit = isFahrenheit,
+        latitude = latitude,
+        longitude = longitude
+    )
+
+    private fun CachedWeather.toReady(isStale: Boolean): WeatherState.Ready = WeatherState.Ready(
+        temperature = temperature,
+        weatherCode = weatherCode,
+        sunriseTime = sunriseTime,
+        sunsetTime = sunsetTime,
+        isStale = isStale,
         isFahrenheit = isFahrenheit
     )
+
+    fun isCacheValid(
+        latitude: Double,
+        longitude: Double,
+        useFahrenheit: Boolean
+    ): Boolean {
+        val cached = cachedWeather ?: return false
+        return cached.isFahrenheit == useFahrenheit &&
+            cached.latitude == latitude &&
+            cached.longitude == longitude
+    }
 }
 
