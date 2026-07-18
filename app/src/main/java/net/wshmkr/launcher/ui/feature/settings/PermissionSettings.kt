@@ -10,24 +10,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.NotificationManagerCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import net.wshmkr.launcher.ui.common.components.OnResumeEffect
 import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 
 @Composable
 fun PermissionSettings(
     context: Context
 ) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
     var isNotificationAccessEnabled by remember { mutableStateOf(false) }
     var isLocationEnabled by remember { mutableStateOf(false) }
@@ -52,17 +47,8 @@ fun PermissionSettings(
         isLocationEnabled = isGranted
     }
 
-    // The observer receives a catch-up ON_RESUME immediately, which covers the initial check.
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                checkPermissions()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+    OnResumeEffect {
+        checkPermissions()
     }
 
     val openAccessibilitySettings = {

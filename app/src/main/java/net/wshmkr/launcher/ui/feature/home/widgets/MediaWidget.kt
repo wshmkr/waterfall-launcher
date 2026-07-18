@@ -1,6 +1,5 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
-import android.media.session.MediaController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -13,7 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,14 +25,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import net.wshmkr.launcher.ui.common.components.OnResumeEffect
 import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
-import net.wshmkr.launcher.util.MediaSessionHelper
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.util.launchPackage
+import net.wshmkr.launcher.viewmodel.MediaViewModel
 
 @Composable
 fun MediaWidget(enabled: Boolean = true) {
@@ -42,28 +40,13 @@ fun MediaWidget(enabled: Boolean = true) {
     }
 
     val context = LocalContext.current
-    var mediaInfo by remember { mutableStateOf<MediaInfo?>(null) }
-    var mediaController by remember { mutableStateOf<MediaController?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
-    val hasPermission = remember { mutableStateOf(NotificationPanelHelper.isNotificationListenerEnabled(context)) }
+    var hasPermission by remember {
+        mutableStateOf(NotificationPanelHelper.isNotificationListenerEnabled(context))
+    }
 
-    LaunchedEffect(Unit) {
-        while (isActive) {
-            hasPermission.value = NotificationPanelHelper.isNotificationListenerEnabled(context)
-            if (hasPermission.value) {
-                val (polledInfo, polledController) = MediaSessionHelper.getActiveMediaInfo(context)
-                if (polledController?.sessionToken != mediaController?.sessionToken) {
-                    mediaController = polledController
-                }
-                if (polledInfo?.hasSameDisplayContentAs(mediaInfo) != true) {
-                    mediaInfo = polledInfo
-                }
-            } else {
-                mediaInfo = null
-                mediaController = null
-            }
-            delay(500)
-        }
+    OnResumeEffect {
+        hasPermission = NotificationPanelHelper.isNotificationListenerEnabled(context)
     }
 
     if (showPermissionDialog) {
@@ -76,18 +59,26 @@ fun MediaWidget(enabled: Boolean = true) {
         )
     }
 
-    if (!hasPermission.value) {
+    if (!hasPermission) {
         MediaPermissionPrompt(onRequestPermission = { showPermissionDialog = true })
         return
     }
 
-    val currentMediaInfo = mediaInfo
-    if (currentMediaInfo != null) {
+    ActiveMediaControls()
+}
+
+@Composable
+private fun ActiveMediaControls(viewModel: MediaViewModel = hiltViewModel()) {
+    val context = LocalContext.current
+    val activeMediaSession by viewModel.activeMediaSession.collectAsState()
+
+    val mediaInfo = activeMediaSession.mediaInfo
+    if (mediaInfo != null) {
         MediaControls(
-            mediaInfo = currentMediaInfo,
-            mediaController = mediaController,
+            mediaInfo = mediaInfo,
+            mediaController = activeMediaSession.controller,
             onMediaAppClick = {
-                currentMediaInfo.packageName?.let { pkg ->
+                mediaInfo.packageName?.let { pkg ->
                     launchPackage(context, pkg)
                 }
             }
