@@ -24,7 +24,9 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            backgroundUri = userSettingsDataSource.getBackgroundUri()
+            userSettingsDataSource.backgroundUri.collect {
+                backgroundUri = it
+            }
         }
 
         viewModelScope.launch {
@@ -36,16 +38,13 @@ class SettingsViewModel @Inject constructor(
 
     fun setBackgroundUri(uri: Uri?) {
         viewModelScope.launch {
-            val uriString = uri?.toString()
-            userSettingsDataSource.setBackgroundUri(uriString)
-            backgroundUri = uriString
+            userSettingsDataSource.setBackgroundUri(uri?.toString())
         }
     }
 
     fun removeBackground() {
         viewModelScope.launch {
             userSettingsDataSource.setBackgroundUri(null)
-            backgroundUri = null
         }
     }
 
@@ -85,4 +84,3 @@ class SettingsViewModel @Inject constructor(
         }
     }
 }
-

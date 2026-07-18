@@ -3,6 +3,7 @@ package net.wshmkr.launcher.ui.feature.home.widgets
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import kotlinx.coroutines.isActive
 import net.wshmkr.launcher.util.ONE_SECOND
 import net.wshmkr.launcher.util.getCurrentDate
 import net.wshmkr.launcher.util.getCurrentTime
+import net.wshmkr.launcher.util.launchPackage
 import androidx.core.net.toUri
 
 @Composable
@@ -129,16 +131,11 @@ private fun launchClockApp(context: Context) {
         val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
-        val resolveInfo = context.packageManager.resolveActivity(intent, 0)
-        if (resolveInfo != null) {
-            val packageName = resolveInfo.activityInfo.packageName
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
-            if (launchIntent != null) {
-                launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(launchIntent)
-            }
-        }
-    } catch (e: Exception) { }
+        val resolveInfo = context.packageManager.resolveActivity(intent, 0) ?: return
+        launchPackage(context, resolveInfo.activityInfo.packageName)
+    } catch (e: Exception) {
+        Log.w("ClockWidget", "Failed to launch clock app", e)
+    }
 }
 
 private fun launchCalendarApp(context: Context) {
@@ -148,7 +145,9 @@ private fun launchCalendarApp(context: Context) {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(intent)
-    } catch (e: Exception) { }
+    } catch (e: Exception) {
+        Log.w("ClockWidget", "Failed to launch calendar app", e)
+    }
 }
 
 private fun launchWeatherApp(context: Context) {
@@ -167,10 +166,7 @@ private fun launchWeatherApp(context: Context) {
         // fall back to Samsung Weather (doesn't register CATEGORY_APP_WEATHER)
         val samsungPackages = listOf("com.sec.android.daemonapp", "com.samsung.android.weather")
         for (pkg in samsungPackages) {
-            val launchIntent = pm.getLaunchIntentForPackage(pkg)
-            if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(launchIntent)
+            if (launchPackage(context, pkg)) {
                 return
             }
         }
@@ -181,5 +177,7 @@ private fun launchWeatherApp(context: Context) {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(webIntent)
-    } catch (e: Exception) { }
+    } catch (e: Exception) {
+        Log.w("ClockWidget", "Failed to launch weather app", e)
+    }
 }

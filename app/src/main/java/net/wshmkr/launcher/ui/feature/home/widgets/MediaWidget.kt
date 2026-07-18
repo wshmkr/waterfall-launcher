@@ -1,6 +1,5 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
-import android.content.Intent
 import android.media.session.MediaController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,6 +33,7 @@ import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
 import net.wshmkr.launcher.util.MediaSessionHelper
 import net.wshmkr.launcher.util.NotificationPanelHelper
+import net.wshmkr.launcher.util.launchPackage
 
 @Composable
 fun MediaWidget(enabled: Boolean = true) {
@@ -51,9 +51,13 @@ fun MediaWidget(enabled: Boolean = true) {
         while (isActive) {
             hasPermission.value = NotificationPanelHelper.isNotificationListenerEnabled(context)
             if (hasPermission.value) {
-                val info = MediaSessionHelper.getActiveMediaInfo(context)
-                mediaInfo = info.first
-                mediaController = info.second
+                val (polledInfo, polledController) = MediaSessionHelper.getActiveMediaInfo(context)
+                if (polledController?.sessionToken != mediaController?.sessionToken) {
+                    mediaController = polledController
+                }
+                if (polledInfo?.hasSameDisplayContentAs(mediaInfo) != true) {
+                    mediaInfo = polledInfo
+                }
             } else {
                 mediaInfo = null
                 mediaController = null
@@ -84,15 +88,7 @@ fun MediaWidget(enabled: Boolean = true) {
             mediaController = mediaController,
             onMediaAppClick = {
                 currentMediaInfo.packageName?.let { pkg ->
-                    try {
-                        val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-                        intent?.let {
-                            it.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            context.startActivity(it)
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                    launchPackage(context, pkg)
                 }
             }
         )

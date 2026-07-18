@@ -8,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AlphabetSlider
+import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable
@@ -29,7 +29,6 @@ fun AddWidgetView(
     onDismiss: () -> Unit = {},
 ) {
     BackHandler(enabled = true) {
-        viewModel.deselectLetter()
         onDismiss()
     }
 
@@ -39,19 +38,10 @@ fun AddWidgetView(
         isVisible = viewModel.widgetAppListItems.isNotEmpty()
     }
 
-    val initialPosition = viewModel.activeLetter?.let { active ->
-        viewModel.getScrollPosition(active) ?: 0
-    } ?: 0
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPosition)
-
-    LaunchedEffect(viewModel.activeLetter) {
-        val letter = viewModel.activeLetter
-        if (letter != null) {
-            viewModel.getScrollPosition(letter)?.let { position ->
-                listState.scrollToItem(position, scrollOffset = 0)
-            }
-        }
-    }
+    val listState = rememberLetterIndexedListState(
+        activeLetter = viewModel.activeLetter,
+        getScrollPosition = viewModel::getScrollPosition,
+    )
 
     val topPadding = calculateCenteredContentTopPadding()
 
@@ -67,10 +57,7 @@ fun AddWidgetView(
                 viewModel = viewModel,
                 listState = listState,
                 contentPadding = PaddingValues(vertical = topPadding, horizontal = 32.dp),
-                onWidgetSelected = {
-                    viewModel.deselectLetter()
-                    onDismiss()
-                }
+                onWidgetSelected = onDismiss
             )
 
             if (viewModel.alphabetLetters.isNotEmpty()) {

@@ -1,6 +1,8 @@
 package net.wshmkr.launcher.viewmodel
 
+import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
+import android.content.Context
 import android.graphics.drawable.Drawable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -9,11 +11,12 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
+import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.WidgetRepository
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -46,8 +49,8 @@ class WidgetViewModel @Inject constructor(
     var activeLetter by mutableStateOf<String?>(null)
         private set
 
-    private val _bindWidgetEvent = MutableSharedFlow<Pair<Int, AppWidgetProviderInfo>>(replay = 1, extraBufferCapacity = 1)
-    val bindWidgetEvent = _bindWidgetEvent.asSharedFlow()
+    private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
+    val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -63,7 +66,9 @@ class WidgetViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            backgroundUri = userSettingsDataSource.getBackgroundUri()
+            userSettingsDataSource.backgroundUri.collect {
+                backgroundUri = it
+            }
         }
     }
 
@@ -92,11 +97,12 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
-    fun getWidgetRepository(): WidgetRepository = widgetRepository
-
-    fun refreshBackground() {
-        viewModelScope.launch {
-            backgroundUri = userSettingsDataSource.getBackgroundUri()
+    fun createWidgetView(context: Context, widgetId: Int): AppWidgetHostView? {
+        return try {
+            val info = widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId) ?: return null
+            widgetRepository.appWidgetHost.createView(context, widgetId, info)
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -141,7 +147,7 @@ class WidgetViewModel @Inject constructor(
         var currentLetter: String? = null
 
         providers.forEach { provider ->
-            val letter = provider.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
+            val letter = provider.label.sectionLetter
             if (letter != currentLetter) {
                 currentLetter = letter
                 items.add(WidgetAppListItem.SectionHeader(letter))
@@ -156,6 +162,7 @@ class WidgetViewModel @Inject constructor(
                 WidgetAppListItem.Provider(
                     packageName = provider.packageName,
                     label = provider.label,
+                    letter = letter,
                     icon = provider.icon,
                     widgetCount = provider.widgets.size,
                     widgets = widgetOptions
@@ -170,7 +177,7 @@ class WidgetViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val widgetId = widgetRepository.allocateWidgetId()
-                _bindWidgetEvent.emit(widgetId to option.info)
+                _bindWidgetEvent.send(widgetId to option.info)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -188,6 +195,7 @@ sealed class WidgetAppListItem {
     data class Provider(
         val packageName: String,
         val label: String,
+        val letter: String,
         val icon: Drawable?,
         val widgetCount: Int,
         val widgets: List<WidgetOption>

@@ -99,6 +99,38 @@ fun MenuOption(
 }
 
 @Composable
+fun ToggleMenuOption(
+    text: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    icon: Painter? = null,
+    subtext: String? = null,
+    color: Color = Color.Black,
+    indent: Int = 0,
+    textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
+    offText: String? = null,
+    onText: String? = null,
+) {
+    MenuOption(
+        icon = icon,
+        text = text,
+        subtext = subtext,
+        onClick = { onCheckedChange(!checked) },
+        color = color,
+        indent = indent,
+        textSize = textSize,
+        endContent = {
+            MenuOptionSwitch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                offText = offText,
+                onText = onText,
+            )
+        }
+    )
+}
+
+@Composable
 fun MenuOptionSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -106,6 +138,7 @@ fun MenuOptionSwitch(
     offText: String? = null,
     onText: String? = null,
 ) {
+    val defaultColors = SwitchDefaults.colors()
     Switch(
         modifier = modifier
             .scale(0.8f)
@@ -123,19 +156,19 @@ fun MenuOptionSwitch(
                         fontSize = 13.sp,
                         lineHeight = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = SwitchDefaults.colors().checkedIconColor
+                        color = defaultColors.checkedIconColor
                     )
                 }
             }
         },
         colors = if (offText != null && onText != null) {
             SwitchDefaults.colors(
-                uncheckedThumbColor = SwitchDefaults.colors().checkedThumbColor,
-                uncheckedTrackColor = SwitchDefaults.colors().checkedTrackColor,
-                uncheckedBorderColor = SwitchDefaults.colors().checkedBorderColor,
+                uncheckedThumbColor = defaultColors.checkedThumbColor,
+                uncheckedTrackColor = defaultColors.checkedTrackColor,
+                uncheckedBorderColor = defaultColors.checkedBorderColor,
             )
         } else {
-            SwitchDefaults.colors()
+            defaultColors
         }
     )
 }

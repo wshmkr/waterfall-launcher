@@ -1,6 +1,5 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -72,10 +71,10 @@ fun ManageWidgetsView(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
-                itemsIndexed(
+                items(
                     items = managedWidgets,
-                    key = { _, item -> item.widgetId }
-                ) { _, widget ->
+                    key = { item -> item.widgetId }
+                ) { widget ->
                     ManagedWidgetRow(
                         item = widget,
                         onDelete = { onDeleteWidget(widget.widgetId) },
@@ -92,7 +91,6 @@ fun ManageWidgetsView(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ManagedWidgetRow(
     item: ManagedWidget,
@@ -101,7 +99,6 @@ private fun ManagedWidgetRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

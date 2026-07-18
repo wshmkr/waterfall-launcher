@@ -10,11 +10,14 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.Task
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -43,7 +46,7 @@ object WeatherHelper {
     private var cachedWeather: CachedWeather? = null
     private var lastFetchTime: Long = 0L
 
-    fun setCachedWeather(weather: CachedWeather) {
+    private fun setCachedWeather(weather: CachedWeather) {
         cachedWeather = weather
         lastFetchTime = System.currentTimeMillis()
     }
@@ -57,9 +60,25 @@ object WeatherHelper {
 
     @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
     suspend fun getBestAvailableLocation(client: FusedLocationProviderClient): Location? {
-        return client.lastLocation.suspendForTask()
-            ?: client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).suspendForTask()
+        return client.lastLocation.suspendForTask() ?: getCurrentLocation(client)
     }
+
+    @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+    private suspend fun getCurrentLocation(client: FusedLocationProviderClient): Location? =
+        suspendCancellableCoroutine { cont ->
+            val cancellationTokenSource = CancellationTokenSource()
+            client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellationTokenSource.token)
+                .addOnSuccessListener { location ->
+                    if (cont.isActive) cont.resume(location)
+                }
+                .addOnFailureListener { exception ->
+                    if (cont.isActive) cont.resumeWithException(exception)
+                }
+                .addOnCanceledListener {
+                    if (cont.isActive) cont.resume(null)
+                }
+            cont.invokeOnCancellation { cancellationTokenSource.cancel() }
+        }
 
     suspend fun getWeather(
         latitude: Double,
@@ -91,15 +110,74 @@ object WeatherHelper {
             ?: result
     }
 
-    suspend fun fetchWeather(
+    private suspend fun fetchWeather(
         latitude: Double,
         longitude: Double,
         useFahrenheit: Boolean
-    ): WeatherState =
+    ): WeatherState {
+        val temperatureUnit = if (useFahrenheit) "fahrenheit" else "celsius"
+        val url = "$WEATHER_API_URL?latitude=$latitude&longitude=$longitude" +
+            "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=$temperatureUnit&timezone=auto"
+
+        return httpGetJson(url).fold(
+            onSuccess = { json ->
+                val current = json.getJSONObject("current")
+                val temperature = current.getDouble("temperature_2m")
+                val weatherCode = current.getInt("weather_code")
+
+                val daily = json.optJSONObject("daily")
+                val sunriseTime = daily?.optJSONArray("sunrise")?.optString(0)
+                val sunsetTime = daily?.optJSONArray("sunset")?.optString(0)
+
+                WeatherState.Ready(
+                    temperature = temperature,
+                    weatherCode = weatherCode,
+                    sunriseTime = sunriseTime,
+                    sunsetTime = sunsetTime,
+                    isFahrenheit = useFahrenheit
+                )
+            },
+            onFailure = { WeatherState.Error(it.message ?: "Unable to load weather") }
+        )
+    }
+
+    // Null means the lookup failed; an empty list means it succeeded but matched nothing.
+    suspend fun fetchGeocodingResults(
+        query: String,
+        language: String = Locale.getDefault().language
+    ): List<GeocodingResult>? {
+        if (query.isBlank()) return emptyList()
+        val encodedQuery = URLEncoder.encode(query, "UTF-8")
+        val url = "$GEOCODING_API_URL?name=$encodedQuery&count=10&language=$language&format=json"
+
+        val json = httpGetJson(url).getOrElse { return null }
+        val results = json.optJSONArray("results") ?: return emptyList()
+        return buildList {
+            for (index in 0 until results.length()) {
+                val item = results.optJSONObject(index) ?: continue
+                val name = item.optString("name").takeIf { it.isNotBlank() } ?: continue
+                val latitude = item.optDouble("latitude")
+                val longitude = item.optDouble("longitude")
+                if (latitude.isNaN() || longitude.isNaN()) continue
+                val admin1 = item.optString("admin1").takeIf { it.isNotBlank() }
+                val admin2 = item.optString("admin2").takeIf { it.isNotBlank() }
+                val country = item.optString("country").takeIf { it.isNotBlank() }
+                add(
+                    GeocodingResult(
+                        name = name,
+                        latitude = latitude,
+                        longitude = longitude,
+                        admin1 = admin1,
+                        admin2 = admin2,
+                        country = country
+                    )
+                )
+            }
+        }
+    }
+
+    private suspend fun httpGetJson(url: String): Result<JSONObject> =
         withContext(Dispatchers.IO) {
-            val temperatureUnit = if (useFahrenheit) "fahrenheit" else "celsius"
-            val url = "$WEATHER_API_URL?latitude=$latitude&longitude=$longitude" +
-                "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=$temperatureUnit&timezone=auto"
             val connection = URL(url).openConnection() as HttpURLConnection
             try {
                 connection.requestMethod = "GET"
@@ -109,101 +187,30 @@ object WeatherHelper {
 
                 val responseCode = connection.responseCode
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    return@withContext WeatherState.Error("HTTP $responseCode")
+                    return@withContext Result.failure(IOException("HTTP $responseCode"))
                 }
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
-                val json = JSONObject(response)
-                val current = json.getJSONObject("current")
-                val temperature = current.getDouble("temperature_2m")
-                val weatherCode = current.getInt("weather_code")
-
-                val daily = json.optJSONObject("daily")
-                val sunriseArray = daily?.optJSONArray("sunrise")
-                val sunsetArray = daily?.optJSONArray("sunset")
-                val sunriseTime = sunriseArray?.optString(0)
-                val sunsetTime = sunsetArray?.optString(0)
-
-                WeatherState.Ready(
-                    temperature = temperature,
-                    weatherCode = weatherCode,
-                    sunriseTime = sunriseTime,
-                    sunsetTime = sunsetTime,
-                    isFahrenheit = useFahrenheit
-                )
+                Result.success(JSONObject(response))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                WeatherState.Error(e.message ?: "Unable to load weather")
+                Result.failure(e)
             } finally {
                 connection.disconnect()
             }
         }
 
-    // Null means the lookup failed; an empty list means it succeeded but matched nothing.
-    suspend fun fetchGeocodingResults(
-        query: String,
-        language: String = Locale.getDefault().language
-    ): List<GeocodingResult>? = withContext(Dispatchers.IO) {
-        if (query.isBlank()) return@withContext emptyList()
-        val encodedQuery = URLEncoder.encode(query, "UTF-8")
-        val url = "$GEOCODING_API_URL?name=$encodedQuery&count=10&language=$language&format=json"
-        val connection = URL(url).openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            connection.useCaches = false
-
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext null
-            }
-            val response = connection.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(response)
-            val results = json.optJSONArray("results") ?: return@withContext emptyList()
-            buildList {
-                for (index in 0 until results.length()) {
-                    val item = results.optJSONObject(index) ?: continue
-                    val name = item.optString("name").takeIf { it.isNotBlank() } ?: continue
-                    val latitude = item.optDouble("latitude")
-                    val longitude = item.optDouble("longitude")
-                    if (latitude.isNaN() || longitude.isNaN()) continue
-                    val admin1 = item.optString("admin1").takeIf { it.isNotBlank() }
-                    val admin2 = item.optString("admin2").takeIf { it.isNotBlank() }
-                    val country = item.optString("country").takeIf { it.isNotBlank() }
-                    add(
-                        GeocodingResult(
-                            name = name,
-                            latitude = latitude,
-                            longitude = longitude,
-                            admin1 = admin1,
-                            admin2 = admin2,
-                            country = country
-                        )
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            null
-        } finally {
-            connection.disconnect()
-        }
-    }
-
     @Composable
     fun getWeatherIcon(code: Int, isNight: Boolean): Painter = when (code) {
         0, 1 -> if (isNight) BedtimeIcon() else ClearDayIcon()                  // clear
         2 -> if (isNight) PartlyCloudyNightIcon() else PartlyCloudyDayIcon()    // partly cloudy
-        3 -> CloudIcon()                    // cloudy
-        45, 48 -> FoggyIcon()               // fog
-        51, 53, 55 -> DrizzleIcon()         // light rain
-        61, 63, 65 -> RainyIcon()           // rain
-        80, 81, 82 -> RainyIcon()           // rain showers
-        56, 57 -> WeatherMixIcon()          // freezing drizzle
-        66, 67 -> WeatherMixIcon()          // freezing rain
-        77 -> WeatherMixIcon()              // snow grains
-        71, 73, 75 -> WeatherSnowyIcon()    // snow
-        85, 86 -> WeatherSnowyIcon()        // snow showers
-        95 -> ThunderstormIcon()            // thunderstorm
-        96, 99 -> ThunderstormIcon()        // thunderstorm with hail
+        3 -> CloudIcon()                            // cloudy
+        45, 48 -> FoggyIcon()                       // fog
+        51, 53, 55 -> DrizzleIcon()                 // light rain
+        61, 63, 65, 80, 81, 82 -> RainyIcon()       // rain & showers
+        56, 57, 66, 67, 77 -> WeatherMixIcon()      // freezing rain & snow grains
+        71, 73, 75, 85, 86 -> WeatherSnowyIcon()    // snow & snow showers
+        95, 96, 99 -> ThunderstormIcon()            // thunderstorm, with or without hail
         else -> HelpIcon()
     }
 
@@ -224,7 +231,9 @@ object WeatherHelper {
 
     private suspend fun <T> Task<T>.suspendForTask(): T? =
         suspendCancellableCoroutine { cont ->
-            addOnSuccessListener { result -> cont.resume(result) }
+            addOnSuccessListener { result ->
+                if (cont.isActive) cont.resume(result)
+            }
             addOnFailureListener { exception ->
                 if (cont.isActive) cont.resumeWithException(exception)
             }
@@ -235,7 +244,6 @@ object WeatherHelper {
 
     sealed interface WeatherState {
         data object Idle : WeatherState
-        data object Loading : WeatherState
         data class Ready(
             val temperature: Double,
             val weatherCode: Int,
@@ -247,7 +255,7 @@ object WeatherHelper {
         data class Error(val reason: String) : WeatherState
     }
 
-    data class CachedWeather(
+    private data class CachedWeather(
         val temperature: Double,
         val weatherCode: Int,
         val sunriseTime: String?,
@@ -281,7 +289,7 @@ object WeatherHelper {
             else -> (value - 32) * 5 / 9
         }
 
-    fun WeatherState.Ready.toCached(latitude: Double, longitude: Double): CachedWeather = CachedWeather(
+    private fun WeatherState.Ready.toCached(latitude: Double, longitude: Double): CachedWeather = CachedWeather(
         temperature = temperature,
         weatherCode = weatherCode,
         sunriseTime = sunriseTime,
@@ -303,4 +311,3 @@ object WeatherHelper {
         isFahrenheit = targetFahrenheit
     )
 }
-

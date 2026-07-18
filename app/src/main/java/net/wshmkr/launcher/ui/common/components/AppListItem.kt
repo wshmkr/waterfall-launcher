@@ -1,8 +1,5 @@
 package net.wshmkr.launcher.ui.common.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
@@ -44,23 +41,13 @@ fun AppListItem(
     appInfo: AppInfo,
     activeProfiles: Set<UserHandle>,
     targetAlpha: Float = 1f,
+    isActiveLetter: Boolean = false,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val itemLetter = appInfo.label.first().uppercaseChar().toString()
-    val isActiveLetter = if (viewModel is net.wshmkr.launcher.viewmodel.HomeViewModel) {
-        itemLetter == viewModel.activeLetter
-    } else {
-        false
-    }
-    
-    val animatedAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
-        animationSpec = if (isActiveLetter || targetAlpha < 1f) {
-            snap()
-        } else {
-            tween(durationMillis = 300)
-        },
+    val animatedAlpha by animateLetterFilterAlpha(
+        targetAlpha = targetAlpha,
+        isActiveLetter = isActiveLetter,
         label = "app_item_alpha"
     )
 

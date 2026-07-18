@@ -29,10 +29,12 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.wshmkr.launcher.viewmodel.AlphabetSliderViewModel
+import kotlin.math.roundToInt
 
 const val STAR_SYMBOL = "★"
 
@@ -161,7 +163,6 @@ private fun AnimatedLettersList(
     viewModel: AlphabetSliderViewModel,
     onLetterPositioned: (index: Int, top: Float, bottom: Float) -> Unit
 ) {
-    val density = LocalDensity.current
     val sliderVerticalOffsetPx = viewModel.sliderVerticalOffset
 
     val animatedVerticalOffset by animateFloatAsState(
@@ -176,7 +177,7 @@ private fun AnimatedLettersList(
     Column(
         modifier = Modifier
             .width(40.dp)
-            .offset(y = (animatedVerticalOffset / density.density).dp),
+            .offset { IntOffset(0, animatedVerticalOffset.roundToInt()) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy((-6).dp),
     ) {
@@ -196,7 +197,7 @@ private fun AnimatedLettersList(
                 text = letter,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(x = animatedOffset.dp)
+                    .offset { IntOffset(animatedOffset.dp.roundToPx(), 0) }
                     .onGloballyPositioned { coordinates ->
                         val bounds = coordinates.boundsInParent()
                         onLetterPositioned(index, bounds.top, bounds.bottom)

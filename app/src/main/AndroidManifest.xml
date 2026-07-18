@@ -58,7 +58,7 @@
                 android:resource="@xml/notification_accessibility_service" />
         </service>
 
-        <!-- Notification Listener Service for media session access -->
+        <!-- Notification Listener Service that feeds app-list notification previews and media controls -->
         <service
             android:name=".service.LauncherNotificationListenerService"
             android:exported="true"

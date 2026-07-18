@@ -8,7 +8,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import net.wshmkr.launcher.repository.WidgetRepository
@@ -27,8 +26,6 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var widgetRepository: WidgetRepository
 
-    private lateinit var navController: NavHostController
-    private lateinit var widgetViewModel: WidgetViewModel
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var widgetPickerHelper: WidgetPickerHelper
     private var screenOffReceiver: BroadcastReceiver? = null
@@ -39,8 +36,8 @@ class MainActivity : ComponentActivity() {
         registerScreenOffReceiver()
         setContent {
             MaterialTheme {
-                navController = rememberNavController()
-                widgetViewModel = hiltViewModel()
+                val navController = rememberNavController()
+                val widgetViewModel: WidgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {
                     widgetViewModel.bindWidgetEvent.collect { (widgetId, info) ->
                         widgetPickerHelper.bindOrConfigure(widgetId, info)

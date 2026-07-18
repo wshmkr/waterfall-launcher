@@ -2,6 +2,7 @@ package net.wshmkr.launcher.repository
 
 import android.os.UserHandle
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.model.NotificationInfo
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -9,7 +10,8 @@ import javax.inject.Singleton
 @Singleton
 class NotificationRepository @Inject constructor() {
 
-    val notifications = MutableStateFlow<Map<String, Map<UserHandle, List<NotificationInfo>>>>(emptyMap())
+    private val _notifications = MutableStateFlow<Map<String, Map<UserHandle, List<NotificationInfo>>>>(emptyMap())
+    val notifications = _notifications.asStateFlow()
 
     fun addNotification(notification: NotificationInfo) {
         val currentNotifications = notifications.value.toMutableMap()
@@ -23,7 +25,7 @@ class NotificationRepository @Inject constructor() {
 
         packageNotifications[notification.userHandle] = userNotifications
         currentNotifications[notification.packageName] = packageNotifications
-        notifications.value = currentNotifications
+        _notifications.value = currentNotifications
     }
 
     fun removeNotification(packageName: String, notificationId: Int, userHandle: UserHandle) {
@@ -45,10 +47,10 @@ class NotificationRepository @Inject constructor() {
             currentNotifications[packageName] = packageNotifications
         }
 
-        notifications.value = currentNotifications
+        _notifications.value = currentNotifications
     }
 
     fun clearAll() {
-        notifications.value = emptyMap()
+        _notifications.value = emptyMap()
     }
 }

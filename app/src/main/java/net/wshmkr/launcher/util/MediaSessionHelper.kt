@@ -33,8 +33,9 @@ object MediaSessionHelper {
     }
 
     private fun extractMediaInfo(controller: MediaController): MediaInfo {
-        val (metadata, playbackState) = controller.metadata to controller.playbackState
-        
+        val metadata = controller.metadata
+        val playbackState = controller.playbackState
+
         return MediaInfo(
             title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
             artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),

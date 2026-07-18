@@ -2,8 +2,6 @@ package net.wshmkr.launcher.ui.feature.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,9 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.AppListItem
+import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
-import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
+import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
+import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
 import net.wshmkr.launcher.ui.common.icons.SearchIcon
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -62,25 +61,10 @@ fun AllAppsView(
 
     val topPadding = calculateCenteredContentTopPadding()
 
-    val initialPosition = if (viewModel.activeLetter != null && viewModel.activeLetter != STAR_SYMBOL) {
-        val header = viewModel.allAppsListItems.find { 
-            it is AppListItem.SectionHeader && it.letter == viewModel.activeLetter
-        } as? AppListItem.SectionHeader
-        header?.position ?: 0
-    } else {
-        0
-    }
-
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPosition)
-
-    LaunchedEffect(viewModel.activeLetter) {
-        val letter = viewModel.activeLetter
-        if (letter != null && letter != STAR_SYMBOL) {
-            viewModel.getScrollPosition(letter)?.let { position ->
-                listState.scrollToItem(position, scrollOffset = 0)
-            }
-        }
-    }
+    val listState = rememberLetterIndexedListState(
+        activeLetter = viewModel.activeLetter,
+        getScrollPosition = viewModel::getScrollPosition,
+    )
 
     AnimatedVisibility(
         visible = isVisible,
@@ -114,12 +98,12 @@ fun AllAppsView(
                             )
                         }
                         is AppListItem.AppItem -> {
+                            val itemLetter = item.appInfo.label.sectionLetter
                             AppListItem(
                                 appInfo = item.appInfo,
                                 activeProfiles = activeProfiles,
-                                targetAlpha = viewModel.getAlpha(
-                                    item.appInfo.label.first().uppercaseChar().toString()
-                                ),
+                                targetAlpha = viewModel.getAlpha(itemLetter),
+                                isActiveLetter = itemLetter == viewModel.activeLetter,
                                 viewModel = viewModel,
                             )
                         }
@@ -148,15 +132,12 @@ fun AllAppsView(
 
 @Composable
 fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolean) {
-    val animatedAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
-        animationSpec = if (isActiveLetter || targetAlpha < 1f) {
-            snap()
-        } else {
-            tween(durationMillis = 300)
-        },
+    val animatedAlpha by animateLetterFilterAlpha(
+        targetAlpha = targetAlpha,
+        isActiveLetter = isActiveLetter,
+        label = "section_header_alpha"
     )
-    
+
     Text(
         text = letter,
         modifier = Modifier
