@@ -7,5 +7,8 @@ data class HomeWidgetSettings(
     val showMediaControls: Boolean = true,
     val use24Hour: Boolean = false,
     val useFahrenheit: Boolean = false,
+    val weatherLocationName: String? = null,
+    val weatherLocationLatitude: Double? = null,
+    val weatherLocationLongitude: Double? = null,
 )
 

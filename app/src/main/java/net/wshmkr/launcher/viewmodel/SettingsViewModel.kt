@@ -72,5 +72,17 @@ class SettingsViewModel @Inject constructor(
     fun setUseFahrenheit(enabled: Boolean) {
         viewModelScope.launch { userSettingsDataSource.setUseFahrenheit(enabled) }
     }
+
+    fun setWeatherLocation(name: String, latitude: Double, longitude: Double) {
+        viewModelScope.launch {
+            userSettingsDataSource.setWeatherLocation(name, latitude, longitude)
+        }
+    }
+
+    fun clearWeatherLocation() {
+        viewModelScope.launch {
+            userSettingsDataSource.clearWeatherLocation()
+        }
+    }
 }
 

@@ -1,4 +1,4 @@
-package net.wshmkr.launcher.ui.feature.search
+package net.wshmkr.launcher.ui.feature.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -8,11 +8,15 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
@@ -20,17 +24,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -40,45 +42,74 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import net.wshmkr.launcher.ui.common.components.AppLauncher
-import net.wshmkr.launcher.ui.common.components.AppListItem
+import androidx.navigation.NavController
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import net.wshmkr.launcher.ui.common.components.MenuOption
 import net.wshmkr.launcher.ui.common.components.VERTICAL_SWIPE_SENSITIVITY
 import net.wshmkr.launcher.ui.common.components.verticalDragFeedback
-import net.wshmkr.launcher.viewmodel.SearchViewModel
-import kotlinx.coroutines.launch
+import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
+import net.wshmkr.launcher.util.WeatherHelper
+import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchOverlay(
-    onDismiss: () -> Unit,
-    viewModel: SearchViewModel = hiltViewModel(),
+fun WeatherLocationOverlay(
+    navController: NavController,
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     BackHandler {
-        onDismiss()
+        navController.popBackStack()
     }
 
     var isVisible by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) {
         isVisible = true
+    }
+
+    var query by rememberSaveable { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<WeatherHelper.GeocodingResult>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var hasError by remember { mutableStateOf(false) }
+
+    LaunchedEffect(query) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.isBlank()) {
+            results = emptyList()
+            isLoading = false
+            hasError = false
+            return@LaunchedEffect
+        }
+        delay(400)
+        isLoading = true
+        val fetched = WeatherHelper.fetchGeocodingResults(trimmedQuery)
+        hasError = fetched == null
+        results = fetched ?: emptyList()
+        isLoading = false
     }
 
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
-    val activeProfiles by viewModel.activeProfiles.collectAsState()
 
     var totalDragY by remember { mutableFloatStateOf(0f) }
     val offsetY = remember { Animatable(0f) }
 
-    val nestedScrollConnection = remember(keyboardController, onDismiss, viewModel) {
+    val dismissOverlay: () -> Unit = {
+        keyboardController?.hide()
+        navController.popBackStack()
+    }
+
+    val nestedScrollConnection = remember(keyboardController, listState, coroutineScope) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val isCurrentlyAtTop = listState.firstVisibleItemIndex == 0 && 
-                                       listState.firstVisibleItemScrollOffset == 0
-                
+                val isCurrentlyAtTop =
+                    listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+
                 if (isCurrentlyAtTop && available.y > 0) {
                     totalDragY += available.y
                     coroutineScope.launch {
@@ -88,16 +119,14 @@ fun SearchOverlay(
                 }
                 return Offset.Zero
             }
-            
+
             override suspend fun onPreFling(available: Velocity): Velocity {
                 return if (totalDragY > 0) available else Velocity.Zero
             }
-            
+
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (totalDragY > VERTICAL_SWIPE_SENSITIVITY) {
-                    viewModel.clearSearch()
-                    keyboardController?.hide()
-                    onDismiss()
+                    dismissOverlay()
                 } else if (totalDragY > 0) {
                     offsetY.animateTo(
                         targetValue = 0f,
@@ -119,12 +148,10 @@ fun SearchOverlay(
 
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.clearSearch()
+            query = ""
         }
     }
 
-    AppLauncher(launchAppIntent = viewModel.launchAppIntent)
-    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -147,15 +174,15 @@ fun SearchOverlay(
                 SearchBar(
                     inputField = {
                         SearchBarDefaults.InputField(
-                            query = viewModel.searchQuery,
-                            onQueryChange = viewModel::updateSearchQuery,
-                            onSearch = viewModel::onSearch,
+                            query = query,
+                            onQueryChange = { query = it },
+                            onSearch = { },
                             expanded = false,
                             onExpandedChange = { },
                             modifier = Modifier.focusRequester(focusRequester),
                             placeholder = {
                                 Text(
-                                    text = "Search apps",
+                                    text = "Enter weather location",
                                     color = Color.Gray
                                 )
                             }
@@ -173,15 +200,66 @@ fun SearchOverlay(
                     .padding(horizontal = 16.dp)
                     .nestedScroll(nestedScrollConnection)
             ) {
-                items(
-                    items = viewModel.searchListItems,
-                    key = { item -> item.appInfo.key },
-                ) { item ->
-                    AppListItem(
-                        appInfo = item.appInfo,
-                        activeProfiles = activeProfiles,
-                        viewModel = viewModel,
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    MenuOption(
+                        icon = LocationOnIcon(),
+                        text = "Use device location",
+                        color = Color.White,
+                        onClick = {
+                            viewModel.clearWeatherLocation()
+                            dismissOverlay()
+                        }
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                        }
+                    }
+                } else if (hasError) {
+                    item {
+                        Text(
+                            text = "Couldn't reach search. Check your connection.",
+                            color = Color.Gray,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                } else if (query.isNotBlank() && results.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No results",
+                            color = Color.Gray,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                items(results) { result ->
+                    MenuOption(
+                        text = result.name,
+                        subtext = result.regionLabel,
+                        color = Color.White,
+                        onClick = {
+                            viewModel.setWeatherLocation(
+                                name = result.displayName,
+                                latitude = result.latitude,
+                                longitude = result.longitude
+                            )
+                            dismissOverlay()
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
