@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,14 +50,31 @@ fun WeatherWidget(
     var hasPermission by remember(hasStaticLocation) {
         mutableStateOf(if (hasStaticLocation) true else WeatherHelper.isLocationGranted(context))
     }
-    var weatherState by remember(useFahrenheit) { mutableStateOf<WeatherState>(WeatherState.Idle) }
+    var weatherState by remember { mutableStateOf<WeatherState>(WeatherState.Idle) }
+    var retryTrigger by remember { mutableIntStateOf(0) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted -> hasPermission = granted }
     )
 
-    LaunchedEffect(hasPermission, useFahrenheit, weatherLocationLatitude, weatherLocationLongitude) {
+    // On a unit change, re-display the current reading converted locally so the
+    // widget updates instantly; the fetch loop below then refreshes it.
+    LaunchedEffect(useFahrenheit) {
+        val current = weatherState
+        if (current is WeatherState.Ready && current.isFahrenheit != useFahrenheit) {
+            weatherState = current.copy(
+                temperature = WeatherHelper.convertTemperature(
+                    current.temperature,
+                    fromFahrenheit = current.isFahrenheit,
+                    toFahrenheit = useFahrenheit
+                ),
+                isFahrenheit = useFahrenheit
+            )
+        }
+    }
+
+    LaunchedEffect(hasPermission, useFahrenheit, weatherLocationLatitude, weatherLocationLongitude, retryTrigger) {
         if (!hasPermission) {
             weatherState = WeatherState.Idle
             return@LaunchedEffect
@@ -90,7 +108,8 @@ fun WeatherWidget(
             if (!hasStaticLocation) {
                 locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             }
-        }
+        },
+        onRetry = { retryTrigger++ }
     )
 }
 
@@ -99,7 +118,8 @@ private fun WeatherContent(
     state: WeatherState,
     hasPermission: Boolean,
     modifier: Modifier = Modifier,
-    onRequestPermission: () -> Unit
+    onRequestPermission: () -> Unit,
+    onRetry: () -> Unit
 ) {
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
         color = Color.White,
@@ -161,11 +181,11 @@ private fun WeatherContent(
         state is WeatherState.Error -> {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier
+                modifier = modifier.clickable { onRetry() }
             ) {
                 Icon(
                     painter = HelpIcon(),
-                    contentDescription = "Weather unavailable",
+                    contentDescription = "Weather unavailable, tap to retry",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp)
                 )

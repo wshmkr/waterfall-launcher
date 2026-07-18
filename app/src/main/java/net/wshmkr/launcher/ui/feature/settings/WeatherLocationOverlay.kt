@@ -73,17 +73,21 @@ fun WeatherLocationOverlay(
     var query by rememberSaveable { mutableStateOf("") }
     var results by remember { mutableStateOf<List<WeatherHelper.GeocodingResult>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var hasError by remember { mutableStateOf(false) }
 
     LaunchedEffect(query) {
         val trimmedQuery = query.trim()
         if (trimmedQuery.isBlank()) {
             results = emptyList()
             isLoading = false
+            hasError = false
             return@LaunchedEffect
         }
         delay(400)
         isLoading = true
-        results = WeatherHelper.fetchGeocodingResults(trimmedQuery)
+        val fetched = WeatherHelper.fetchGeocodingResults(trimmedQuery)
+        hasError = fetched == null
+        results = fetched ?: emptyList()
         isLoading = false
     }
 
@@ -221,6 +225,15 @@ fun WeatherLocationOverlay(
                             CircularProgressIndicator(color = Color.White)
                         }
                     }
+                } else if (hasError) {
+                    item {
+                        Text(
+                            text = "Couldn't reach search. Check your connection.",
+                            color = Color.Gray,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 } else if (query.isNotBlank() && results.isEmpty()) {
                     item {
                         Text(
@@ -235,9 +248,7 @@ fun WeatherLocationOverlay(
                 items(results) { result ->
                     MenuOption(
                         text = result.name,
-                        subtext = listOfNotNull(result.admin1, result.country)
-                            .joinToString(", ")
-                            .takeIf { it.isNotBlank() },
+                        subtext = result.regionLabel,
                         color = Color.White,
                         onClick = {
                             viewModel.setWeatherLocation(

@@ -136,10 +136,15 @@ object WeatherHelper {
             }
         }
 
+    /**
+     * Returns matching locations, or null when the lookup could not be
+     * completed (network/API error). An empty list means the query ran but
+     * matched nothing — callers should distinguish the two.
+     */
     suspend fun fetchGeocodingResults(
         query: String,
         language: String = Locale.getDefault().language
-    ): List<GeocodingResult> = withContext(Dispatchers.IO) {
+    ): List<GeocodingResult>? = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
         val encodedQuery = URLEncoder.encode(query, "UTF-8")
         val url = "$GEOCODING_API_URL?name=$encodedQuery&count=10&language=$language&format=json"
@@ -152,7 +157,7 @@ object WeatherHelper {
 
             val responseCode = connection.responseCode
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext emptyList()
+                return@withContext null
             }
             val response = connection.inputStream.bufferedReader().use { it.readText() }
             val json = JSONObject(response)
@@ -165,6 +170,7 @@ object WeatherHelper {
                     val longitude = item.optDouble("longitude")
                     if (latitude.isNaN() || longitude.isNaN()) continue
                     val admin1 = item.optString("admin1").takeIf { it.isNotBlank() }
+                    val admin2 = item.optString("admin2").takeIf { it.isNotBlank() }
                     val country = item.optString("country").takeIf { it.isNotBlank() }
                     add(
                         GeocodingResult(
@@ -172,13 +178,14 @@ object WeatherHelper {
                             latitude = latitude,
                             longitude = longitude,
                             admin1 = admin1,
+                            admin2 = admin2,
                             country = country
                         )
                     )
                 }
             }
         } catch (e: Exception) {
-            emptyList()
+            null
         } finally {
             connection.disconnect()
         }
@@ -258,11 +265,26 @@ object WeatherHelper {
         val latitude: Double,
         val longitude: Double,
         val admin1: String?,
+        val admin2: String?,
         val country: String?,
     ) {
+        /** Concise label persisted as the chosen location's name. */
         val displayName: String
             get() = listOfNotNull(name, admin1, country).joinToString(", ")
+
+        /** Region hierarchy shown under the name to disambiguate duplicates. */
+        val regionLabel: String?
+            get() = listOfNotNull(admin2, admin1, country)
+                .joinToString(", ")
+                .takeIf { it.isNotBlank() }
     }
+
+    fun convertTemperature(value: Double, fromFahrenheit: Boolean, toFahrenheit: Boolean): Double =
+        when {
+            fromFahrenheit == toFahrenheit -> value
+            toFahrenheit -> value * 9 / 5 + 32
+            else -> (value - 32) * 5 / 9
+        }
 
     fun WeatherState.Ready.toCached(latitude: Double, longitude: Double): CachedWeather = CachedWeather(
         temperature = temperature,
