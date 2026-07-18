@@ -29,8 +29,7 @@ class MediaSessionRepository @Inject constructor(
     private val notificationListenerComponent =
         ComponentName(context, LauncherNotificationListenerService::class.java)
 
-    // Requires notification listener access; without it the flow just emits an
-    // empty session. Collectors gate on the permission and resubscribe once granted.
+    // Without notification listener access this emits an empty session; collectors resubscribe once granted.
     val activeMediaSession: Flow<ActiveMediaSession> = callbackFlow {
         val mediaSessionManager =
             context.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
@@ -97,7 +96,7 @@ class MediaSessionRepository @Inject constructor(
                 handler
             )
         } catch (e: SecurityException) {
-            // Notification access is not granted; refreshActiveSessions below emits empty.
+            // No notification access; refreshActiveSessions() below emits empty.
         }
         refreshActiveSessions()
 

@@ -25,8 +25,7 @@ fun WidgetsScreen(
 ) {
     var showAddWidget by remember { mutableStateOf(false) }
 
-    // AddWidgetView registers its own BackHandler while visible, so this one only
-    // handles back presses from the manage-widgets list.
+    // AddWidgetView's own BackHandler takes precedence while it is visible.
     BackHandler {
         navController.popBackStack()
     }

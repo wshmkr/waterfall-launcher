@@ -8,8 +8,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
-// The observer receives a catch-up ON_RESUME when attached to an already-resumed
-// lifecycle, so the action also runs once on first composition.
+// A catch-up ON_RESUME fires on addObserver, so the action also runs on first composition.
 @Composable
 fun OnResumeEffect(action: () -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
