@@ -6,11 +6,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
+import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import androidx.compose.runtime.mutableStateListOf
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.wshmkr.launcher.datastore.AppPreferencesDataSource
 import net.wshmkr.launcher.datastore.UsageDataSource
@@ -26,18 +31,45 @@ class AppsRepository @Inject constructor(
 ) {
     private val launcherApps: LauncherApps = application.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     private val userManager: UserManager = application.getSystemService(Context.USER_SERVICE) as UserManager
-    
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
-    
+
     val activeProfiles = MutableStateFlow<Set<UserHandle>>(emptySet())
-    
+
+    private val appComparator =
+        compareBy<AppInfo> { it.label.lowercase() }.thenBy { it.userHandle.hashCode() }
+
     private val profileStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             updateActiveProfiles()
         }
     }
-    
+
+    private val launcherAppsCallback = object : LauncherApps.Callback() {
+        override fun onPackageAdded(packageName: String, user: UserHandle) {
+            scope.launch { syncPackage(packageName, user) }
+        }
+
+        override fun onPackageRemoved(packageName: String, user: UserHandle) {
+            removePackage(packageName, user)
+        }
+
+        override fun onPackageChanged(packageName: String, user: UserHandle) {
+            scope.launch { syncPackage(packageName, user) }
+        }
+
+        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
+            scope.launch { packageNames.forEach { syncPackage(it, user) } }
+        }
+
+        override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
+            packageNames.forEach { removePackage(it, user) }
+        }
+    }
+
     init {
         updateActiveProfiles()
         val filter = IntentFilter().apply {
@@ -46,6 +78,7 @@ class AppsRepository @Inject constructor(
             addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
         }
         application.registerReceiver(profileStateReceiver, filter)
+        launcherApps.registerCallback(launcherAppsCallback)
     }
     
     private fun updateActiveProfiles() {
@@ -86,24 +119,56 @@ class AppsRepository @Inject constructor(
                 if (!seen.add(appPackageName to userHandle)) continue
                 if (appPackageName == application.packageName) continue
 
-                val applicationInfo = activity.applicationInfo
-                val isSystemApp = applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
-
-                val appInfo = AppInfo(
-                    label = activity.label.toString(),
-                    packageName = appPackageName,
-                    icon = activity.getBadgedIcon(0),
-                    userHandle = userHandle,
-                    isSystemApp = isSystemApp,
-                    isFavorite = favorites.contains(appPackageName),
-                    isHidden = hidden.contains(appPackageName),
-                    doNotSuggest = doNotSuggest.contains(appPackageName),
-                )
-                allApps.add(appInfo)
+                allApps.add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
             }
         }
 
-        allApps.sortWith(compareBy<AppInfo> { it.label.lowercase() }.thenBy { it.userHandle.hashCode() })
+        allApps.sortWith(appComparator)
+    }
+
+    private fun buildAppInfo(
+        activity: LauncherActivityInfo,
+        userHandle: UserHandle,
+        favorites: Set<String>,
+        hidden: Set<String>,
+        doNotSuggest: Set<String>,
+    ): AppInfo {
+        val appPackageName = activity.componentName.packageName
+        val isSystemApp = activity.applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
+
+        return AppInfo(
+            label = activity.label.toString(),
+            packageName = appPackageName,
+            icon = activity.getBadgedIcon(0),
+            userHandle = userHandle,
+            isSystemApp = isSystemApp,
+            isFavorite = favorites.contains(appPackageName),
+            isHidden = hidden.contains(appPackageName),
+            doNotSuggest = doNotSuggest.contains(appPackageName),
+        )
+    }
+
+    private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
+        if (packageName == application.packageName) return
+
+        allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
+
+        val activity = try {
+            launcherApps.getActivityList(packageName, userHandle)?.firstOrNull()
+        } catch (_: Exception) {
+            null
+        } ?: return
+
+        val favorites = appPreferencesDataSource.getFavorites(userHandle)
+        val hidden = appPreferencesDataSource.getHidden(userHandle)
+        val doNotSuggest = appPreferencesDataSource.getDoNotSuggest(userHandle)
+
+        allApps.add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
+        allApps.sortWith(appComparator)
+    }
+
+    private fun removePackage(packageName: String, userHandle: UserHandle) {
+        allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
     }
 
     suspend fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
