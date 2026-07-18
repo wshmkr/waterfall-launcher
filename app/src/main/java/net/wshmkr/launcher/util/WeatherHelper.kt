@@ -43,17 +43,9 @@ object WeatherHelper {
     private var cachedWeather: CachedWeather? = null
     private var lastFetchTime: Long = 0L
 
-    fun getCachedWeather(): CachedWeather? = cachedWeather
-    fun getLastFetchTime(): Long = lastFetchTime
-
     fun setCachedWeather(weather: CachedWeather) {
         cachedWeather = weather
         lastFetchTime = System.currentTimeMillis()
-    }
-
-    fun clearCache() {
-        cachedWeather = null
-        lastFetchTime = 0L
     }
 
     fun isLocationGranted(context: Context): Boolean {
@@ -116,7 +108,7 @@ object WeatherHelper {
 
                 val responseCode = connection.responseCode
                 if (responseCode != HttpURLConnection.HTTP_OK) {
-                    return@withContext cachedOrError(latitude, longitude, useFahrenheit, "HTTP $responseCode")
+                    return@withContext WeatherState.Error("HTTP $responseCode")
                 }
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(response)
@@ -138,7 +130,7 @@ object WeatherHelper {
                     isFahrenheit = useFahrenheit
                 )
             } catch (e: Exception) {
-                cachedOrError(latitude, longitude, useFahrenheit, e.message ?: "Unable to load weather")
+                WeatherState.Error(e.message ?: "Unable to load weather")
             } finally {
                 connection.disconnect()
             }
@@ -171,6 +163,7 @@ object WeatherHelper {
                     val name = item.optString("name").takeIf { it.isNotBlank() } ?: continue
                     val latitude = item.optDouble("latitude")
                     val longitude = item.optDouble("longitude")
+                    if (latitude.isNaN() || longitude.isNaN()) continue
                     val admin1 = item.optString("admin1").takeIf { it.isNotBlank() }
                     val country = item.optString("country").takeIf { it.isNotBlank() }
                     add(
@@ -190,19 +183,6 @@ object WeatherHelper {
             connection.disconnect()
         }
     }
-
-    private fun cachedOrError(
-        latitude: Double,
-        longitude: Double,
-        useFahrenheit: Boolean,
-        reason: String
-    ): WeatherState =
-        getCachedWeather()?.takeIf {
-            it.latitude == latitude &&
-                it.longitude == longitude &&
-                it.isFahrenheit == useFahrenheit
-        }?.toReady(isStale = true)
-            ?: WeatherState.Error(reason)
 
     @Composable
     fun getWeatherIcon(code: Int, isNight: Boolean): Painter = when (code) {
@@ -302,16 +282,5 @@ object WeatherHelper {
         isStale = isStale,
         isFahrenheit = isFahrenheit
     )
-
-    fun isCacheValid(
-        latitude: Double,
-        longitude: Double,
-        useFahrenheit: Boolean
-    ): Boolean {
-        val cached = cachedWeather ?: return false
-        return cached.isFahrenheit == useFahrenheit &&
-            cached.latitude == latitude &&
-            cached.longitude == longitude
-    }
 }
 

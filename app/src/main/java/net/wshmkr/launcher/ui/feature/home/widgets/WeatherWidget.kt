@@ -56,7 +56,7 @@ fun WeatherWidget(
         onResult = { granted -> hasPermission = granted }
     )
 
-    LaunchedEffect(hasPermission, hasStaticLocation, useFahrenheit, weatherLocationLatitude, weatherLocationLongitude) {
+    LaunchedEffect(hasPermission, useFahrenheit, weatherLocationLatitude, weatherLocationLongitude) {
         if (!hasPermission) {
             weatherState = WeatherState.Idle
             return@LaunchedEffect

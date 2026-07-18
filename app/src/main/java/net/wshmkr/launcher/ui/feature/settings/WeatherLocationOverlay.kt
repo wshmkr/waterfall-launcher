@@ -235,7 +235,9 @@ fun WeatherLocationOverlay(
                 items(results) { result ->
                     MenuOption(
                         text = result.name,
-                        subtext = "${result.admin1}, ${result.country}",
+                        subtext = listOfNotNull(result.admin1, result.country)
+                            .joinToString(", ")
+                            .takeIf { it.isNotBlank() },
                         color = Color.White,
                         onClick = {
                             viewModel.setWeatherLocation(
