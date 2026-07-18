@@ -5,6 +5,7 @@ import android.text.format.DateFormat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -32,16 +33,16 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_USE_24_HOUR = booleanPreferencesKey("use_24_hour")
         private val KEY_USE_FAHRENHEIT = booleanPreferencesKey("use_fahrenheit")
         private val KEY_WEATHER_LOCATION_NAME = stringPreferencesKey("weather_location_name")
-        private val KEY_WEATHER_LOCATION_LAT = stringPreferencesKey("weather_location_latitude")
-        private val KEY_WEATHER_LOCATION_LON = stringPreferencesKey("weather_location_longitude")
+        private val KEY_WEATHER_LOCATION_LAT = doublePreferencesKey("weather_location_latitude")
+        private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
     }
 
     val homeWidgetSettings = dataStore.data.map { preferences ->
         val defaultUse24Hour = DateFormat.is24HourFormat(context)
         val defaultUseFahrenheit = Locale.getDefault().country == "US"
         val weatherLocationName = preferences[KEY_WEATHER_LOCATION_NAME]
-        val weatherLocationLatitude = preferences[KEY_WEATHER_LOCATION_LAT]?.toDoubleOrNull()
-        val weatherLocationLongitude = preferences[KEY_WEATHER_LOCATION_LON]?.toDoubleOrNull()
+        val weatherLocationLatitude = preferences[KEY_WEATHER_LOCATION_LAT]
+        val weatherLocationLongitude = preferences[KEY_WEATHER_LOCATION_LON]
         HomeWidgetSettings(
             showClock = preferences[KEY_SHOW_CLOCK] ?: true,
             showCalendar = preferences[KEY_SHOW_CALENDAR] ?: true,
@@ -108,8 +109,8 @@ class UserSettingsDataSource @Inject constructor(
     suspend fun setWeatherLocation(name: String, latitude: Double, longitude: Double) {
         dataStore.edit { preferences ->
             preferences[KEY_WEATHER_LOCATION_NAME] = name
-            preferences[KEY_WEATHER_LOCATION_LAT] = latitude.toString()
-            preferences[KEY_WEATHER_LOCATION_LON] = longitude.toString()
+            preferences[KEY_WEATHER_LOCATION_LAT] = latitude
+            preferences[KEY_WEATHER_LOCATION_LON] = longitude
         }
     }
 

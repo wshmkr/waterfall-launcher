@@ -5,7 +5,7 @@ import android.os.UserHandle
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
@@ -26,8 +26,7 @@ class AppPreferencesDataSource @Inject constructor(
 
     inner class PackageNameSetStore internal constructor(private val baseName: String) {
         suspend fun get(userHandle: UserHandle): Set<String> {
-            val json = dataStore.data.first()[keyForUser(userHandle)]
-            return decodeStringList(json).toSet()
+            return dataStore.data.first()[keyForUser(userHandle)] ?: emptySet()
         }
 
         suspend fun add(packageName: String, userHandle: UserHandle) {
@@ -41,13 +40,12 @@ class AppPreferencesDataSource @Inject constructor(
         private suspend fun update(userHandle: UserHandle, transform: (Set<String>) -> Set<String>) {
             dataStore.edit { preferences ->
                 val key = keyForUser(userHandle)
-                val current = decodeStringList(preferences[key]).toSet()
-                preferences[key] = encodeStringList(transform(current))
+                preferences[key] = transform(preferences[key] ?: emptySet())
             }
         }
 
-        private fun keyForUser(userHandle: UserHandle): Preferences.Key<String> {
-            return stringPreferencesKey("${baseName}_${userHandle.hashCode()}")
+        private fun keyForUser(userHandle: UserHandle): Preferences.Key<Set<String>> {
+            return stringSetPreferencesKey("${baseName}_${userHandle.hashCode()}")
         }
     }
 }
