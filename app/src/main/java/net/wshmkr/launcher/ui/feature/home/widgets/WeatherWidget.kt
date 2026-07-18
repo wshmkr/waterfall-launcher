@@ -58,8 +58,7 @@ fun WeatherWidget(
         onResult = { granted -> hasPermission = granted }
     )
 
-    // On a unit change, re-display the current reading converted locally so the
-    // widget updates instantly; the fetch loop below then refreshes it.
+    // Convert the current reading locally for an instant update; the fetch loop refreshes it after.
     LaunchedEffect(useFahrenheit) {
         val current = weatherState
         if (current is WeatherState.Ready && current.isFahrenheit != useFahrenheit) {

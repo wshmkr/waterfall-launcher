@@ -83,8 +83,7 @@ object WeatherHelper {
             return result
         }
 
-        // Fetch failed: fall back to any cached reading for this location,
-        // converting it to the requested unit, rather than showing an error.
+        // On failure, fall back to a cached reading for this location instead of showing an error.
         val sameLocationCache = cached?.takeIf {
             it.latitude == latitude && it.longitude == longitude
         }
@@ -138,11 +137,7 @@ object WeatherHelper {
             }
         }
 
-    /**
-     * Returns matching locations, or null when the lookup could not be
-     * completed (network/API error). An empty list means the query ran but
-     * matched nothing — callers should distinguish the two.
-     */
+    // Null means the lookup failed; an empty list means it succeeded but matched nothing.
     suspend fun fetchGeocodingResults(
         query: String,
         language: String = Locale.getDefault().language
@@ -270,11 +265,9 @@ object WeatherHelper {
         val admin2: String?,
         val country: String?,
     ) {
-        /** Concise label persisted as the chosen location's name. */
         val displayName: String
             get() = listOfNotNull(name, admin1, country).joinToString(", ")
 
-        /** Region hierarchy shown under the name to disambiguate duplicates. */
         val regionLabel: String?
             get() = listOfNotNull(admin2, admin1, country)
                 .joinToString(", ")
