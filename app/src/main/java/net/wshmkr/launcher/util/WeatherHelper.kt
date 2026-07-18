@@ -83,11 +83,13 @@ object WeatherHelper {
             return result
         }
 
-        return if (cacheMatches) {
-            cached!!.toReady(isStale = true)
-        } else {
-            result
+        // Fetch failed: fall back to any cached reading for this location,
+        // converting it to the requested unit, rather than showing an error.
+        val sameLocationCache = cached?.takeIf {
+            it.latitude == latitude && it.longitude == longitude
         }
+        return sameLocationCache?.toReady(isStale = true, targetFahrenheit = useFahrenheit)
+            ?: result
     }
 
     suspend fun fetchWeather(
@@ -296,13 +298,16 @@ object WeatherHelper {
         longitude = longitude
     )
 
-    private fun CachedWeather.toReady(isStale: Boolean): WeatherState.Ready = WeatherState.Ready(
-        temperature = temperature,
+    private fun CachedWeather.toReady(
+        isStale: Boolean,
+        targetFahrenheit: Boolean = isFahrenheit
+    ): WeatherState.Ready = WeatherState.Ready(
+        temperature = convertTemperature(temperature, fromFahrenheit = isFahrenheit, toFahrenheit = targetFahrenheit),
         weatherCode = weatherCode,
         sunriseTime = sunriseTime,
         sunsetTime = sunsetTime,
         isStale = isStale,
-        isFahrenheit = isFahrenheit
+        isFahrenheit = targetFahrenheit
     )
 }
 
