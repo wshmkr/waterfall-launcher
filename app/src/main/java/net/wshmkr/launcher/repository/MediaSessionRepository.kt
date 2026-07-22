@@ -177,12 +177,11 @@ class MediaSessionRepository @Inject constructor(
             val metadata = controller.metadata
             val playbackState = controller.playbackState
 
-            val mediaInfo = if (
+            val snapshotUnchanged =
                 controller === lastControllerRef &&
                 metadata === lastMetadata &&
-                playbackState === lastPlaybackState &&
-                lastMediaInfo != null
-            ) {
+                playbackState === lastPlaybackState
+            val mediaInfo = if (snapshotUnchanged && lastMediaInfo != null) {
                 lastMediaInfo
             } else {
                 val extracted = extractMediaInfo(controller, metadata, playbackState)
