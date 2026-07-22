@@ -141,26 +141,25 @@ object WeatherHelper {
         val results = json.optJSONArray("results") ?: return emptyList()
         return buildList {
             for (index in 0 until results.length()) {
-                val item = results.optJSONObject(index) ?: continue
-                val name = item.optString("name").takeIf { it.isNotBlank() } ?: continue
-                val latitude = item.optDouble("latitude")
-                val longitude = item.optDouble("longitude")
-                if (latitude.isNaN() || longitude.isNaN()) continue
-                val admin1 = item.optString("admin1").takeIf { it.isNotBlank() }
-                val admin2 = item.optString("admin2").takeIf { it.isNotBlank() }
-                val country = item.optString("country").takeIf { it.isNotBlank() }
-                add(
-                    GeocodingResult(
-                        name = name,
-                        latitude = latitude,
-                        longitude = longitude,
-                        admin1 = admin1,
-                        admin2 = admin2,
-                        country = country
-                    )
-                )
+                parseGeocodingResult(results.optJSONObject(index))?.let(::add)
             }
         }
+    }
+
+    private fun parseGeocodingResult(item: JSONObject?): GeocodingResult? {
+        if (item == null) return null
+        val name = item.optString("name").takeIf { it.isNotBlank() } ?: return null
+        val latitude = item.optDouble("latitude")
+        val longitude = item.optDouble("longitude")
+        if (latitude.isNaN() || longitude.isNaN()) return null
+        return GeocodingResult(
+            name = name,
+            latitude = latitude,
+            longitude = longitude,
+            admin1 = item.optString("admin1").takeIf { it.isNotBlank() },
+            admin2 = item.optString("admin2").takeIf { it.isNotBlank() },
+            country = item.optString("country").takeIf { it.isNotBlank() }
+        )
     }
 
     private suspend fun httpGetJson(url: String): Result<JSONObject> =

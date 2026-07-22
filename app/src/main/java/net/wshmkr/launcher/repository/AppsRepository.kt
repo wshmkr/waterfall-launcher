@@ -118,11 +118,10 @@ class AppsRepository @Inject constructor(
 
                     for (activity in activities) {
                         val appPackageName = activity.componentName.packageName
-
-                        if (!seen.add(appPackageName to userHandle)) continue
-                        if (appPackageName == application.packageName) continue
-
-                        add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
+                        val isNewPackage = seen.add(appPackageName to userHandle)
+                        if (isNewPackage && appPackageName != application.packageName) {
+                            add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
+                        }
                     }
                 }
             }.sortedWith(appComparator)

@@ -1,8 +1,5 @@
 # Overlay on top of detekt defaults (via --build-upon-default-config).
 # Only lists overrides; every unmentioned rule keeps its default behavior.
-#
-# TODO: rules marked "revisit" below are turned off to unblock CI on the
-# existing codebase; re-enable and fix the flagged code in a follow-up.
 
 complexity:
   LongMethod:
@@ -27,12 +24,8 @@ exceptions:
 naming:
   FunctionNaming:
     ignoreAnnotated: ['Composable']
-  MatchingDeclarationName:
-    active: false  # revisit: AppNavigation.kt → Screen, MenuOption.kt → MenuOptionTextSize
 
 style:
-  LoopWithTooManyJumpStatements:
-    active: false  # revisit: AppsRepository.kt:119, WeatherHelper.kt:143
   MagicNumber:
     active: false
   UnusedPrivateMember:
@@ -43,8 +36,6 @@ style:
     maxLineLength: 160
   ForbiddenComment:
     active: false
-  NewLineAtEndOfFile:
-    active: false  # revisit: 4 files missing final newline; .editorconfig will keep new files clean
   WildcardImport:
     excludes:
       - '**/test/**'

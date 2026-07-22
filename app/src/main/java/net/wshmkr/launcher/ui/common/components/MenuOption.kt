@@ -26,11 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-
-enum class MenuOptionTextSize {
-    Small, Medium, Large
-}
-
 @Composable
 fun MenuOption(
     icon: Painter? = null,
