@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package net.wshmkr.launcher.ui.common.components
 
 import androidx.compose.foundation.clickable
@@ -25,6 +27,10 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+enum class MenuOptionTextSize {
+    Small, Medium, Large
+}
 
 @Composable
 fun MenuOption(

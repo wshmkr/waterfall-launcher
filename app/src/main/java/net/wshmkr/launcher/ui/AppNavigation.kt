@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package net.wshmkr.launcher.ui
 
 import androidx.compose.animation.core.tween
@@ -18,6 +20,13 @@ import net.wshmkr.launcher.ui.feature.settings.WeatherLocationOverlay
 import net.wshmkr.launcher.ui.feature.widgets.WidgetsScreen
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 import net.wshmkr.launcher.viewmodel.HomeViewModel
+
+sealed class Screen(val route: String) {
+    data object Home : Screen("home")
+    data object Settings : Screen("settings")
+    data object WidgetList : Screen("widgets")
+    data object WeatherLocation : Screen("weather_location")
+}
 
 @Composable
 fun AppNavigation(
