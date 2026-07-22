@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.util.Log
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +13,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -29,22 +33,23 @@ class WidgetViewModel @Inject constructor(
     private val userSettingsDataSource: UserSettingsDataSource,
 ) : ViewModel() {
 
-    var widgetIds by mutableStateOf<List<Int>>(emptyList())
+    var widgetIds by mutableStateOf<ImmutableList<Int>>(persistentListOf())
         private set
 
-    var widgetAppListItems by mutableStateOf<List<WidgetAppListItem>>(emptyList())
+    var widgetAppListItems by mutableStateOf<ImmutableList<WidgetAppListItem>>(persistentListOf())
         private set
 
-    var managedWidgets by mutableStateOf<List<ManagedWidget>>(emptyList())
+    var managedWidgets by mutableStateOf<ImmutableList<ManagedWidget>>(persistentListOf())
         private set
 
     var backgroundUri by mutableStateOf<String?>(null)
         private set
 
-    val alphabetLetters by derivedStateOf {
+    val alphabetLetters: ImmutableList<String> by derivedStateOf {
         widgetAppListItems
             .filterIsInstance<WidgetAppListItem.SectionHeader>()
             .map { it.letter }
+            .toImmutableList()
     }
 
     var activeLetter by mutableStateOf<String?>(null)
@@ -57,7 +62,7 @@ class WidgetViewModel @Inject constructor(
         viewModelScope.launch {
             widgetRepository.loadWidgets()
             widgetRepository.widgetIds.collect {
-                widgetIds = it
+                widgetIds = it.toImmutableList()
                 refreshManagedWidgets(it)
             }
         }
@@ -136,14 +141,14 @@ class WidgetViewModel @Inject constructor(
                     appName = appName,
                     appIcon = icon
                 )
-            }
+            }.toImmutableList()
         }
 
         managedWidgets = items
     }
 
-    private fun buildWidgetAppListItems(providers: List<WidgetProviderAppInfo>): List<WidgetAppListItem> {
-        if (providers.isEmpty()) return emptyList()
+    private fun buildWidgetAppListItems(providers: List<WidgetProviderAppInfo>): ImmutableList<WidgetAppListItem> {
+        if (providers.isEmpty()) return persistentListOf()
 
         val items = mutableListOf<WidgetAppListItem>()
         var currentLetter: String? = null
@@ -159,7 +164,7 @@ class WidgetViewModel @Inject constructor(
                     widgetInfo.loadLabel(widgetRepository.packageManager)?.toString()
                 }.getOrNull() ?: widgetInfo.provider.className
                 WidgetOption(info = widgetInfo, label = label)
-            }
+            }.toImmutableList()
             items.add(
                 WidgetAppListItem.Provider(
                     packageName = provider.packageName,
@@ -172,7 +177,7 @@ class WidgetViewModel @Inject constructor(
             )
         }
 
-        return items
+        return items.toImmutableList()
     }
 
     fun onWidgetOptionSelected(option: WidgetOption) {
@@ -192,6 +197,7 @@ class WidgetViewModel @Inject constructor(
     }
 }
 
+@Immutable
 sealed class WidgetAppListItem {
     data class SectionHeader(val letter: String) : WidgetAppListItem()
     data class Provider(
@@ -200,15 +206,17 @@ sealed class WidgetAppListItem {
         val letter: String,
         val icon: Drawable?,
         val widgetCount: Int,
-        val widgets: List<WidgetOption>
+        val widgets: ImmutableList<WidgetOption>
     ) : WidgetAppListItem()
 }
 
+@Immutable
 data class WidgetOption(
     val info: AppWidgetProviderInfo,
     val label: String
 )
 
+@Immutable
 data class ManagedWidget(
     val widgetId: Int,
     val widgetName: String,

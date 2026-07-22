@@ -56,16 +56,27 @@ fun WeatherLocationOverlay(
     }
 
     val keyboardController = LocalSoftwareKeyboardController.current
-    val dismissOverlay: () -> Unit = {
-        keyboardController?.hide()
-        navController.popBackStack()
+    val dismissOverlay = remember(keyboardController, navController) {
+        {
+            keyboardController?.hide()
+            navController.popBackStack()
+            Unit
+        }
+    }
+    val onQueryChange = remember { { value: String -> query = value } }
+    val onDismissRequest = remember(navController) { { navController.popBackStack(); Unit } }
+    val onUseDeviceLocation = remember(viewModel, dismissOverlay) {
+        {
+            viewModel.clearWeatherLocation()
+            dismissOverlay()
+        }
     }
 
     SearchOverlayScaffold(
         query = { query },
-        onQueryChange = { query = it },
+        onQueryChange = onQueryChange,
         placeholder = "Enter weather location",
-        onDismiss = { navController.popBackStack() },
+        onDismiss = onDismissRequest,
     ) {
         item {
             Spacer(modifier = Modifier.height(8.dp))
@@ -73,10 +84,7 @@ fun WeatherLocationOverlay(
                 icon = LocationOnIcon(),
                 text = "Use device location",
                 color = Color.White,
-                onClick = {
-                    viewModel.clearWeatherLocation()
-                    dismissOverlay()
-                }
+                onClick = onUseDeviceLocation
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -112,12 +120,12 @@ fun WeatherLocationOverlay(
             }
         }
 
-        items(results) { result ->
-            MenuOption(
-                text = result.name,
-                subtext = result.regionLabel,
-                color = Color.White,
-                onClick = {
+        items(
+            items = results,
+            key = { result -> "${result.latitude},${result.longitude}:${result.displayName}" }
+        ) { result ->
+            val onSelect = remember(result, viewModel, dismissOverlay) {
+                {
                     viewModel.setWeatherLocation(
                         name = result.displayName,
                         latitude = result.latitude,
@@ -125,6 +133,12 @@ fun WeatherLocationOverlay(
                     )
                     dismissOverlay()
                 }
+            }
+            MenuOption(
+                text = result.name,
+                subtext = result.regionLabel,
+                color = Color.White,
+                onClick = onSelect
             )
             Spacer(modifier = Modifier.height(8.dp))
         }

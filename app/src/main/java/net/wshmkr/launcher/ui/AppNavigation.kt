@@ -2,6 +2,9 @@
 
 package net.wshmkr.launcher.ui
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -28,22 +32,30 @@ sealed class Screen(val route: String) {
     data object WeatherLocation : Screen("weather_location")
 }
 
+private val NavRootModifier = Modifier
+    .fillMaxSize()
+    .background(Color.Black)
+
+private val NavFadeIn: EnterTransition = fadeIn(animationSpec = tween(500))
+private val NavFadeOut: ExitTransition = fadeOut(animationSpec = tween(500))
+
+private val NavEnterTransition:
+    AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = { NavFadeIn }
+private val NavExitTransition:
+    AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = { NavFadeOut }
+
 @Composable
 fun AppNavigation(
     navController: NavHostController,
     homeViewModel: HomeViewModel,
     widgetViewModel: WidgetViewModel
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
+    Box(modifier = NavRootModifier) {
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
-            enterTransition = { fadeIn(animationSpec = tween(500)) },
-            exitTransition = { fadeOut(animationSpec = tween(500)) },
+            enterTransition = NavEnterTransition,
+            exitTransition = NavExitTransition,
         ) {
             composable(route = Screen.Home.route) {
                 HomeScreen(

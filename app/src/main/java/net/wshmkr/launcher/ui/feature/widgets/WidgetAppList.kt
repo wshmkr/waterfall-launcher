@@ -11,16 +11,17 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.feature.home.SectionHeaderItem
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
+import net.wshmkr.launcher.viewmodel.WidgetOption
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable
@@ -32,15 +33,8 @@ fun WidgetAppList(
     onWidgetSelected: () -> Unit = {},
 ) {
     val widgetListItems = viewModel.widgetAppListItems
-    var expandedProviders by remember { mutableStateOf(setOf<String>()) }
-    
-    fun toggleProvider(packageName: String) {
-        expandedProviders = if (expandedProviders.contains(packageName)) {
-            expandedProviders - packageName
-        } else {
-            expandedProviders + packageName
-        }
-    }
+    // Per-key snapshot map: expanding one provider only invalidates readers of that key.
+    val expandedProviders = remember { mutableStateMapOf<String, Boolean>() }
 
     Box(
         modifier = modifier
@@ -78,19 +72,32 @@ fun WidgetAppList(
                         }
 
                         is WidgetAppListItem.Provider -> {
-                            val isExpanded = expandedProviders.contains(listItem.packageName)
+                            val isExpanded = expandedProviders[listItem.packageName] == true
                             val targetAlpha = viewModel.getAlpha(listItem.letter)
                             val isActiveLetter = viewModel.activeLetter == listItem.letter
-                            WidgetProviderGroup(
-                                provider = listItem,
-                                isExpanded = isExpanded,
+                            val animatedAlpha by animateLetterFilterAlpha(
                                 targetAlpha = targetAlpha,
                                 isActiveLetter = isActiveLetter,
-                                onProviderClick = { toggleProvider(listItem.packageName) },
-                                onWidgetSelected = { option ->
+                                label = "widget_provider_alpha"
+                            )
+                            val onProviderClick = remember(listItem.packageName) {
+                                {
+                                    val pkg = listItem.packageName
+                                    expandedProviders[pkg] = !(expandedProviders[pkg] == true)
+                                }
+                            }
+                            val onWidgetClick = remember(listItem.packageName, onWidgetSelected) {
+                                { option: WidgetOption ->
                                     viewModel.onWidgetOptionSelected(option)
                                     onWidgetSelected()
                                 }
+                            }
+                            WidgetProviderGroup(
+                                provider = listItem,
+                                isExpanded = isExpanded,
+                                animatedAlpha = animatedAlpha,
+                                onProviderClick = onProviderClick,
+                                onWidgetSelected = onWidgetClick
                             )
 
                             if (index < widgetListItems.size - 1 && widgetListItems[index + 1] is WidgetAppListItem.Provider) {

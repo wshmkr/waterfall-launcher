@@ -7,9 +7,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
@@ -29,7 +32,34 @@ fun HomeScreenSettings(
     navController: NavController,
     viewModel: SettingsViewModel
 ) {
-    val settings = viewModel.homeWidgetSettings
+    SettingsSectionHeader("Home Screen")
+
+    ChangeWallpaperRow(context = context, viewModel = viewModel)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    ClockRow(viewModel = viewModel)
+    Use24HourRow(viewModel = viewModel)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    CalendarRow(viewModel = viewModel)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    WeatherRow(viewModel = viewModel)
+    UseFahrenheitRow(viewModel = viewModel)
+    WeatherLocationRow(navController = navController, viewModel = viewModel)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    MediaControlsRow(viewModel = viewModel)
+
+    Spacer(modifier = Modifier.height(8.dp))
+    ManageWidgetsRow(navController = navController)
+}
+
+@Composable
+private fun ChangeWallpaperRow(
+    context: Context,
+    viewModel: SettingsViewModel,
+) {
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -41,107 +71,133 @@ fun HomeScreenSettings(
             viewModel.setBackgroundUri(it)
         }
     }
-
-    SettingsSectionHeader("Home Screen")
+    val onPick = remember(imagePickerLauncher) {
+        { imagePickerLauncher.launch(arrayOf("image/*")) }
+    }
 
     MenuOption(
         icon = WallpaperIcon(),
         text = "Change wallpaper",
         color = Color.White,
-        onClick = {
-            imagePickerLauncher.launch(arrayOf("image/*"))
-        }
+        onClick = onPick,
     )
+}
 
-    Spacer(modifier = Modifier.height(8.dp))
-
+@Composable
+private fun ClockRow(viewModel: SettingsViewModel) {
+    val checked by viewModel.showClock.collectAsStateWithLifecycle()
+    val onChange = remember(viewModel) { viewModel::setShowClock }
     ToggleMenuOption(
         icon = ScheduleIcon(),
         text = "Clock",
         color = Color.White,
-        checked = settings.showClock,
-        onCheckedChange = { viewModel.setShowClock(it) },
+        checked = checked,
+        onCheckedChange = onChange,
     )
+}
 
+@Composable
+private fun Use24HourRow(viewModel: SettingsViewModel) {
+    val checked by viewModel.use24Hour.collectAsStateWithLifecycle()
+    val onChange = remember(viewModel) { viewModel::setUse24Hour }
     ToggleMenuOption(
         text = "Time format",
         textSize = MenuOptionTextSize.Small,
         indent = 1,
         color = Color.White,
-        checked = settings.use24Hour,
-        onCheckedChange = { viewModel.setUse24Hour(it) },
+        checked = checked,
+        onCheckedChange = onChange,
         offText = "12",
         onText = "24",
     )
+}
 
-    Spacer(modifier = Modifier.height(8.dp))
-
+@Composable
+private fun CalendarRow(viewModel: SettingsViewModel) {
+    val checked by viewModel.showCalendar.collectAsStateWithLifecycle()
+    val onChange = remember(viewModel) { viewModel::setShowCalendar }
     ToggleMenuOption(
         icon = CalendarTodayIcon(),
         text = "Calendar",
         color = Color.White,
-        checked = settings.showCalendar,
-        onCheckedChange = { viewModel.setShowCalendar(it) },
+        checked = checked,
+        onCheckedChange = onChange,
     )
+}
 
-    Spacer(modifier = Modifier.height(8.dp))
-
+@Composable
+private fun WeatherRow(viewModel: SettingsViewModel) {
+    val checked by viewModel.showWeather.collectAsStateWithLifecycle()
+    val onChange = remember(viewModel) { viewModel::setShowWeather }
     ToggleMenuOption(
         icon = PartlyCloudyDayIcon(),
         text = "Weather",
         color = Color.White,
-        checked = settings.showWeather,
-        onCheckedChange = { viewModel.setShowWeather(it) },
+        checked = checked,
+        onCheckedChange = onChange,
     )
+}
 
+@Composable
+private fun UseFahrenheitRow(viewModel: SettingsViewModel) {
+    val checked by viewModel.useFahrenheit.collectAsStateWithLifecycle()
+    val onChange = remember(viewModel) { viewModel::setUseFahrenheit }
     ToggleMenuOption(
         text = "Temperature unit",
         textSize = MenuOptionTextSize.Small,
         indent = 1,
         color = Color.White,
-        checked = settings.useFahrenheit,
-        onCheckedChange = { viewModel.setUseFahrenheit(it) },
+        checked = checked,
+        onCheckedChange = onChange,
         offText = "°C",
         onText = "°F",
     )
+}
 
-    val hasStaticWeatherLocation =
-        settings.weatherLocationLatitude != null &&
-            settings.weatherLocationLongitude != null &&
-            !settings.weatherLocationName.isNullOrBlank()
-    val weatherLocationLabel = if (hasStaticWeatherLocation) {
-        settings.weatherLocationName
-    } else {
-        "Device location"
+@Composable
+private fun WeatherLocationRow(
+    navController: NavController,
+    viewModel: SettingsViewModel,
+) {
+    val name by viewModel.weatherLocationName.collectAsStateWithLifecycle()
+    val lat by viewModel.weatherLat.collectAsStateWithLifecycle()
+    val lon by viewModel.weatherLon.collectAsStateWithLifecycle()
+    val label = if (lat != null && lon != null && !name.isNullOrBlank()) name else "Device location"
+    val onClick = remember(navController) {
+        { navController.navigate(Screen.WeatherLocation.route); Unit }
     }
-
     MenuOption(
         text = "Weather location",
-        subtext = weatherLocationLabel,
+        subtext = label,
         textSize = MenuOptionTextSize.Small,
         indent = 1,
         color = Color.White,
-        onClick = { navController.navigate(Screen.WeatherLocation.route) },
+        onClick = onClick,
     )
+}
 
-    Spacer(modifier = Modifier.height(8.dp))
-
+@Composable
+private fun MediaControlsRow(viewModel: SettingsViewModel) {
+    val checked by viewModel.showMediaControls.collectAsStateWithLifecycle()
+    val onChange = remember(viewModel) { viewModel::setShowMedia }
     ToggleMenuOption(
         icon = MusicVideoIcon(),
         text = "Media controls",
         color = Color.White,
-        checked = settings.showMediaControls,
-        onCheckedChange = { viewModel.setShowMedia(it) },
+        checked = checked,
+        onCheckedChange = onChange,
     )
+}
 
-    Spacer(modifier = Modifier.height(8.dp))
-
+@Composable
+private fun ManageWidgetsRow(navController: NavController) {
+    val onClick = remember(navController) {
+        { navController.navigate(Screen.WidgetList.route); Unit }
+    }
     MenuOption(
         icon = WidgetsIcon(),
         text = "Manage widgets",
         color = Color.White,
-        onClick = {
-            navController.navigate(Screen.WidgetList.route)
-        }
+        onClick = onClick,
     )
 }

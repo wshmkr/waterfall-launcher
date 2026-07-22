@@ -16,7 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -27,7 +28,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
 import net.wshmkr.launcher.ui.common.icons.ArrowDropUpIcon
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
@@ -38,8 +38,7 @@ import net.wshmkr.launcher.viewmodel.WidgetOption
 fun WidgetProviderGroup(
     provider: WidgetAppListItem.Provider,
     isExpanded: Boolean,
-    targetAlpha: Float,
-    isActiveLetter: Boolean,
+    animatedAlpha: Float,
     onProviderClick: () -> Unit,
     onWidgetSelected: (WidgetOption) -> Unit,
 ) {
@@ -47,8 +46,7 @@ fun WidgetProviderGroup(
         WidgetProviderRow(
             provider = provider,
             isExpanded = isExpanded,
-            targetAlpha = targetAlpha,
-            isActiveLetter = isActiveLetter,
+            animatedAlpha = animatedAlpha,
             onClick = onProviderClick
         )
         AnimatedVisibility(visible = isExpanded) {
@@ -58,15 +56,19 @@ fun WidgetProviderGroup(
                     .padding(start = 24.dp, end = 32.dp, top = 8.dp)
             ) {
                 provider.widgets.forEachIndexed { index, widgetOption ->
-                    WidgetListItem(
-                        widgetOption = widgetOption,
-                        modifier = Modifier.fillMaxWidth(),
-                        targetAlpha = targetAlpha,
-                        isActiveLetter = isActiveLetter,
-                        onClick = { onWidgetSelected(widgetOption) }
-                    )
-                    if (index != provider.widgets.lastIndex) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                    key(widgetOption.info.provider) {
+                        val onClick = remember(widgetOption, onWidgetSelected) {
+                            { onWidgetSelected(widgetOption) }
+                        }
+                        WidgetListItem(
+                            widgetOption = widgetOption,
+                            modifier = Modifier.fillMaxWidth(),
+                            animatedAlpha = animatedAlpha,
+                            onClick = onClick
+                        )
+                        if (index != provider.widgets.lastIndex) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
                     }
                 }
             }
@@ -78,24 +80,17 @@ fun WidgetProviderGroup(
 private fun WidgetProviderRow(
     provider: WidgetAppListItem.Provider,
     isExpanded: Boolean,
-    targetAlpha: Float = 1f,
-    isActiveLetter: Boolean,
+    animatedAlpha: Float,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
-    val animatedAlpha by animateLetterFilterAlpha(
-        targetAlpha = targetAlpha,
-        isActiveLetter = isActiveLetter,
-        label = "widget_row_alpha"
-    )
-
     Row(
         modifier = modifier
             .padding(start = 8.dp, end = 32.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.08f))
-            .clickable { onClick() }
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .alpha(animatedAlpha),
         verticalAlignment = Alignment.CenterVertically

@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.icons.AddIcon
@@ -39,7 +41,7 @@ import net.wshmkr.launcher.viewmodel.ManagedWidget
 
 @Composable
 fun ManageWidgetsView(
-    managedWidgets: List<ManagedWidget>,
+    managedWidgets: ImmutableList<ManagedWidget>,
     onAddWidget: () -> Unit,
     onDeleteWidget: (Int) -> Unit,
 ) {
@@ -75,9 +77,12 @@ fun ManageWidgetsView(
                     items = managedWidgets,
                     key = { item -> item.widgetId }
                 ) { widget ->
+                    val onDelete = remember(widget.widgetId, onDeleteWidget) {
+                        { onDeleteWidget(widget.widgetId) }
+                    }
                     ManagedWidgetRow(
                         item = widget,
-                        onDelete = { onDeleteWidget(widget.widgetId) },
+                        onDelete = onDelete,
                     )
                 }
 
