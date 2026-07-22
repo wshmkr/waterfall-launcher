@@ -3,11 +3,9 @@
 
 complexity:
   LongMethod:
-    active: false
+    ignoreAnnotated: ['Composable']
   LongParameterList:
-    active: false
-  TooManyFunctions:
-    active: false
+    ignoreAnnotated: ['Composable']
   CyclomaticComplexMethod:
     threshold: 20
 
@@ -29,14 +27,10 @@ style:
   MagicNumber:
     active: false
   UnusedPrivateMember:
-    active: false
+    ignoreAnnotated: ['Preview']
   ReturnCount:
-    active: false
+    max: 4
   MaxLineLength:
-    maxLineLength: 160
+    maxLineLength: 140
   ForbiddenComment:
     active: false
-  WildcardImport:
-    excludes:
-      - '**/test/**'
-      - '**/androidTest/**'

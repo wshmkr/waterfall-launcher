@@ -43,5 +43,5 @@ jobs:
         run: |
           java -jar detekt-cli.jar \
             --input app/src \
-            --config config/detekt.yml \
+            --config detekt.yml \
             --build-upon-default-config
