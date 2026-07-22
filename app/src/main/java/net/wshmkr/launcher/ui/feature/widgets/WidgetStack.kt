@@ -81,6 +81,7 @@ fun WidgetStack(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth(),
+                beyondViewportPageCount = 1,
             ) { page ->
                 WidgetPage(
                     widgetId = widgetIds[page % pageCount],
