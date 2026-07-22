@@ -1,7 +1,6 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.graphics.Bitmap
-import android.media.session.MediaController
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,19 +38,22 @@ import net.wshmkr.launcher.ui.common.icons.PlayArrowIcon
 import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
 import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
 
-
 @Composable
 fun MediaControls(
     mediaInfo: MediaInfo,
-    mediaController: MediaController?,
-    onMediaAppClick: () -> Unit
+    isPlaying: Boolean,
+    onMediaAppClick: () -> Unit,
+    onPlay: () -> Unit,
+    onPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
             .clip(RoundedCornerShape(8.dp))
-            .clickable { onMediaAppClick() }
+            .clickable(onClick = onMediaAppClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -69,8 +71,11 @@ fun MediaControls(
             )
 
             MediaControlButtons(
-                isPlaying = mediaInfo.isPlaying,
-                mediaController = mediaController
+                isPlaying = isPlaying,
+                onPlay = onPlay,
+                onPause = onPause,
+                onNext = onNext,
+                onPrevious = onPrevious,
             )
         }
     }
@@ -130,7 +135,10 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
 @Composable
 private fun MediaControlButtons(
     isPlaying: Boolean,
-    mediaController: MediaController?
+    onPlay: () -> Unit,
+    onPause: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.Start,
@@ -138,9 +146,7 @@ private fun MediaControlButtons(
         modifier = Modifier.fillMaxWidth()
     ) {
         IconButton(
-            onClick = {
-                mediaController?.transportControls?.skipToPrevious()
-            },
+            onClick = onPrevious,
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
@@ -153,32 +159,16 @@ private fun MediaControlButtons(
 
         Spacer(modifier = Modifier.width(24.dp))
 
-        IconButton(
-            onClick = {
-                mediaController?.let { controller ->
-                    if (isPlaying) {
-                        controller.transportControls.pause()
-                    } else {
-                        controller.transportControls.play()
-                    }
-                }
-            },
-            modifier = Modifier.size(56.dp)
-        ) {
-            Icon(
-                painter = if (isPlaying) PauseIcon() else PlayArrowIcon(),
-                contentDescription = if (isPlaying) "Pause" else "Play",
-                tint = Color.White,
-                modifier = Modifier.size(40.dp)
-            )
-        }
+        PlayPauseButton(
+            isPlaying = isPlaying,
+            onPlay = onPlay,
+            onPause = onPause,
+        )
 
         Spacer(modifier = Modifier.width(24.dp))
 
         IconButton(
-            onClick = {
-                mediaController?.transportControls?.skipToNext()
-            },
+            onClick = onNext,
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
@@ -188,5 +178,25 @@ private fun MediaControlButtons(
                 modifier = Modifier.size(24.dp)
             )
         }
+    }
+}
+
+// Isolated so play/pause flips don't invalidate the surrounding row.
+@Composable
+private fun PlayPauseButton(
+    isPlaying: Boolean,
+    onPlay: () -> Unit,
+    onPause: () -> Unit,
+) {
+    IconButton(
+        onClick = if (isPlaying) onPause else onPlay,
+        modifier = Modifier.size(56.dp)
+    ) {
+        Icon(
+            painter = if (isPlaying) PauseIcon() else PlayArrowIcon(),
+            contentDescription = if (isPlaying) "Pause" else "Play",
+            tint = Color.White,
+            modifier = Modifier.size(40.dp)
+        )
     }
 }

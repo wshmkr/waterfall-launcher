@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.location.LocationServices
@@ -34,6 +35,7 @@ import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.util.WeatherHelper
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
+import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -47,15 +49,16 @@ fun WeatherWidget(
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
     val hasStaticLocation = weatherLocationLatitude != null && weatherLocationLongitude != null
-    var hasPermission by remember(hasStaticLocation) {
-        mutableStateOf(if (hasStaticLocation) true else WeatherHelper.isLocationGranted(context))
-    }
+    // Raw permission state is remembered across static/dynamic toggles so flipping the source
+    // doesn't wipe an in-flight grant.
+    var rawHasPermission by remember { mutableStateOf(WeatherHelper.isLocationGranted(context)) }
+    val hasPermission = hasStaticLocation || rawHasPermission
     var weatherState by remember { mutableStateOf<WeatherState>(WeatherState.Idle) }
     var retryTrigger by remember { mutableIntStateOf(0) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted -> hasPermission = granted }
+        onResult = { granted -> rawHasPermission = granted }
     )
 
     // Convert the current reading locally for an instant update; the fetch loop refreshes it after.
@@ -143,30 +146,7 @@ private fun WeatherContent(
         }
 
         state is WeatherState.Ready -> {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier
-            ) {
-                Icon(
-                    painter = if (state.isStale) CloudOffIcon()
-                    else WeatherHelper.getWeatherIcon(
-                        state.weatherCode,
-                        WeatherHelper.isNightTime(state.sunriseTime, state.sunsetTime)
-                    ),
-                    contentDescription = "Weather",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "${state.temperature.toInt()}°${if (state.isFahrenheit) "F" else "C"}",
-                    style = textStyle
-                )
-                if (state.isStale) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "stale", style = textStyle.copy(color = Color.Gray))
-                }
-            }
+            WeatherReadyRow(state = state, modifier = modifier, textStyle = textStyle)
         }
 
         state is WeatherState.Error -> {
@@ -191,6 +171,42 @@ private fun WeatherContent(
                 color = Color.White,
                 strokeWidth = 2.dp
             )
+        }
+    }
+}
+
+@Composable
+private fun WeatherReadyRow(
+    state: WeatherState.Ready,
+    modifier: Modifier,
+    textStyle: androidx.compose.ui.text.TextStyle,
+) {
+    val now by rememberCurrentLocalTime()
+    val isNight = remember(now, state.sunriseTime, state.sunsetTime) {
+        WeatherHelper.isNightAt(now, state.sunriseTime, state.sunsetTime)
+    }
+    val iconRes = remember(state.isStale, state.weatherCode, isNight) {
+        if (state.isStale) null else WeatherHelper.weatherIconRes(state.weatherCode, isNight)
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        Icon(
+            painter = if (iconRes == null) CloudOffIcon() else painterResource(iconRes),
+            contentDescription = "Weather",
+            tint = Color.White,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "${state.temperature.toInt()}°${if (state.isFahrenheit) "F" else "C"}",
+            style = textStyle
+        )
+        if (state.isStale) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = "stale", style = textStyle.copy(color = Color.Gray))
         }
     }
 }

@@ -13,11 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,13 +22,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import net.wshmkr.launcher.util.ONE_SECOND
-import net.wshmkr.launcher.util.getCurrentDate
-import net.wshmkr.launcher.util.getCurrentTime
-import net.wshmkr.launcher.util.launchPackage
 import androidx.core.net.toUri
+import net.wshmkr.launcher.util.formatDate
+import net.wshmkr.launcher.util.formatTime
+import net.wshmkr.launcher.util.launchPackage
+import net.wshmkr.launcher.util.rememberCurrentDate
+import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
 fun ClockWidget(
@@ -46,35 +42,13 @@ fun ClockWidget(
     if (!showClock && !showCalendar && !showWeather) return
 
     val context = LocalContext.current
-    var currentTime by remember { mutableStateOf(getCurrentTime(use24Hour)) }
-    var currentDate by remember { mutableStateOf(getCurrentDate()) }
-
-    LaunchedEffect(use24Hour) {
-        while (isActive) {
-            delay(ONE_SECOND.toLong())
-            currentTime = getCurrentTime(use24Hour)
-            currentDate = getCurrentDate()
-        }
-    }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
     ) {
         if (showClock) {
-            Text(
-                text = currentTime,
-                fontSize = 48.sp,
-                color = Color.White,
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        launchClockApp(context)
-                    }
-                    .padding(horizontal = 8.dp)
-            )
+            ClockTimeText(use24Hour = use24Hour, onClick = { launchClockApp(context) })
         }
 
         if (showCalendar || showWeather) {
@@ -86,17 +60,7 @@ fun ClockWidget(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showCalendar) {
-                    Text(
-                        text = currentDate,
-                        fontSize = 16.sp,
-                        color = Color.White,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                launchCalendarApp(context)
-                            }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    ClockDateText(onClick = { launchCalendarApp(context) })
                 }
 
                 if (showCalendar && showWeather) {
@@ -124,6 +88,39 @@ fun ClockWidget(
             }
         }
     }
+}
+
+// Leaf that owns the minute tick so ancestors don't recompose each minute.
+@Composable
+private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
+    val now by rememberCurrentLocalTime()
+    val display = remember(now, use24Hour) { formatTime(now, use24Hour) }
+    Text(
+        text = display,
+        fontSize = 48.sp,
+        color = Color.White,
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp)
+    )
+}
+
+// Leaf that reads only the date state; siblings stay unaffected.
+@Composable
+private fun ClockDateText(onClick: () -> Unit) {
+    val today by rememberCurrentDate()
+    val display = remember(today) { formatDate(today) }
+    Text(
+        text = display,
+        fontSize = 16.sp,
+        color = Color.White,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    )
 }
 
 private fun launchClockApp(context: Context) {
