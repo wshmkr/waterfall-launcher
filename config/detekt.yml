@@ -30,11 +30,9 @@ naming:
   MatchingDeclarationName:
     active: false  # revisit: AppNavigation.kt → Screen, MenuOption.kt → MenuOptionTextSize
 
-performance:
+style:
   LoopWithTooManyJumpStatements:
     active: false  # revisit: AppsRepository.kt:119, WeatherHelper.kt:143
-
-style:
   MagicNumber:
     active: false
   UnusedPrivateMember:
