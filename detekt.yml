@@ -6,6 +6,10 @@ complexity:
     ignoreAnnotated: ['Composable']
   LongParameterList:
     ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    thresholdInFiles: 50
+    thresholdInClasses: 20
+    thresholdInObjects: 20
   CyclomaticComplexMethod:
     threshold: 20
 
