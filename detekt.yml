@@ -1,0 +1,44 @@
+# Overlay on top of detekt defaults (via --build-upon-default-config).
+# Only lists overrides; every unmentioned rule keeps its default behavior.
+
+complexity:
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    thresholdInFiles: 50
+    thresholdInClasses: 20
+    thresholdInObjects: 20
+  CyclomaticComplexMethod:
+    threshold: 20
+
+empty-blocks:
+  EmptyFunctionBlock:
+    ignoreOverridden: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+  SwallowedException:
+    active: false
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+
+style:
+  MagicNumber:
+    active: false
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+  ReturnCount:
+    max: 4
+  MaxLineLength:
+    maxLineLength: 140
+  ForbiddenComment:
+    active: false
+  WildcardImport:
+    excludes:
+      - '**/test/**'
+      - '**/androidTest/**'

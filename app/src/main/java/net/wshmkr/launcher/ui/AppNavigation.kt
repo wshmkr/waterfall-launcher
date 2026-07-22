@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package net.wshmkr.launcher.ui
 
 import androidx.compose.animation.core.tween
