@@ -33,6 +33,7 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_BACKGROUND_URI = stringPreferencesKey("background_uri")
         private val KEY_SHOW_CLOCK = booleanPreferencesKey("show_clock")
         private val KEY_SHOW_CALENDAR = booleanPreferencesKey("show_calendar")
+        private val KEY_SHOW_CALENDAR_EVENTS = booleanPreferencesKey("show_calendar_events")
         private val KEY_SHOW_WEATHER = booleanPreferencesKey("show_weather")
         private val KEY_SHOW_MEDIA = booleanPreferencesKey("show_media_controls")
         private val KEY_USE_24_HOUR = booleanPreferencesKey("use_24_hour")
@@ -44,6 +45,7 @@ class UserSettingsDataSource @Inject constructor(
 
     val showClock: Flow<Boolean> = perField(KEY_SHOW_CLOCK) { true }
     val showCalendar: Flow<Boolean> = perField(KEY_SHOW_CALENDAR) { true }
+    val showCalendarEvents: Flow<Boolean> = perField(KEY_SHOW_CALENDAR_EVENTS) { true }
     val showWeather: Flow<Boolean> = perField(KEY_SHOW_WEATHER) { true }
     val showMediaControls: Flow<Boolean> = perField(KEY_SHOW_MEDIA) { true }
     val use24Hour: Flow<Boolean> = perField(KEY_USE_24_HOUR) { defaultUse24Hour }
@@ -57,6 +59,7 @@ class UserSettingsDataSource @Inject constructor(
             HomeWidgetSettings(
                 showClock = preferences[KEY_SHOW_CLOCK] ?: true,
                 showCalendar = preferences[KEY_SHOW_CALENDAR] ?: true,
+                showCalendarEvents = preferences[KEY_SHOW_CALENDAR_EVENTS] ?: true,
                 showWeather = preferences[KEY_SHOW_WEATHER] ?: true,
                 showMediaControls = preferences[KEY_SHOW_MEDIA] ?: true,
                 use24Hour = preferences[KEY_USE_24_HOUR] ?: defaultUse24Hour,
@@ -95,6 +98,12 @@ class UserSettingsDataSource @Inject constructor(
     suspend fun setShowCalendar(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[KEY_SHOW_CALENDAR] = enabled
+        }
+    }
+
+    suspend fun setShowCalendarEvents(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_SHOW_CALENDAR_EVENTS] = enabled
         }
     }
 

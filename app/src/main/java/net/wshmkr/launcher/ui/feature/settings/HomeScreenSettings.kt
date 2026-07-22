@@ -42,6 +42,7 @@ fun HomeScreenSettings(
 
     Spacer(modifier = Modifier.height(8.dp))
     CalendarRow(viewModel = viewModel)
+    TodaysEventsRow(viewModel = viewModel)
 
     Spacer(modifier = Modifier.height(8.dp))
     WeatherRow(viewModel = viewModel)
@@ -119,6 +120,20 @@ private fun CalendarRow(viewModel: SettingsViewModel) {
     ToggleMenuOption(
         icon = CalendarTodayIcon(),
         text = "Calendar",
+        color = Color.White,
+        checked = checked,
+        onCheckedChange = onChange,
+    )
+}
+
+@Composable
+private fun TodaysEventsRow(viewModel: SettingsViewModel) {
+    val checked by viewModel.showCalendarEvents.collectAsStateWithLifecycle()
+    val onChange = remember(viewModel) { viewModel::setShowCalendarEvents }
+    ToggleMenuOption(
+        text = "Today's events",
+        textSize = MenuOptionTextSize.Small,
+        indent = 1,
         color = Color.White,
         checked = checked,
         onCheckedChange = onChange,

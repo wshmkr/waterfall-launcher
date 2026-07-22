@@ -33,6 +33,8 @@ class SettingsViewModel @Inject constructor(
         userSettingsDataSource.showClock.stateIn(viewModelScope, subscribed, true)
     val showCalendar: StateFlow<Boolean> =
         userSettingsDataSource.showCalendar.stateIn(viewModelScope, subscribed, true)
+    val showCalendarEvents: StateFlow<Boolean> =
+        userSettingsDataSource.showCalendarEvents.stateIn(viewModelScope, subscribed, true)
     val showWeather: StateFlow<Boolean> =
         userSettingsDataSource.showWeather.stateIn(viewModelScope, subscribed, true)
     val showMediaControls: StateFlow<Boolean> =
@@ -80,6 +82,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowCalendar(enabled: Boolean) {
         viewModelScope.launch { userSettingsDataSource.setShowCalendar(enabled) }
+    }
+
+    fun setShowCalendarEvents(enabled: Boolean) {
+        viewModelScope.launch { userSettingsDataSource.setShowCalendarEvents(enabled) }
     }
 
     fun setShowWeather(enabled: Boolean) {

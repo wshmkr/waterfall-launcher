@@ -27,6 +27,7 @@ fun PermissionSettings(
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
     var isNotificationAccessEnabled by remember { mutableStateOf(false) }
     var isLocationEnabled by remember { mutableStateOf(false) }
+    var isCalendarEnabled by remember { mutableStateOf(false) }
 
     fun checkPermissions() {
         val enabledServices = Settings.Secure.getString(
@@ -40,12 +41,21 @@ fun PermissionSettings(
 
         isLocationEnabled = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
+
+        isCalendarEnabled = context.checkSelfPermission(Manifest.permission.READ_CALENDAR) ==
+                PackageManager.PERMISSION_GRANTED
     }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         isLocationEnabled = isGranted
+    }
+
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        isCalendarEnabled = isGranted
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -67,6 +77,19 @@ fun PermissionSettings(
                 context.startActivity(intent)
             } else {
                 locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+        }
+    }
+
+    val handleCalendarClick = remember(context, calendarPermissionLauncher) {
+        { _: Boolean ->
+            if (isCalendarEnabled) {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                }
+                context.startActivity(intent)
+            } else {
+                calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
             }
         }
     }
@@ -96,6 +119,14 @@ fun PermissionSettings(
             color = Color.White,
             checked = isLocationEnabled,
             onCheckedChange = handleLocationClick,
+        )
+
+        ToggleMenuOption(
+            text = "Calendar access",
+            subtext = "Used for today's events",
+            color = Color.White,
+            checked = isCalendarEnabled,
+            onCheckedChange = handleCalendarClick,
         )
     }
 }

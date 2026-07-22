@@ -10,20 +10,24 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
+import net.wshmkr.launcher.model.CalendarEvent
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.keyFor
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
+import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import java.util.concurrent.ConcurrentHashMap
@@ -35,6 +39,7 @@ const val HOME_SCREEN_APPS = 6
 class HomeViewModel @Inject constructor(
     appsRepository: AppsRepository,
     private val notificationRepository: NotificationRepository,
+    private val calendarRepository: CalendarRepository,
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
@@ -64,6 +69,15 @@ class HomeViewModel @Inject constructor(
 
     val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val todayEvents: StateFlow<ImmutableList<CalendarEvent>> =
+        calendarRepository.observeTodayEvents()
+            .map { it.toImmutableList() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
+
+    fun refreshCalendarEvents() {
+        calendarRepository.requestRefresh()
+    }
 
     var activeLetter by mutableStateOf<String?>(null)
         private set
