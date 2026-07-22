@@ -16,6 +16,6 @@ data class MediaInfo(
             artist == other.artist &&
             isPlaying == other.isPlaying &&
             packageName == other.packageName &&
-            (albumArt == null) == (other.albumArt == null)
+            albumArt === other.albumArt
     }
 }

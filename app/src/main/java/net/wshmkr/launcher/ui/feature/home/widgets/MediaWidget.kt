@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,7 +27,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import net.wshmkr.launcher.ui.common.components.OnResumeEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
 import net.wshmkr.launcher.util.NotificationPanelHelper
@@ -44,8 +47,12 @@ fun MediaWidget(enabled: Boolean = true) {
     var hasPermission by remember {
         mutableStateOf(NotificationPanelHelper.isNotificationListenerEnabled(context))
     }
+    val isListenerConnected by LauncherNotificationListenerService.isConnected.collectAsState()
 
-    OnResumeEffect {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        hasPermission = NotificationPanelHelper.isNotificationListenerEnabled(context)
+    }
+    LaunchedEffect(isListenerConnected) {
         hasPermission = NotificationPanelHelper.isNotificationListenerEnabled(context)
     }
 

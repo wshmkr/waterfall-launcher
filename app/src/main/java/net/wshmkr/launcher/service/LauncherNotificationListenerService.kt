@@ -5,6 +5,9 @@ import android.media.session.MediaSession
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.NotificationAction
 import net.wshmkr.launcher.repository.NotificationRepository
@@ -13,12 +16,18 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class LauncherNotificationListenerService : NotificationListenerService() {
-    
+
+    companion object {
+        private val _isConnected = MutableStateFlow(false)
+        val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+    }
+
     @Inject
     lateinit var notificationRepository: NotificationRepository
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        _isConnected.value = true
         activeNotifications?.forEach {
             onNotificationPosted(it)
         }
@@ -26,6 +35,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        _isConnected.value = false
         notificationRepository.clearAll()
     }
 

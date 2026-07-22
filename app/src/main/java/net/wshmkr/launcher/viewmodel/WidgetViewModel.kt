@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.graphics.drawable.Drawable
+import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -102,6 +103,7 @@ class WidgetViewModel @Inject constructor(
             val info = widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId) ?: return null
             widgetRepository.appWidgetHost.createView(context, widgetId, info)
         } catch (e: Exception) {
+            Log.w("WidgetViewModel", "Failed to create widget view for id=$widgetId", e)
             null
         }
     }

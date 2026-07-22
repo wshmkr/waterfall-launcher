@@ -9,9 +9,12 @@ import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import javax.inject.Inject
@@ -29,8 +32,13 @@ class MediaSessionRepository @Inject constructor(
     private val notificationListenerComponent =
         ComponentName(context, LauncherNotificationListenerService::class.java)
 
-    // Without notification listener access this emits an empty session; collectors resubscribe once granted.
-    val activeMediaSession: Flow<ActiveMediaSession> = callbackFlow {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val activeMediaSession: Flow<ActiveMediaSession> =
+        LauncherNotificationListenerService.isConnected.flatMapLatest { connected ->
+            if (!connected) flowOf(ActiveMediaSession()) else activeMediaSessionFlow()
+        }
+
+    private fun activeMediaSessionFlow(): Flow<ActiveMediaSession> = callbackFlow {
         val mediaSessionManager =
             context.getSystemService(Context.MEDIA_SESSION_SERVICE) as? MediaSessionManager
         if (mediaSessionManager == null) {
@@ -39,39 +47,64 @@ class MediaSessionRepository @Inject constructor(
             return@callbackFlow
         }
 
-        val handler = Handler(Looper.getMainLooper())
-        var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
-        var lastMediaInfo: MediaInfo? = null
+        val tracker = ActiveSessionTracker(
+            manager = mediaSessionManager,
+            listenerComponent = notificationListenerComponent,
+            handler = Handler(Looper.getMainLooper()),
+            emit = { trySend(it) },
+        )
+        tracker.start()
+        awaitClose { tracker.stop() }
+    }
 
-        fun publish() {
-            val controller = trackedControllers
-                .map { (controller, _) -> controller }
-                .firstOrNull { it.metadata != null && it.playbackState != null }
-            val extracted = controller?.let(::extractMediaInfo)
-            val mediaInfo = if (extracted?.hasSameDisplayContentAs(lastMediaInfo) == true) {
-                lastMediaInfo
-            } else {
-                extracted
+    private class ActiveSessionTracker(
+        private val manager: MediaSessionManager,
+        private val listenerComponent: ComponentName,
+        private val handler: Handler,
+        private val emit: (ActiveMediaSession) -> Unit,
+    ) {
+        private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
+        private var lastMediaInfo: MediaInfo? = null
+
+        private val sessionsChangedListener =
+            MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
+                trackControllers(controllers ?: emptyList())
             }
-            lastMediaInfo = mediaInfo
-            trySend(ActiveMediaSession(mediaInfo, controller))
+
+        fun start() {
+            try {
+                manager.addOnActiveSessionsChangedListener(
+                    sessionsChangedListener,
+                    listenerComponent,
+                    handler
+                )
+            } catch (e: SecurityException) {
+                // Listener isn't bound yet; the outer flatMapLatest restarts us when it connects.
+            }
+            refreshActiveSessions()
         }
 
-        var trackControllers: (List<MediaController>) -> Unit = { }
+        fun stop() {
+            try {
+                manager.removeOnActiveSessionsChangedListener(sessionsChangedListener)
+            } catch (e: SecurityException) {
+                // Ignore.
+            }
+            trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
+            trackedControllers = emptyList()
+        }
 
-        fun refreshActiveSessions() {
+        private fun refreshActiveSessions() {
             val controllers = try {
-                mediaSessionManager.getActiveSessions(notificationListenerComponent)
+                manager.getActiveSessions(listenerComponent)
             } catch (e: SecurityException) {
                 emptyList()
             }
             trackControllers(controllers)
         }
 
-        trackControllers = { controllers ->
-            trackedControllers.forEach { (controller, callback) ->
-                controller.unregisterCallback(callback)
-            }
+        private fun trackControllers(controllers: List<MediaController>) {
+            trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
             trackedControllers = controllers.map { controller ->
                 val callback = object : MediaController.Callback() {
                     override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
@@ -84,41 +117,32 @@ class MediaSessionRepository @Inject constructor(
             publish()
         }
 
-        val sessionsChangedListener =
-            MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
-                trackControllers(controllers ?: emptyList())
+        private fun publish() {
+            val controller = trackedControllers
+                .map { (controller, _) -> controller }
+                .firstOrNull { it.metadata != null && it.playbackState != null }
+            val extracted = controller?.let(::extractMediaInfo)
+            val mediaInfo = if (extracted?.hasSameDisplayContentAs(lastMediaInfo) == true) {
+                lastMediaInfo
+            } else {
+                extracted
             }
+            lastMediaInfo = mediaInfo
+            emit(ActiveMediaSession(mediaInfo, controller))
+        }
 
-        try {
-            mediaSessionManager.addOnActiveSessionsChangedListener(
-                sessionsChangedListener,
-                notificationListenerComponent,
-                handler
+        private fun extractMediaInfo(controller: MediaController): MediaInfo {
+            val metadata = controller.metadata
+            val playbackState = controller.playbackState
+
+            return MediaInfo(
+                title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
+                artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
+                isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
+                packageName = controller.packageName,
+                albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                    ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
             )
-        } catch (e: SecurityException) {
-            // No notification access; refreshActiveSessions() below emits empty.
         }
-        refreshActiveSessions()
-
-        awaitClose {
-            mediaSessionManager.removeOnActiveSessionsChangedListener(sessionsChangedListener)
-            trackedControllers.forEach { (controller, callback) ->
-                controller.unregisterCallback(callback)
-            }
-        }
-    }
-
-    private fun extractMediaInfo(controller: MediaController): MediaInfo {
-        val metadata = controller.metadata
-        val playbackState = controller.playbackState
-
-        return MediaInfo(
-            title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
-            artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
-            isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
-            packageName = controller.packageName,
-            albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
-        )
     }
 }

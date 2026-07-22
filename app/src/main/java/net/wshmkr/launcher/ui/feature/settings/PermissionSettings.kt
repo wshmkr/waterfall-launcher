@@ -16,7 +16,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.NotificationManagerCompat
-import net.wshmkr.launcher.ui.common.components.OnResumeEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 
 @Composable
@@ -47,7 +48,7 @@ fun PermissionSettings(
         isLocationEnabled = isGranted
     }
 
-    OnResumeEffect {
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         checkPermissions()
     }
 

@@ -64,21 +64,11 @@ object WeatherHelper {
     }
 
     @RequiresPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
-    private suspend fun getCurrentLocation(client: FusedLocationProviderClient): Location? =
-        suspendCancellableCoroutine { cont ->
-            val cancellationTokenSource = CancellationTokenSource()
-            client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellationTokenSource.token)
-                .addOnSuccessListener { location ->
-                    if (cont.isActive) cont.resume(location)
-                }
-                .addOnFailureListener { exception ->
-                    if (cont.isActive) cont.resumeWithException(exception)
-                }
-                .addOnCanceledListener {
-                    if (cont.isActive) cont.resume(null)
-                }
-            cont.invokeOnCancellation { cancellationTokenSource.cancel() }
-        }
+    private suspend fun getCurrentLocation(client: FusedLocationProviderClient): Location? {
+        val cancellationTokenSource = CancellationTokenSource()
+        return client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, cancellationTokenSource.token)
+            .suspendForTask(cancellationTokenSource)
+    }
 
     suspend fun getWeather(
         latitude: Double,
@@ -119,26 +109,23 @@ object WeatherHelper {
         val url = "$WEATHER_API_URL?latitude=$latitude&longitude=$longitude" +
             "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=$temperatureUnit&timezone=auto"
 
-        return httpGetJson(url).fold(
-            onSuccess = { json ->
-                val current = json.getJSONObject("current")
-                val temperature = current.getDouble("temperature_2m")
-                val weatherCode = current.getInt("weather_code")
+        return httpGetJson(url).mapCatching { json ->
+            val current = json.getJSONObject("current")
+            val temperature = current.getDouble("temperature_2m")
+            val weatherCode = current.getInt("weather_code")
 
-                val daily = json.optJSONObject("daily")
-                val sunriseTime = daily?.optJSONArray("sunrise")?.optString(0)
-                val sunsetTime = daily?.optJSONArray("sunset")?.optString(0)
+            val daily = json.optJSONObject("daily")
+            val sunriseTime = daily?.optJSONArray("sunrise")?.optString(0)
+            val sunsetTime = daily?.optJSONArray("sunset")?.optString(0)
 
-                WeatherState.Ready(
-                    temperature = temperature,
-                    weatherCode = weatherCode,
-                    sunriseTime = sunriseTime,
-                    sunsetTime = sunsetTime,
-                    isFahrenheit = useFahrenheit
-                )
-            },
-            onFailure = { WeatherState.Error(it.message ?: "Unable to load weather") }
-        )
+            WeatherState.Ready(
+                temperature = temperature,
+                weatherCode = weatherCode,
+                sunriseTime = sunriseTime,
+                sunsetTime = sunsetTime,
+                isFahrenheit = useFahrenheit
+            )
+        }.getOrElse { WeatherState.Error(it.message ?: "Unable to load weather") }
     }
 
     // Null means the lookup failed; an empty list means it succeeded but matched nothing.
@@ -229,18 +216,20 @@ object WeatherHelper {
         return hour >= 18 || hour < 6
     }
 
-    private suspend fun <T> Task<T>.suspendForTask(): T? =
-        suspendCancellableCoroutine { cont ->
-            addOnSuccessListener { result ->
-                if (cont.isActive) cont.resume(result)
-            }
-            addOnFailureListener { exception ->
-                if (cont.isActive) cont.resumeWithException(exception)
-            }
-            addOnCanceledListener {
-                if (cont.isActive) cont.resume(null)
-            }
+    private suspend fun <T> Task<T>.suspendForTask(
+        cancellationTokenSource: CancellationTokenSource? = null
+    ): T? = suspendCancellableCoroutine { cont ->
+        addOnSuccessListener { result ->
+            if (cont.isActive) cont.resume(result)
         }
+        addOnFailureListener { exception ->
+            if (cont.isActive) cont.resumeWithException(exception)
+        }
+        addOnCanceledListener {
+            if (cont.isActive) cont.resume(null)
+        }
+        cont.invokeOnCancellation { cancellationTokenSource?.cancel() }
+    }
 
     sealed interface WeatherState {
         data object Idle : WeatherState
