@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+tone_instructions: "Be concise and direct. Don't over-explain."
+
+reviews:
+  profile: chill
+  high_level_summary: false
+  poem: false
+  request_changes_workflow: false
+  sequence_diagrams: false
+  in_progress_fortune: false
+  estimate_code_review_effort: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    ignore_usernames:
+      - "github-actions[bot]"
+      - "dependabot[bot]"
+
+  path_filters:
+    - "!**/build/**"
+    - "!**/.gradle/**"
+    - "!**/.kotlin/**"
+    - "!.idea/**"
+    - "!gradle/wrapper/**"
+    - "!local.properties"
+    - "!app/src/main/res/mipmap-*/**"
+    - "!app/src/main/res/drawable*/**"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.webp"
+
+  path_instructions:
+    - path: "app/src/main/java/**/ui/**"
+      instructions: >
+        Jetpack Compose UI. Flag missing `remember` keys, unstable lambdas
+        that force recomposition, effects without cleanup (`DisposableEffect`,
+        `LaunchedEffect` cancellation), and state hoisted at the wrong level.
+    - path: "app/src/main/java/**/viewmodel/**"
+      instructions: >
+        ViewModels. Flag work that outlives `viewModelScope`, mutable state
+        leaked to the UI layer, and blocking calls off `Dispatchers.IO`.
+    - path: "app/src/main/java/**/service/**"
+      instructions: >
+        Android Services and receivers. Flag lifecycle leaks (unregistered
+        listeners, unreleased binders), background-execution-limit violations,
+        and missing foreground-service types on Android 14+.
+    - path: "app/src/main/java/**/repository/**"
+      instructions: >
+        Repositories / coroutines. Flag unscoped launches, swallowed
+        cancellations, and unbounded Flow collectors.
+    - path: "app/src/main/java/**/datastore/**"
+      instructions: >
+        DataStore. Flag blocking reads, missing migrations for schema
+        changes, and default values that could corrupt existing installs.
+    - path: "app/src/main/res/**"
+      instructions: >
+        Android resources. Flag hardcoded strings that should be in
+        `strings.xml`, missing `night` variants for new colors, and
+        `dp`/`sp` misuse.
+    - path: "app/src/main/AndroidManifest.xml"
+      instructions: >
+        Manifest. Flag new permissions without justification, exported
+        components without intent filters, and missing `android:exported`
+        on Android 12+ components.
+
+  pre_merge_checks:
+    issue_assessment:
+      mode: "off"
+    docstrings:
+      mode: "off"
+    title:
+      mode: "warning"
+    description:
+      mode: "warning"
+
+  finishing_touches:
+    simplify:
+      enabled: true
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+
+  tools:
+    biome:
+      enabled: false
+    eslint:
+      enabled: false
+    oxc:
+      enabled: false
+    languagetool:
+      enabled: false
+    gitleaks:
+      enabled: true
+    detekt:
+      enabled: true
+
+chat:
+  art: false
+
+knowledge_base:
+  web_search:
+    enabled: true
