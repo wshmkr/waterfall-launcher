@@ -5,7 +5,6 @@ import android.content.Context
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,47 +12,39 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable
 fun WidgetStack(
-    onAddWidget: () -> Unit,
     viewModel: WidgetViewModel = hiltViewModel(),
 ) {
     val widgetIds = viewModel.widgetIds
 
-    if (widgetIds.isEmpty()) {
-        EmptyStackPlaceholder(onAddWidget = onAddWidget)
-        return
-    }
+    if (widgetIds.isEmpty()) return
 
-    val initialPage = remember(widgetIds) {
-        viewModel.currentPageIndex.coerceIn(0, widgetIds.lastIndex)
-    }
-    val pagerState = rememberPagerState(initialPage = initialPage) { widgetIds.size }
+    val pagerState = rememberPagerState(
+        initialPage = viewModel.initialPageIndex.coerceIn(0, widgetIds.lastIndex),
+    ) { widgetIds.size }
 
     LaunchedEffect(pagerState, viewModel) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
-            viewModel.updateCurrentPage(page)
+            viewModel.widgetIds.getOrNull(page)?.let(viewModel::updateCurrentPage)
         }
     }
 
@@ -65,6 +56,7 @@ fun WidgetStack(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth(),
+            key = { widgetIds[it] },
         ) { page ->
             WidgetPage(
                 widgetId = widgetIds[page],
@@ -74,10 +66,7 @@ fun WidgetStack(
 
         if (widgetIds.size > 1) {
             Spacer(modifier = Modifier.height(8.dp))
-            PageDots(
-                pageCount = widgetIds.size,
-                currentPage = pagerState.currentPage,
-            )
+            PageDots(pagerState = pagerState)
         }
     }
 }
@@ -104,16 +93,14 @@ private fun WidgetPage(
 }
 
 @Composable
-private fun PageDots(
-    pageCount: Int,
-    currentPage: Int,
-) {
+private fun PageDots(pagerState: PagerState) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
-        repeat(pageCount) { index ->
-            val color = if (index == currentPage) Color.White else Color.White.copy(alpha = 0.3f)
+        repeat(pagerState.pageCount) { index ->
+            val color =
+                if (index == pagerState.currentPage) Color.White else Color.White.copy(alpha = 0.3f)
             Box(
                 modifier = Modifier
                     .size(6.dp)
@@ -121,26 +108,6 @@ private fun PageDots(
                     .background(color),
             )
         }
-    }
-}
-
-@Composable
-private fun EmptyStackPlaceholder(
-    onAddWidget: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .clickable(onClick = onAddWidget)
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "Tap to add widget",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 14.sp,
-        )
     }
 }
 

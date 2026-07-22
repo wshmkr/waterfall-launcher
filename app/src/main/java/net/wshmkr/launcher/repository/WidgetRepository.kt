@@ -8,7 +8,6 @@ import android.content.pm.PackageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
@@ -31,9 +30,9 @@ class WidgetRepository @Inject constructor(
     private val _widgetIds = MutableStateFlow<List<Int>>(emptyList())
     val widgetIds = _widgetIds.asStateFlow()
 
-    val lastPageIndex: Flow<Int> = widgetDataSource.lastPageIndex
+    suspend fun getLastPageWidgetId(): Int? = widgetDataSource.getLastPageWidgetId()
 
-    suspend fun setLastPageIndex(idx: Int) = widgetDataSource.setLastPageIndex(idx)
+    suspend fun setLastPageWidgetId(widgetId: Int) = widgetDataSource.setLastPageWidgetId(widgetId)
 
     suspend fun loadWidgets() = updateIdsOnIo { }
 

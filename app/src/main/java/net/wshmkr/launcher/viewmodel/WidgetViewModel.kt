@@ -55,16 +55,24 @@ class WidgetViewModel @Inject constructor(
     var activeLetter by mutableStateOf<String?>(null)
         private set
 
-    var currentPageIndex by mutableStateOf(0)
+    // Read once as the pager seed; restored before the first widgetIds emission.
+    var initialPageIndex = 0
         private set
+
+    private var initialPageRestored = false
 
     private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
     val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
 
     init {
         viewModelScope.launch {
+            val lastWidgetId = widgetRepository.getLastPageWidgetId()
             widgetRepository.loadWidgets()
             widgetRepository.widgetIds.collect {
+                if (!initialPageRestored) {
+                    initialPageIndex = it.indexOf(lastWidgetId).coerceAtLeast(0)
+                    initialPageRestored = true
+                }
                 widgetIds = it.toImmutableList()
                 refreshManagedWidgets(it)
             }
@@ -79,17 +87,11 @@ class WidgetViewModel @Inject constructor(
                 backgroundUri = it
             }
         }
-
-        viewModelScope.launch {
-            widgetRepository.lastPageIndex.collect {
-                currentPageIndex = it
-            }
-        }
     }
 
-    fun updateCurrentPage(idx: Int) {
+    fun updateCurrentPage(widgetId: Int) {
         viewModelScope.launch {
-            widgetRepository.setLastPageIndex(idx)
+            widgetRepository.setLastPageWidgetId(widgetId)
         }
     }
 
