@@ -1,12 +1,16 @@
 package net.wshmkr.launcher.model
 
-import android.graphics.drawable.Drawable
 import android.os.UserHandle
+import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
+@Immutable
 data class AppInfo(
     val label: String,
     val packageName: String,
-    val icon: Drawable,
+    val icon: BitmapPainter,
     val userHandle: UserHandle,
     val isSystemApp: Boolean = false,
 
@@ -14,7 +18,8 @@ data class AppInfo(
     val isHidden: Boolean,
     val doNotSuggest: Boolean,
     val isSuggested: Boolean = false,
-    val notifications: List<NotificationInfo> = emptyList(),
+    val notifications: ImmutableList<NotificationInfo> = persistentListOf(),
+    val searchTokens: ImmutableList<String> = persistentListOf(),
 ) {
     val mostRecentNotification: NotificationInfo?
         get() = notifications.maxByOrNull { it.timestamp }

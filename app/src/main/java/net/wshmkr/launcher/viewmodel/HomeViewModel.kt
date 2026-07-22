@@ -1,24 +1,32 @@
 package net.wshmkr.launcher.viewmodel
 
+import android.os.UserHandle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
-import android.os.UserHandle
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
-import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
+import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.NotificationInfo
+import net.wshmkr.launcher.model.keyFor
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 const val HOME_SCREEN_APPS = 6
@@ -30,8 +38,6 @@ class HomeViewModel @Inject constructor(
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
-    private var notifications by mutableStateOf<Map<String, Map<UserHandle, List<NotificationInfo>>>>(emptyMap())
-
     var backgroundUri by mutableStateOf<String?>(null)
         private set
 
@@ -39,7 +45,7 @@ class HomeViewModel @Inject constructor(
         private set
 
     val allAppsListItems by derivedStateOf {
-        buildListItems(appsRepository.allApps.filter { !it.isHidden }, notifications)
+        buildListItems(appsRepository.allApps.filter { !it.isHidden })
     }
 
     val alphabetLetters by derivedStateOf {
@@ -54,7 +60,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    val favoriteApps by derivedStateOf { buildFavoriteAppsList(notifications) }
+    val favoriteApps by derivedStateOf { buildFavoriteAppsList() }
+
+    val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     var activeLetter by mutableStateOf<String?>(null)
         private set
@@ -66,16 +75,13 @@ class HomeViewModel @Inject constructor(
 
     private var observedStop = false
 
+    private val notificationCountCache = ConcurrentHashMap<String, StateFlow<Int>>()
+    private val notificationListCache = ConcurrentHashMap<String, StateFlow<ImmutableList<NotificationInfo>>>()
+
     init {
         viewModelScope.launch {
             appsRepository.loadInstalledApps()
             appsRepository.updateMostUsedApps()
-        }
-
-        viewModelScope.launch {
-            notificationRepository.notifications.collect { newNotifications ->
-                notifications = newNotifications
-            }
         }
 
         viewModelScope.launch {
@@ -101,6 +107,16 @@ class HomeViewModel @Inject constructor(
             userSettingsDataSource.homeWidgetSettings.collectLatest { settings ->
                 homeWidgetSettings = settings
             }
+        }
+
+        // Prune per-package notification caches when apps leave the installed set so long-lived
+        // sessions with many install/uninstall churns don't grow the cache unboundedly.
+        viewModelScope.launch {
+            snapshotFlow { appsRepository.allApps.mapTo(HashSet(appsRepository.allApps.size)) { it.key } }
+                .collect { liveKeys ->
+                    notificationCountCache.keys.retainAll(liveKeys)
+                    notificationListCache.keys.retainAll(liveKeys)
+                }
         }
     }
 
@@ -145,10 +161,24 @@ class HomeViewModel @Inject constructor(
         return if (activeLetter == null || letter == activeLetter) 1f else 0.2f
     }
 
-    private fun buildListItems(
-        apps: List<AppInfo>,
-        notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>,
-    ): List<AppListItem> {
+    // Per-app notification count flow, cached so repeated lookups share the same StateFlow.
+    fun notificationCountFor(packageName: String, user: UserHandle): StateFlow<Int> {
+        val key = keyFor(packageName, user)
+        return notificationCountCache.computeIfAbsent(key) {
+            notificationRepository.countFor(packageName, user)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+        }
+    }
+
+    fun notificationsFor(packageName: String, user: UserHandle): StateFlow<ImmutableList<NotificationInfo>> {
+        val key = keyFor(packageName, user)
+        return notificationListCache.computeIfAbsent(key) {
+            notificationRepository.notificationsFor(packageName, user)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
+        }
+    }
+
+    private fun buildListItems(apps: List<AppInfo>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()
         var currentLetter = ""
 
@@ -160,26 +190,16 @@ class HomeViewModel @Inject constructor(
                 items.add(AppListItem.SectionHeader(currentLetter, items.size))
             }
 
-            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
-            val appWithNotifications = app.copy(notifications = appNotifications)
-
-            items.add(AppListItem.AppItem(appWithNotifications))
+            items.add(AppListItem.AppItem(app, firstChar))
         }
 
         return items
     }
 
-    private fun buildFavoriteAppsList(
-        notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>
-    ): List<AppInfo> {
+    private fun buildFavoriteAppsList(): List<AppInfo> {
         val apps = mutableListOf<AppInfo>()
 
-        val favorites = appsRepository.allApps.filter { it.isFavorite }
-        favorites.forEach { app ->
-            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
-            val appWithNotifications = app.copy(notifications = appNotifications)
-            apps.add(appWithNotifications)
-        }
+        apps.addAll(appsRepository.allApps.filter { it.isFavorite })
 
         if (apps.size < HOME_SCREEN_APPS) {
             val remainingSlots = HOME_SCREEN_APPS - apps.size
@@ -202,9 +222,7 @@ class HomeViewModel @Inject constructor(
             }
 
             suggestions.forEach { app ->
-                val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
-                val appWithNotifications = app.copy(notifications = appNotifications, isSuggested = true)
-                apps.add(appWithNotifications)
+                apps.add(app.copy(isSuggested = true))
             }
         }
 

@@ -28,9 +28,7 @@ fun AddWidgetView(
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit = {},
 ) {
-    BackHandler(enabled = true) {
-        onDismiss()
-    }
+    BackHandler(enabled = true, onBack = onDismiss)
 
     var isVisible by remember { mutableStateOf(false) }
 
@@ -38,12 +36,16 @@ fun AddWidgetView(
         isVisible = viewModel.widgetAppListItems.isNotEmpty()
     }
 
+    val getScrollPosition = remember(viewModel) { viewModel::getScrollPosition }
     val listState = rememberLetterIndexedListState(
         activeLetter = viewModel.activeLetter,
-        getScrollPosition = viewModel::getScrollPosition,
+        getScrollPosition = getScrollPosition,
     )
 
     val topPadding = calculateCenteredContentTopPadding()
+    val contentPadding = remember(topPadding) { PaddingValues(vertical = topPadding, horizontal = 32.dp) }
+    val onLetterSelected = remember(viewModel) { { letter: String -> viewModel.scrollToLetter(letter) } }
+    val onSelectionCleared = remember(viewModel) { { viewModel.deselectLetter() } }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -56,7 +58,7 @@ fun AddWidgetView(
             WidgetAppList(
                 viewModel = viewModel,
                 listState = listState,
-                contentPadding = PaddingValues(vertical = topPadding, horizontal = 32.dp),
+                contentPadding = contentPadding,
                 onWidgetSelected = onDismiss
             )
 
@@ -67,8 +69,8 @@ fun AddWidgetView(
                 ) {
                     AlphabetSlider(
                         letters = viewModel.alphabetLetters,
-                        onLetterSelected = { letter -> viewModel.scrollToLetter(letter) },
-                        onSelectionCleared = { viewModel.deselectLetter() }
+                        onLetterSelected = onLetterSelected,
+                        onSelectionCleared = onSelectionCleared
                     )
                 }
             }

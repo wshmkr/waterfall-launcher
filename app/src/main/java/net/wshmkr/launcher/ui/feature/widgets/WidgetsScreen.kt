@@ -18,6 +18,8 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
+private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
+
 @Composable
 fun WidgetsScreen(
     navController: NavController,
@@ -26,16 +28,25 @@ fun WidgetsScreen(
     var showAddWidget by remember { mutableStateOf(false) }
 
     // AddWidgetView's own BackHandler takes precedence while it is visible.
-    BackHandler {
-        navController.popBackStack()
-    }
+    val onBackToLauncher = remember(navController) { { navController.popBackStack(); Unit } }
+    BackHandler(onBack = onBackToLauncher)
 
     val managedWidgets = viewModel.managedWidgets
 
+    val onDismissAdd = remember(viewModel) {
+        {
+            viewModel.deselectLetter()
+            showAddWidget = false
+        }
+    }
+    val onShowAdd = remember { { showAddWidget = true } }
+    val onDeleteWidget = remember(viewModel) { { id: Int -> viewModel.removeWidget(id) } }
+
     Box(modifier = Modifier.fillMaxSize()) {
         viewModel.backgroundUri?.let { uriString ->
+            val uri = remember(uriString) { uriString.toUri() }
             Image(
-                painter = rememberAsyncImagePainter(uriString.toUri()),
+                painter = rememberAsyncImagePainter(uri),
                 contentDescription = "Widgets screen background",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -45,22 +56,19 @@ fun WidgetsScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0f, 0f, 0f, 0.5f))
+                .background(ScrimColor)
         )
 
         if (showAddWidget) {
             AddWidgetView(
                 viewModel = viewModel,
-                onDismiss = {
-                    viewModel.deselectLetter()
-                    showAddWidget = false
-                }
+                onDismiss = onDismissAdd
             )
         } else {
             ManageWidgetsView(
                 managedWidgets = managedWidgets,
-                onAddWidget = { showAddWidget = true },
-                onDeleteWidget = { widgetId -> viewModel.removeWidget(widgetId) },
+                onAddWidget = onShowAdd,
+                onDeleteWidget = onDeleteWidget,
             )
         }
     }

@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
@@ -13,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
@@ -47,7 +48,7 @@ fun MediaWidget(enabled: Boolean = true) {
     var hasPermission by remember {
         mutableStateOf(NotificationPanelHelper.isNotificationListenerEnabled(context))
     }
-    val isListenerConnected by LauncherNotificationListenerService.isConnected.collectAsState()
+    val isListenerConnected by LauncherNotificationListenerService.isConnected.collectAsStateWithLifecycle()
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         hasPermission = NotificationPanelHelper.isNotificationListenerEnabled(context)
@@ -77,22 +78,39 @@ fun MediaWidget(enabled: Boolean = true) {
 @Composable
 private fun ActiveMediaControls(viewModel: MediaViewModel = hiltViewModel()) {
     val context = LocalContext.current
-    val activeMediaSession by viewModel.activeMediaSession.collectAsState()
+    val mediaInfo by viewModel.mediaInfo.collectAsStateWithLifecycle()
+    val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val controllerRef by viewModel.controllerRef.collectAsStateWithLifecycle()
 
-    val mediaInfo = activeMediaSession.mediaInfo
-    if (mediaInfo != null) {
-        MediaControls(
-            mediaInfo = mediaInfo,
-            mediaController = activeMediaSession.controller,
-            onMediaAppClick = {
-                mediaInfo.packageName?.let { pkg ->
-                    launchPackage(context, pkg)
-                }
-            }
-        )
-    } else {
+    val info = mediaInfo
+    if (info == null) {
         Spacer(modifier = Modifier.height(16.dp))
+    } else {
+        val packageName = info.packageName
+        val onMediaAppClick = remember(packageName, context) {
+            buildOnMediaAppClick(context, packageName)
+        }
+        val controller = controllerRef.controller
+        val onPlay = remember(controller) { { controller?.transportControls?.play(); Unit } }
+        val onPause = remember(controller) { { controller?.transportControls?.pause(); Unit } }
+        val onNext = remember(controller) { { controller?.transportControls?.skipToNext(); Unit } }
+        val onPrevious = remember(controller) { { controller?.transportControls?.skipToPrevious(); Unit } }
+
+        MediaControls(
+            mediaInfo = info,
+            isPlaying = isPlaying,
+            onMediaAppClick = onMediaAppClick,
+            onPlay = onPlay,
+            onPause = onPause,
+            onNext = onNext,
+            onPrevious = onPrevious,
+        )
     }
+}
+
+private fun buildOnMediaAppClick(context: Context, packageName: String?): () -> Unit = {
+    packageName?.let { launchPackage(context, it) }
+    Unit
 }
 
 @Composable

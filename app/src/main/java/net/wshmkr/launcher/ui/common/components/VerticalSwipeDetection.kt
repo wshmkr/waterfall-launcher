@@ -5,11 +5,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -27,7 +25,6 @@ fun Modifier.verticalSwipeDetection(
     onSwipeUp: (() -> Unit)? = null,
     onSwipeDown: (() -> Unit)? = null,
 ): Modifier {
-    var totalDragY by remember { mutableFloatStateOf(0f) }
     val offsetY = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     val currentOnSwipeUp by rememberUpdatedState(onSwipeUp)
@@ -38,6 +35,7 @@ fun Modifier.verticalSwipeDetection(
             translationY = verticalDragFeedback(offsetY.value)
         }
         .pointerInput(Unit) {
+            var totalDragY = 0f
             detectVerticalDragGestures(
                 onDragStart = {
                     totalDragY = 0f

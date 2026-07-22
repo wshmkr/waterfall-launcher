@@ -39,9 +39,14 @@ fun WidgetListItem(
     widgetOption: WidgetOption,
     modifier: Modifier = Modifier,
     targetAlpha: Float = 1f,
-    isActiveLetter: Boolean,
+    isActiveLetter: Boolean = false,
     onClick: () -> Unit = {}
 ) {
+    val animatedAlpha by animateLetterFilterAlpha(
+        targetAlpha = targetAlpha,
+        isActiveLetter = isActiveLetter,
+        label = "widget_item_alpha"
+    )
     val context = LocalContext.current
     val densityDpi = context.resources.displayMetrics.densityDpi
     val previewDrawable by produceState<Drawable?>(null, widgetOption.info, densityDpi) {
@@ -54,12 +59,6 @@ fun WidgetListItem(
             }
         }
     }
-
-    val animatedAlpha by animateLetterFilterAlpha(
-        targetAlpha = targetAlpha,
-        isActiveLetter = isActiveLetter,
-        label = "widget_list_item_alpha"
-    )
 
     Column(
         modifier = modifier

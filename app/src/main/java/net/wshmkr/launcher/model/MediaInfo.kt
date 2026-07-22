@@ -1,8 +1,9 @@
 package net.wshmkr.launcher.model
 
 import android.graphics.Bitmap
+import androidx.compose.runtime.Immutable
 
-
+@Immutable
 data class MediaInfo(
     val title: String?,
     val artist: String?,

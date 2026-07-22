@@ -1,5 +1,8 @@
 package net.wshmkr.launcher.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class HomeWidgetSettings(
     val showClock: Boolean = true,
     val showCalendar: Boolean = true,
@@ -11,4 +14,3 @@ data class HomeWidgetSettings(
     val weatherLocationLatitude: Double? = null,
     val weatherLocationLongitude: Double? = null,
 )
-
