@@ -34,3 +34,7 @@ style:
     maxLineLength: 140
   ForbiddenComment:
     active: false
+  WildcardImport:
+    excludes:
+      - '**/test/**'
+      - '**/androidTest/**'
