@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +28,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
+
+// Virtual page count for wrap-around scrolling; real page = virtual page % widget count.
+private const val LOOP_PAGE_COUNT = Int.MAX_VALUE
+
+private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
+    if (pageCount <= 1) return initialIndex
+    val mid = LOOP_PAGE_COUNT / 2
+    return mid - mid % pageCount + initialIndex
+}
 
 @Composable
 fun WidgetStack(
@@ -35,13 +46,18 @@ fun WidgetStack(
 
     if (widgetIds.isEmpty()) return
 
+    val pageCount = widgetIds.size
     val pagerState = rememberPagerState(
-        initialPage = viewModel.initialPageIndex.coerceIn(0, widgetIds.lastIndex),
-    ) { widgetIds.size }
+        initialPage = loopStartPage(
+            pageCount = pageCount,
+            initialIndex = viewModel.initialPageIndex.coerceIn(0, widgetIds.lastIndex),
+        ),
+    ) { if (widgetIds.size > 1) LOOP_PAGE_COUNT else widgetIds.size }
 
     LaunchedEffect(pagerState, viewModel) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
-            viewModel.widgetIds.getOrNull(page)?.let(viewModel::updateCurrentPage)
+            val ids = viewModel.widgetIds
+            if (ids.isNotEmpty()) viewModel.updateCurrentPage(ids[page % ids.size])
         }
     }
 
@@ -53,17 +69,19 @@ fun WidgetStack(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxWidth(),
-            key = { widgetIds[it] },
         ) { page ->
-            WidgetPage(
-                widgetId = widgetIds[page],
-                viewModel = viewModel,
-            )
+            val widgetId = widgetIds[page % widgetIds.size]
+            key(widgetId) {
+                WidgetPage(
+                    widgetId = widgetId,
+                    viewModel = viewModel,
+                )
+            }
         }
 
-        if (widgetIds.size > 1) {
+        if (pageCount > 1) {
             Spacer(modifier = Modifier.height(4.dp))
-            PageDashes(pagerState = pagerState)
+            PageDashes(pagerState = pagerState, pageCount = pageCount)
         }
     }
 }
@@ -90,21 +108,25 @@ private fun WidgetPage(
 }
 
 @Composable
-private fun PageDashes(pagerState: PagerState) {
+private fun PageDashes(
+    pagerState: PagerState,
+    pageCount: Int,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        repeat(pagerState.pageCount) { index ->
+        val currentPage = pagerState.currentPage % pageCount
+        repeat(pageCount) { index ->
             val color =
-                if (index == pagerState.currentPage) Color.White else Color.White.copy(alpha = 0.3f)
+                if (index == currentPage) Color.White else Color.White.copy(alpha = 0.3f)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .height(2.dp)
-                    .background(color),
+                    .background(color, CircleShape),
             )
         }
     }
