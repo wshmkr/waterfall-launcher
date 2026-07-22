@@ -22,9 +22,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.datastore.AppPreferencesDataSource
 import net.wshmkr.launcher.datastore.UsageDataSource
+import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.model.keyFor
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.exp
 
 @Singleton
 class AppsRepository @Inject constructor(
@@ -39,6 +42,10 @@ class AppsRepository @Inject constructor(
 
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
+
+    private val usageEntries = mutableMapOf<String, UsageEntry>()
+    private var usageDirty = false
+    private var pendingPublish = true
 
     private val _activeProfiles = MutableStateFlow<Set<UserHandle>>(emptySet())
     val activeProfiles = _activeProfiles.asStateFlow()
@@ -130,6 +137,9 @@ class AppsRepository @Inject constructor(
 
         allApps.clear()
         allApps.addAll(apps)
+
+        usageEntries.clear()
+        usageEntries.putAll(usageDataSource.loadAll())
     }
 
     private fun buildAppInfo(
@@ -184,9 +194,27 @@ class AppsRepository @Inject constructor(
         allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
     }
 
-    suspend fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
-        val usageList = usageDataSource.recordAppLaunch(packageName, userHandle)
-        updateMostUsedApps(usageList)
+    fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
+        val now = System.currentTimeMillis()
+        val key = keyFor(packageName, userHandle)
+        val existing = usageEntries[key]
+        val next = when {
+            existing == null -> UsageEntry(count = 1L, lastUsed = now)
+            now - existing.lastUsed < SESSION_DEDUP_WINDOW_MS -> existing.copy(lastUsed = now)
+            else -> UsageEntry(count = existing.count + 1L, lastUsed = now)
+        }
+        usageEntries[key] = next
+        usageDirty = true
+    }
+
+    suspend fun flushUsage() {
+        if (!usageDirty) return
+        usageDataSource.flush(usageEntries)
+        usageDirty = false
+    }
+
+    fun releaseMostUsedPublish() {
+        pendingPublish = true
     }
 
     suspend fun refreshAppIcons(profiles: Set<UserHandle>) {
@@ -211,18 +239,27 @@ class AppsRepository @Inject constructor(
         }
     }
 
-    suspend fun updateMostUsedApps() = updateMostUsedApps(usageDataSource.getUsageList())
+    fun updateMostUsedApps() {
+        if (!pendingPublish) return
+        pendingPublish = false
 
-    private suspend fun updateMostUsedApps(usageList: List<String>) {
-        val sortedByUsage = usageList
-            .groupingBy { it }
-            .eachCount()
-            .entries
-            .sortedByDescending { it.value }
-            .map { it.key }
+        val now = System.currentTimeMillis()
+        val ranked = usageEntries.entries
+            .asSequence()
+            .map { (key, entry) -> key to frecencyScore(entry, now) }
+            .filter { it.second > 0.0 }
+            .sortedByDescending { it.second }
+            .map { it.first }
+            .toList()
 
+        if (ranked == mostUsedApps.toList()) return
         mostUsedApps.clear()
-        mostUsedApps.addAll(sortedByUsage)
+        mostUsedApps.addAll(ranked)
+    }
+
+    private fun frecencyScore(entry: UsageEntry, now: Long): Double {
+        val ageDays = (now - entry.lastUsed).coerceAtLeast(0L) / MILLIS_PER_DAY.toDouble()
+        return entry.count * exp(-DECAY_LAMBDA_PER_DAY * ageDays)
     }
 
     suspend fun toggleFavorite(packageName: String, userHandle: UserHandle) {
@@ -261,5 +298,11 @@ class AppsRepository @Inject constructor(
             store.remove(packageName, userHandle)
         }
         allApps[index] = withFlag(app, enable)
+    }
+
+    companion object {
+        private const val SESSION_DEDUP_WINDOW_MS = 60_000L
+        private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
+        private const val DECAY_LAMBDA_PER_DAY = 0.05
     }
 }
