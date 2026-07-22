@@ -30,6 +30,10 @@ class WidgetRepository @Inject constructor(
     private val _widgetIds = MutableStateFlow<List<Int>>(emptyList())
     val widgetIds = _widgetIds.asStateFlow()
 
+    suspend fun getLastPageWidgetId(): Int? = widgetDataSource.getLastPageWidgetId()
+
+    suspend fun setLastPageWidgetId(widgetId: Int) = widgetDataSource.setLastPageWidgetId(widgetId)
+
     suspend fun loadWidgets() = updateIdsOnIo { }
 
     suspend fun addWidget(widgetId: Int) = updateIdsOnIo {

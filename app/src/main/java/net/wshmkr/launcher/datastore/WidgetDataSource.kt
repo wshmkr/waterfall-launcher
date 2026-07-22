@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,7 +22,12 @@ class WidgetDataSource @Inject constructor(
 
     companion object {
         private val WIDGETS_KEY = stringPreferencesKey("widgets")
-        const val MAX_WIDGETS = 3
+        private val KEY_STACK_LAST_WIDGET = intPreferencesKey("widget_stack_last_widget")
+        const val MAX_WIDGETS = 10
+    }
+
+    suspend fun getLastPageWidgetId(): Int? {
+        return dataStore.data.first()[KEY_STACK_LAST_WIDGET]
     }
 
     suspend fun getWidgetIds(): List<Int> {
@@ -34,6 +40,10 @@ class WidgetDataSource @Inject constructor(
 
     suspend fun removeWidget(widgetId: Int) = updateWidgets { ids ->
         ids.filter { it != widgetId }
+    }
+
+    suspend fun setLastPageWidgetId(widgetId: Int) {
+        dataStore.edit { it[KEY_STACK_LAST_WIDGET] = widgetId }
     }
 
     private suspend fun updateWidgets(transform: (List<Int>) -> List<Int>) {
