@@ -1,7 +1,9 @@
 package net.wshmkr.launcher.ui.feature.settings
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -15,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -52,10 +55,17 @@ fun PermissionSettings(
         isLocationEnabled = isGranted
     }
 
+    var isCalendarPermanentlyDenied by remember { mutableStateOf(false) }
+
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         isCalendarEnabled = isGranted
+        isCalendarPermanentlyDenied = !isGranted && context.findActivity()?.let { activity ->
+            !ActivityCompat.shouldShowRequestPermissionRationale(
+                activity, Manifest.permission.READ_CALENDAR,
+            )
+        } == true
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -81,9 +91,9 @@ fun PermissionSettings(
         }
     }
 
-    val handleCalendarClick = remember(context, calendarPermissionLauncher) {
+    val handleCalendarClick = remember(context, calendarPermissionLauncher, isCalendarPermanentlyDenied) {
         { _: Boolean ->
-            if (isCalendarEnabled) {
+            if (isCalendarEnabled || isCalendarPermanentlyDenied) {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", context.packageName, null)
                 }
@@ -129,4 +139,10 @@ fun PermissionSettings(
             onCheckedChange = handleCalendarClick,
         )
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

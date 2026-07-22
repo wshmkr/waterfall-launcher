@@ -11,10 +11,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -70,9 +73,16 @@ class HomeViewModel @Inject constructor(
     val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val todayEvents: StateFlow<ImmutableList<CalendarEvent>> =
-        calendarRepository.observeTodayEvents()
-            .map { it.toImmutableList() }
+        userSettingsDataSource.showCalendarEvents
+            .flatMapLatest { enabled ->
+                if (enabled) {
+                    calendarRepository.observeTodayEvents().map { it.toImmutableList() }
+                } else {
+                    flowOf(persistentListOf())
+                }
+            }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
 
     fun refreshCalendarEvents() {

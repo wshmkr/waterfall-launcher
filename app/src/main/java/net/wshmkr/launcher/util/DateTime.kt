@@ -21,6 +21,7 @@ const val ONE_WEEK = 604_800_000
 
 private class LocalizedFormatters(val locale: Locale) {
     val time12Hour: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm", locale)
+    val time12HourWithMarker: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", locale)
     val time24Hour: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", locale)
     val date: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", locale)
 }
@@ -49,7 +50,9 @@ fun formatDate(date: LocalDate): String = date.format(formattersForCurrentLocale
 
 fun formatEventStartTime(epochMillis: Long, use24Hour: Boolean): String {
     val time = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalTime()
-    return formatTime(time, use24Hour)
+    val localized = formattersForCurrentLocale()
+    val formatter = if (use24Hour) localized.time24Hour else localized.time12HourWithMarker
+    return time.format(formatter)
 }
 
 // Minute-precision clock — ticks at the next minute boundary so the reader

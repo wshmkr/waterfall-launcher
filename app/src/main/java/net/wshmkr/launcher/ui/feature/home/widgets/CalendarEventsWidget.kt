@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,7 +73,15 @@ fun CalendarEventsWidget(
         return
     }
 
-    if (events.isEmpty()) return
+    val typography = MaterialTheme.typography
+    val eventTextStyle = remember(typography) {
+        typography.bodyMedium.copy(color = Color.White, fontSize = 14.sp)
+    }
+
+    if (events.isEmpty()) {
+        NoEventsRow(modifier = modifier, textStyle = eventTextStyle)
+        return
+    }
 
     Column(
         modifier = modifier
@@ -83,9 +92,30 @@ fun CalendarEventsWidget(
             EventRow(
                 event = event,
                 use24Hour = use24Hour,
+                textStyle = eventTextStyle,
                 onClick = { launchCalendarApp(context) },
             )
         }
+    }
+}
+
+@Composable
+private fun NoEventsRow(modifier: Modifier, textStyle: TextStyle) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Icon(
+            painter = CalendarTodayIcon(),
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = NO_EVENTS_LABEL,
+            style = textStyle.copy(color = Color.White.copy(alpha = 0.7f)),
+        )
     }
 }
 
@@ -118,15 +148,13 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
 private fun EventRow(
     event: CalendarEvent,
     use24Hour: Boolean,
+    textStyle: TextStyle,
     onClick: () -> Unit,
 ) {
     val timeLabel = remember(event.startMillis, event.allDay, use24Hour) {
         if (event.allDay) ALL_DAY_LABEL else formatEventStartTime(event.startMillis, use24Hour)
     }
-    val textStyle = MaterialTheme.typography.bodyMedium.copy(
-        color = Color.White,
-        fontSize = 14.sp,
-    )
+    val timeStyle = remember(textStyle) { textStyle.copy(color = Color.White.copy(alpha = 0.7f)) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -138,7 +166,7 @@ private fun EventRow(
     ) {
         Text(
             text = timeLabel,
-            style = textStyle.copy(color = Color.White.copy(alpha = 0.7f)),
+            style = timeStyle,
             modifier = Modifier.width(TIME_COLUMN_WIDTH),
         )
         Spacer(modifier = Modifier.width(8.dp))
@@ -152,4 +180,5 @@ private fun EventRow(
 }
 
 private const val ALL_DAY_LABEL = "All day"
+private const val NO_EVENTS_LABEL = "No events today"
 private val TIME_COLUMN_WIDTH = 52.dp

@@ -13,16 +13,18 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import net.wshmkr.launcher.model.CalendarEvent
-import net.wshmkr.launcher.util.ONE_MINUTE
+import net.wshmkr.launcher.util.ONE_SECOND
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -32,22 +34,21 @@ import javax.inject.Singleton
 class CalendarRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private val refreshTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val refreshTrigger = MutableSharedFlow<Unit>(
+        replay = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
 
     fun requestRefresh() {
         refreshTrigger.tryEmit(Unit)
     }
 
     fun observeTodayEvents(maxEvents: Int = DEFAULT_MAX_EVENTS): Flow<List<CalendarEvent>> = callbackFlow {
-        suspend fun push() {
-            trySend(queryTodayEvents(maxEvents))
-        }
-
-        push()
+        val invalidations = Channel<Unit>(capacity = Channel.CONFLATED)
 
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean, uri: Uri?) {
-                launch { push() }
+                invalidations.trySend(Unit)
             }
         }
         context.contentResolver.registerContentObserver(
@@ -56,19 +57,23 @@ class CalendarRepository @Inject constructor(
             observer,
         )
 
-        val tickJob = launch {
-            while (isActive) {
-                delay(ONE_MINUTE.toLong())
-                push()
-            }
-        }
         val refreshJob = launch {
-            refreshTrigger.collect { push() }
+            refreshTrigger.collect { invalidations.trySend(Unit) }
+        }
+
+        val worker = launch {
+            var events = queryTodayEvents(maxEvents)
+            trySend(events)
+            while (isActive) {
+                withTimeoutOrNull(nextInvalidationDelay(events)) { invalidations.receive() }
+                events = queryTodayEvents(maxEvents)
+                trySend(events)
+            }
         }
 
         awaitClose {
             context.contentResolver.unregisterContentObserver(observer)
-            tickJob.cancel()
+            worker.cancel()
             refreshJob.cancel()
         }
     }
@@ -126,12 +131,13 @@ class CalendarRepository @Inject constructor(
                         while (cursor.moveToNext() && events.size < maxEvents) {
                             val title = cursor.getString(titleIdx)?.takeIf { it.isNotBlank() }
                                 ?: continue
+                            val rawBegin = cursor.getLong(beginIdx)
                             events.add(
                                 CalendarEvent(
                                     instanceId = cursor.getLong(idIdx),
                                     eventId = cursor.getLong(eventIdIdx),
                                     title = title,
-                                    startMillis = cursor.getLong(beginIdx),
+                                    startMillis = maxOf(rawBegin, startOfDay),
                                     endMillis = cursor.getLong(endIdx),
                                     allDay = cursor.getInt(allDayIdx) != 0,
                                     calendarColor = cursor.getInt(colorIdx).takeIf { it != 0 },
@@ -148,6 +154,17 @@ class CalendarRepository @Inject constructor(
             }
             events
         }
+
+    private fun nextInvalidationDelay(events: List<CalendarEvent>): Long {
+        val now = System.currentTimeMillis()
+        val zone = ZoneId.systemDefault()
+        val midnight = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val earliestEnd = events.mapNotNull { event ->
+            event.endMillis.takeIf { it > now }
+        }.minOrNull()
+        val nextBoundary = earliestEnd?.let { minOf(it, midnight) } ?: midnight
+        return (nextBoundary - now + ONE_SECOND).coerceAtLeast(ONE_SECOND.toLong())
+    }
 
     companion object {
         const val DEFAULT_MAX_EVENTS = 3
