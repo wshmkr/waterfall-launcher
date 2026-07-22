@@ -17,12 +17,6 @@ empty-blocks:
   EmptyFunctionBlock:
     ignoreOverridden: true
 
-exceptions:
-  TooGenericExceptionCaught:
-    active: false
-  SwallowedException:
-    active: false
-
 naming:
   FunctionNaming:
     ignoreAnnotated: ['Composable']

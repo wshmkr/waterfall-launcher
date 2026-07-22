@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   pull_request:
+    paths:
+      - '**/*.kt'
+      - '**/*.kts'
+      - 'detekt.yml'
+      - '.github/workflows/detekt.yml'
 
 permissions:
   contents: read
@@ -18,6 +23,7 @@ env:
 jobs:
   detekt:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +48,6 @@ jobs:
       - name: Run detekt
         run: |
           java -jar detekt-cli.jar \
-            --input app/src \
+            --input . \
             --config detekt.yml \
             --build-upon-default-config

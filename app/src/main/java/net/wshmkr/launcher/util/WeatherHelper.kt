@@ -141,13 +141,12 @@ object WeatherHelper {
         val results = json.optJSONArray("results") ?: return emptyList()
         return buildList {
             for (index in 0 until results.length()) {
-                parseGeocodingResult(results.optJSONObject(index))?.let(::add)
+                results.optJSONObject(index)?.let(::parseGeocodingResult)?.let(::add)
             }
         }
     }
 
-    private fun parseGeocodingResult(item: JSONObject?): GeocodingResult? {
-        if (item == null) return null
+    private fun parseGeocodingResult(item: JSONObject): GeocodingResult? {
         val name = item.optString("name").takeIf { it.isNotBlank() } ?: return null
         val latitude = item.optDouble("latitude")
         val longitude = item.optDouble("longitude")
@@ -162,6 +161,7 @@ object WeatherHelper {
         )
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun httpGetJson(url: String): Result<JSONObject> =
         withContext(Dispatchers.IO) {
             val connection = URL(url).openConnection() as HttpURLConnection

@@ -91,6 +91,7 @@ class AppsRepository @Inject constructor(
         _activeProfiles.value = userHandles.filter { isProfileActive(it) }.toSet()
     }
 
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
     fun isProfileActive(userHandle: UserHandle): Boolean {
         if (userHandle == Process.myUserHandle()) {
             return true
@@ -118,8 +119,7 @@ class AppsRepository @Inject constructor(
 
                     for (activity in activities) {
                         val appPackageName = activity.componentName.packageName
-                        val isNewPackage = seen.add(appPackageName to userHandle)
-                        if (isNewPackage && appPackageName != application.packageName) {
+                        if (seen.add(appPackageName to userHandle) && appPackageName != application.packageName) {
                             add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
                         }
                     }
@@ -153,6 +153,7 @@ class AppsRepository @Inject constructor(
         )
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
         if (packageName == application.packageName) return
 
@@ -188,6 +189,7 @@ class AppsRepository @Inject constructor(
         updateMostUsedApps(usageList)
     }
 
+    @Suppress("TooGenericExceptionCaught")
     suspend fun refreshAppIcons(profiles: Set<UserHandle>) {
         val appsToRefresh = allApps.filter { it.userHandle in profiles }
 
