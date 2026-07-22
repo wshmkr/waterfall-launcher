@@ -15,7 +15,7 @@ private val Context.widgetDataStore: DataStore<Preferences> by preferencesDataSt
 
 @Singleton
 class WidgetDataSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext context: Context
 ) {
     private val dataStore = context.widgetDataStore
 
@@ -25,7 +25,7 @@ class WidgetDataSource @Inject constructor(
     }
 
     suspend fun getWidgetIds(): List<Int> {
-        return decodeWidgetIds(dataStore.data.first()[WIDGETS_KEY])
+        return decode(dataStore.data.first()[WIDGETS_KEY])
     }
 
     suspend fun addWidget(widgetId: Int) = updateWidgets { ids ->
@@ -38,12 +38,13 @@ class WidgetDataSource @Inject constructor(
 
     private suspend fun updateWidgets(transform: (List<Int>) -> List<Int>) {
         dataStore.edit { preferences ->
-            val current = decodeWidgetIds(preferences[WIDGETS_KEY])
-            preferences[WIDGETS_KEY] = encodeStringList(transform(current).map { it.toString() })
+            val current = decode(preferences[WIDGETS_KEY])
+            preferences[WIDGETS_KEY] = transform(current).joinToString(",")
         }
     }
 
-    private fun decodeWidgetIds(json: String?): List<Int> {
-        return decodeStringList(json).mapNotNull { it.toIntOrNull() }
+    private fun decode(raw: String?): List<Int> {
+        if (raw.isNullOrEmpty()) return emptyList()
+        return raw.split(',').mapNotNull { it.toIntOrNull() }
     }
 }

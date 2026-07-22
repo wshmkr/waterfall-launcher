@@ -149,12 +149,17 @@ class HomeViewModel @Inject constructor(
 
     fun onLauncherStopped() {
         observedStop = true
+        appsRepository.releaseMostUsedPublish()
+        viewModelScope.launch {
+            appsRepository.flushUsage()
+        }
     }
 
     fun onLauncherResumed() {
         if (observedStop) {
             navigateToFavorites()
         }
+        appsRepository.updateMostUsedApps()
     }
 
     fun getAlpha(letter: String): Float {

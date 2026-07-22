@@ -27,9 +27,7 @@ abstract class LauncherViewModel(
         viewModelScope.launch {
             launchAppIntent.emit(LaunchAppIntent(packageName, userHandle))
         }
-        viewModelScope.launch {
-            appsRepository.recordAppLaunch(packageName, userHandle)
-        }
+        appsRepository.recordAppLaunch(packageName, userHandle)
     }
 
     fun toggleHidden(appInfo: AppInfo) {
