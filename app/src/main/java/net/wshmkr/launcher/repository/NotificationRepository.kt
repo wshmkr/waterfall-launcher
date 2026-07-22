@@ -64,14 +64,30 @@ class NotificationRepository @Inject constructor() {
     }
 
     fun reset(seed: Iterable<NotificationInfo>) {
-        val next = mutableMapOf<String, MutableMap<UserHandle, MutableList<NotificationInfo>>>()
-        for (notification in seed) {
-            val userMap = next.getOrPut(notification.packageName) { mutableMapOf() }
-            val list = userMap.getOrPut(notification.userHandle) { mutableListOf() }
-            list.removeAll { it.id == notification.id }
-            list.add(notification)
+        val seedList = seed.toList()
+        val seedKeys = seedList.mapTo(HashSet()) { Triple(it.packageName, it.userHandle, it.id) }
+        _notifications.update { existing ->
+            val next = mutableMapOf<String, MutableMap<UserHandle, MutableList<NotificationInfo>>>()
+            for (notification in seedList) {
+                val userMap = next.getOrPut(notification.packageName) { mutableMapOf() }
+                val list = userMap.getOrPut(notification.userHandle) { mutableListOf() }
+                list.removeAll { it.id == notification.id }
+                list.add(notification)
+            }
+            // Preserve entries added concurrently between seed capture and this update.
+            for ((packageName, userMap) in existing) {
+                for ((userHandle, notifications) in userMap) {
+                    for (notification in notifications) {
+                        if (Triple(packageName, userHandle, notification.id) !in seedKeys) {
+                            val destUsers = next.getOrPut(packageName) { mutableMapOf() }
+                            val destList = destUsers.getOrPut(userHandle) { mutableListOf() }
+                            destList.add(notification)
+                        }
+                    }
+                }
+            }
+            next
         }
-        _notifications.value = next
     }
 
     fun clearAll() {
@@ -88,13 +104,16 @@ class NotificationRepository @Inject constructor() {
 
     fun countFor(packageName: String, user: UserHandle): Flow<Int> =
         _notifications
-            .map { it[packageName]?.get(user)?.size ?: 0 }
+            .map { it[packageName]?.get(user) }
+            .distinctUntilChanged { old, new -> old === new }
+            .map { it?.size ?: 0 }
             .distinctUntilChanged()
 
     fun notificationsFor(packageName: String, user: UserHandle): Flow<ImmutableList<NotificationInfo>> =
         _notifications
-            .map { it[packageName]?.get(user)?.toImmutableList() ?: persistentListOf() }
-            .distinctUntilChanged()
+            .map { it[packageName]?.get(user) }
+            .distinctUntilChanged { old, new -> old === new }
+            .map { it?.toImmutableList() ?: persistentListOf() }
 
     // Preserved for HomeViewModel which still consumes the whole map.
     val notifications: StateFlow<NotificationMap> = _notifications.asStateFlow()

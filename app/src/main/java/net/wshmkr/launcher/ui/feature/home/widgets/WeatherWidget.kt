@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -60,6 +62,11 @@ fun WeatherWidget(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted -> rawHasPermission = granted }
     )
+
+    // Re-check on resume so grants made via system Settings are picked up.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        rawHasPermission = WeatherHelper.isLocationGranted(context)
+    }
 
     // Convert the current reading locally for an instant update; the fetch loop refreshes it after.
     LaunchedEffect(useFahrenheit) {

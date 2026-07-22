@@ -165,7 +165,13 @@ class AppsRepository @Inject constructor(
     }
 
     private fun toBitmapPainter(drawable: Drawable): BitmapPainter {
-        return BitmapPainter(drawable.toBitmap().asImageBitmap())
+        val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
+        val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
+        return BitmapPainter(drawable.toBitmap(width = width, height = height).asImageBitmap())
+    }
+
+    private companion object {
+        const val FALLBACK_ICON_SIZE_PX = 96
     }
 
     private fun buildSearchTokens(label: String) =

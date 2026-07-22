@@ -63,7 +63,7 @@ class HomeViewModel @Inject constructor(
     val favoriteApps by derivedStateOf { buildFavoriteAppsList() }
 
     val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     var activeLetter by mutableStateOf<String?>(null)
         private set
@@ -107,6 +107,16 @@ class HomeViewModel @Inject constructor(
             userSettingsDataSource.homeWidgetSettings.collectLatest { settings ->
                 homeWidgetSettings = settings
             }
+        }
+
+        // Prune per-package notification caches when apps leave the installed set so long-lived
+        // sessions with many install/uninstall churns don't grow the cache unboundedly.
+        viewModelScope.launch {
+            snapshotFlow { appsRepository.allApps.mapTo(HashSet(appsRepository.allApps.size)) { it.key } }
+                .collect { liveKeys ->
+                    notificationCountCache.keys.retainAll(liveKeys)
+                    notificationListCache.keys.retainAll(liveKeys)
+                }
         }
     }
 
@@ -154,7 +164,7 @@ class HomeViewModel @Inject constructor(
     // Per-app notification count flow, cached so repeated lookups share the same StateFlow.
     fun notificationCountFor(packageName: String, user: UserHandle): StateFlow<Int> {
         val key = keyFor(packageName, user)
-        return notificationCountCache.getOrPut(key) {
+        return notificationCountCache.computeIfAbsent(key) {
             notificationRepository.countFor(packageName, user)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
         }
@@ -162,7 +172,7 @@ class HomeViewModel @Inject constructor(
 
     fun notificationsFor(packageName: String, user: UserHandle): StateFlow<ImmutableList<NotificationInfo>> {
         val key = keyFor(packageName, user)
-        return notificationListCache.getOrPut(key) {
+        return notificationListCache.computeIfAbsent(key) {
             notificationRepository.notificationsFor(packageName, user)
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
         }

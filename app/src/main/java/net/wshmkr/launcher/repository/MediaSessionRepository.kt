@@ -9,14 +9,20 @@ import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.HandlerThread
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import javax.inject.Inject
@@ -34,15 +40,15 @@ class MediaSessionRepository @Inject constructor(
     private val notificationListenerComponent =
         ComponentName(context, LauncherNotificationListenerService::class.java)
 
-    private val listenerThread by lazy {
-        HandlerThread("MediaSessionListener").apply { start() }
-    }
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val activeSession: Flow<ActiveMediaSession> =
-        LauncherNotificationListenerService.isConnected.flatMapLatest { connected ->
-            if (!connected) flowOf(ActiveMediaSession()) else activeMediaSessionFlow()
-        }
+    private val activeSession: StateFlow<ActiveMediaSession> =
+        LauncherNotificationListenerService.isConnected
+            .flatMapLatest { connected ->
+                if (!connected) flowOf(ActiveMediaSession()) else activeMediaSessionFlow()
+            }
+            .stateIn(repoScope, SharingStarted.WhileSubscribed(5_000), ActiveMediaSession())
 
     // Combined flow retained for legacy consumers; downstream splits are the preferred entry points.
     val activeMediaSession: Flow<ActiveMediaSession> = activeSession.distinctUntilChanged()
@@ -67,14 +73,21 @@ class MediaSessionRepository @Inject constructor(
             return@callbackFlow
         }
 
+        // A fresh HandlerThread per subscription so we can quit it deterministically on close.
+        val listenerThread = HandlerThread("MediaSessionListener").apply { start() }
+        val handler = Handler(listenerThread.looper)
         val tracker = ActiveSessionTracker(
             manager = mediaSessionManager,
             listenerComponent = notificationListenerComponent,
-            handler = Handler(listenerThread.looper),
+            handler = handler,
             emit = { trySend(it) },
         )
         tracker.start()
-        awaitClose { tracker.stop() }
+        awaitClose {
+            tracker.stop {
+                listenerThread.quitSafely()
+            }
+        }
     }
 
     private class ActiveSessionTracker(
@@ -83,6 +96,8 @@ class MediaSessionRepository @Inject constructor(
         private val handler: Handler,
         private val emit: (ActiveMediaSession) -> Unit,
     ) {
+        // All fields are read/written only on the handler thread; start/stop post to the handler
+        // so callers on any thread converge onto the same serialised access.
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
         private var lastMediaInfo: MediaInfo? = null
         private var lastMetadata: MediaMetadata? = null
@@ -95,26 +110,31 @@ class MediaSessionRepository @Inject constructor(
             }
 
         fun start() {
-            try {
-                manager.addOnActiveSessionsChangedListener(
-                    sessionsChangedListener,
-                    listenerComponent,
-                    handler
-                )
-            } catch (e: SecurityException) {
-                // Listener isn't bound yet; the outer flatMapLatest restarts us when it connects.
+            handler.post {
+                try {
+                    manager.addOnActiveSessionsChangedListener(
+                        sessionsChangedListener,
+                        listenerComponent,
+                        handler
+                    )
+                } catch (e: SecurityException) {
+                    // Listener isn't bound yet; the outer flatMapLatest restarts us when it connects.
+                }
+                refreshActiveSessions()
             }
-            refreshActiveSessions()
         }
 
-        fun stop() {
-            try {
-                manager.removeOnActiveSessionsChangedListener(sessionsChangedListener)
-            } catch (e: SecurityException) {
-                // Ignore.
+        fun stop(onStopped: () -> Unit) {
+            handler.post {
+                try {
+                    manager.removeOnActiveSessionsChangedListener(sessionsChangedListener)
+                } catch (e: SecurityException) {
+                    // Ignore.
+                }
+                trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
+                trackedControllers = emptyList()
+                onStopped()
             }
-            trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
-            trackedControllers = emptyList()
         }
 
         private fun refreshActiveSessions() {

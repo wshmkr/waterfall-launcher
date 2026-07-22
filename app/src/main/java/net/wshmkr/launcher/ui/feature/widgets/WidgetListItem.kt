@@ -31,15 +31,22 @@ import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
 @Composable
 fun WidgetListItem(
     widgetOption: WidgetOption,
     modifier: Modifier = Modifier,
-    animatedAlpha: Float = 1f,
+    targetAlpha: Float = 1f,
+    isActiveLetter: Boolean = false,
     onClick: () -> Unit = {}
 ) {
+    val animatedAlpha by animateLetterFilterAlpha(
+        targetAlpha = targetAlpha,
+        isActiveLetter = isActiveLetter,
+        label = "widget_item_alpha"
+    )
     val context = LocalContext.current
     val densityDpi = context.resources.displayMetrics.densityDpi
     val previewDrawable by produceState<Drawable?>(null, widgetOption.info, densityDpi) {

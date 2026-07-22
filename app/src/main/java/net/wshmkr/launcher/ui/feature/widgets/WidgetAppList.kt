@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -18,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.feature.home.SectionHeaderItem
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
 import net.wshmkr.launcher.viewmodel.WidgetOption
@@ -75,11 +73,6 @@ fun WidgetAppList(
                             val isExpanded = expandedProviders[listItem.packageName] == true
                             val targetAlpha = viewModel.getAlpha(listItem.letter)
                             val isActiveLetter = viewModel.activeLetter == listItem.letter
-                            val animatedAlpha by animateLetterFilterAlpha(
-                                targetAlpha = targetAlpha,
-                                isActiveLetter = isActiveLetter,
-                                label = "widget_provider_alpha"
-                            )
                             val onProviderClick = remember(listItem.packageName) {
                                 {
                                     val pkg = listItem.packageName
@@ -95,7 +88,8 @@ fun WidgetAppList(
                             WidgetProviderGroup(
                                 provider = listItem,
                                 isExpanded = isExpanded,
-                                animatedAlpha = animatedAlpha,
+                                targetAlpha = targetAlpha,
+                                isActiveLetter = isActiveLetter,
                                 onProviderClick = onProviderClick,
                                 onWidgetSelected = onWidgetClick
                             )

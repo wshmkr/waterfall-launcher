@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -19,9 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -30,7 +27,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -105,10 +101,6 @@ fun AlphabetSlider(
         }
     }
 
-    // Track RIGHT column height so LEFT touch spacer matches it for consistent y-coordinate mapping.
-    var letterListHeightPx by remember { mutableIntStateOf(0) }
-    val letterListHeightDp = with(density) { letterListHeightPx.toDp() }
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -116,26 +108,47 @@ fun AlphabetSlider(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom
     ) {
-        Spacer(
+        // Invisible mirror of the letter column gives the left touch region a real height on
+        // first frame, so initial left-hand touches aren't dropped.
+        Box(
             modifier = Modifier
                 .padding(bottom = 96.dp)
-                .width(40.dp)
-                .height(letterListHeightDp)
                 .then(touchHandler(false))
-        )
+        ) {
+            InvisibleLettersColumn(letters = letters)
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 
         Box(
             modifier = Modifier
                 .padding(bottom = 96.dp)
-                .onSizeChanged { letterListHeightPx = it.height }
                 .then(touchHandler(true))
         ) {
             AnimatedLettersList(
                 letters = letters,
                 activeLetter = viewModelActiveLetter,
                 viewModel = viewModel,
+            )
+        }
+    }
+}
+
+@Composable
+private fun InvisibleLettersColumn(letters: List<String>) {
+    Column(
+        modifier = Modifier
+            .width(40.dp)
+            .graphicsLayer { alpha = 0f },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy((-6).dp),
+    ) {
+        letters.forEach { letter ->
+            Text(
+                text = letter,
+                modifier = Modifier.fillMaxWidth(),
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
             )
         }
     }

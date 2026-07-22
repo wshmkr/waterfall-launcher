@@ -47,7 +47,7 @@ class SearchViewModel @Inject constructor(
     }
 
     fun launchTopResult() {
-        val top = searchListItems.value.firstOrNull() ?: return
+        val top = filterApps(_searchQuery.value, appsRepository.allApps).firstOrNull() ?: return
         val appInfo = top.appInfo
         launchApp(appInfo.packageName, appInfo.userHandle)
         clearSearch()

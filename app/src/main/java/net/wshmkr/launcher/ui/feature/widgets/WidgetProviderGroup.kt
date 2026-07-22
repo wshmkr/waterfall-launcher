@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
 import net.wshmkr.launcher.ui.common.icons.ArrowDropUpIcon
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
@@ -38,7 +40,8 @@ import net.wshmkr.launcher.viewmodel.WidgetOption
 fun WidgetProviderGroup(
     provider: WidgetAppListItem.Provider,
     isExpanded: Boolean,
-    animatedAlpha: Float,
+    targetAlpha: Float,
+    isActiveLetter: Boolean,
     onProviderClick: () -> Unit,
     onWidgetSelected: (WidgetOption) -> Unit,
 ) {
@@ -46,7 +49,8 @@ fun WidgetProviderGroup(
         WidgetProviderRow(
             provider = provider,
             isExpanded = isExpanded,
-            animatedAlpha = animatedAlpha,
+            targetAlpha = targetAlpha,
+            isActiveLetter = isActiveLetter,
             onClick = onProviderClick
         )
         AnimatedVisibility(visible = isExpanded) {
@@ -63,7 +67,8 @@ fun WidgetProviderGroup(
                         WidgetListItem(
                             widgetOption = widgetOption,
                             modifier = Modifier.fillMaxWidth(),
-                            animatedAlpha = animatedAlpha,
+                            targetAlpha = targetAlpha,
+                            isActiveLetter = isActiveLetter,
                             onClick = onClick
                         )
                         if (index != provider.widgets.lastIndex) {
@@ -80,10 +85,16 @@ fun WidgetProviderGroup(
 private fun WidgetProviderRow(
     provider: WidgetAppListItem.Provider,
     isExpanded: Boolean,
-    animatedAlpha: Float,
+    targetAlpha: Float,
+    isActiveLetter: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
+    val animatedAlpha by animateLetterFilterAlpha(
+        targetAlpha = targetAlpha,
+        isActiveLetter = isActiveLetter,
+        label = "widget_provider_alpha"
+    )
     Row(
         modifier = modifier
             .padding(start = 8.dp, end = 32.dp)
