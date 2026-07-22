@@ -7,14 +7,16 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
-import android.os.Looper
+import android.os.HandlerThread
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import javax.inject.Inject
@@ -32,11 +34,29 @@ class MediaSessionRepository @Inject constructor(
     private val notificationListenerComponent =
         ComponentName(context, LauncherNotificationListenerService::class.java)
 
+    private val listenerThread by lazy {
+        HandlerThread("MediaSessionListener").apply { start() }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val activeMediaSession: Flow<ActiveMediaSession> =
+    private val activeSession: Flow<ActiveMediaSession> =
         LauncherNotificationListenerService.isConnected.flatMapLatest { connected ->
             if (!connected) flowOf(ActiveMediaSession()) else activeMediaSessionFlow()
         }
+
+    // Combined flow retained for legacy consumers; downstream splits are the preferred entry points.
+    val activeMediaSession: Flow<ActiveMediaSession> = activeSession.distinctUntilChanged()
+
+    val mediaInfo: Flow<MediaInfo?> =
+        activeSession.map { it.mediaInfo }.distinctUntilChanged()
+
+    val isPlaying: Flow<Boolean> =
+        activeSession.map { it.mediaInfo?.isPlaying == true }.distinctUntilChanged()
+
+    val controller: Flow<MediaController?> =
+        activeSession
+            .map { it.controller }
+            .distinctUntilChanged { old, new -> old === new }
 
     private fun activeMediaSessionFlow(): Flow<ActiveMediaSession> = callbackFlow {
         val mediaSessionManager =
@@ -50,7 +70,7 @@ class MediaSessionRepository @Inject constructor(
         val tracker = ActiveSessionTracker(
             manager = mediaSessionManager,
             listenerComponent = notificationListenerComponent,
-            handler = Handler(Looper.getMainLooper()),
+            handler = Handler(listenerThread.looper),
             emit = { trySend(it) },
         )
         tracker.start()
@@ -65,6 +85,9 @@ class MediaSessionRepository @Inject constructor(
     ) {
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
         private var lastMediaInfo: MediaInfo? = null
+        private var lastMetadata: MediaMetadata? = null
+        private var lastPlaybackState: PlaybackState? = null
+        private var lastControllerRef: MediaController? = null
 
         private val sessionsChangedListener =
             MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
@@ -121,20 +144,44 @@ class MediaSessionRepository @Inject constructor(
             val controller = trackedControllers
                 .map { (controller, _) -> controller }
                 .firstOrNull { it.metadata != null && it.playbackState != null }
-            val extracted = controller?.let(::extractMediaInfo)
-            val mediaInfo = if (extracted?.hasSameDisplayContentAs(lastMediaInfo) == true) {
-                lastMediaInfo
-            } else {
-                extracted
-            }
-            lastMediaInfo = mediaInfo
-            emit(ActiveMediaSession(mediaInfo, controller))
-        }
 
-        private fun extractMediaInfo(controller: MediaController): MediaInfo {
+            if (controller == null) {
+                lastMetadata = null
+                lastPlaybackState = null
+                lastControllerRef = null
+                lastMediaInfo = null
+                emit(ActiveMediaSession(mediaInfo = null, controller = null))
+                return
+            }
+
             val metadata = controller.metadata
             val playbackState = controller.playbackState
 
+            val mediaInfo = if (
+                controller === lastControllerRef &&
+                metadata === lastMetadata &&
+                playbackState === lastPlaybackState &&
+                lastMediaInfo != null
+            ) {
+                lastMediaInfo
+            } else {
+                val extracted = extractMediaInfo(controller, metadata, playbackState)
+                if (extracted.hasSameDisplayContentAs(lastMediaInfo)) lastMediaInfo else extracted
+            }
+
+            lastControllerRef = controller
+            lastMetadata = metadata
+            lastPlaybackState = playbackState
+            lastMediaInfo = mediaInfo
+
+            emit(ActiveMediaSession(mediaInfo, controller))
+        }
+
+        private fun extractMediaInfo(
+            controller: MediaController,
+            metadata: MediaMetadata?,
+            playbackState: PlaybackState?,
+        ): MediaInfo {
             return MediaInfo(
                 title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
                 artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),

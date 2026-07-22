@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,7 +56,7 @@ class WidgetRepository @Inject constructor(
                     packageName = packageName,
                     label = appInfo?.loadLabel(packageManager)?.toString() ?: packageName,
                     icon = appInfo?.loadIcon(packageManager),
-                    widgets = infos
+                    widgets = infos.toImmutableList()
                 )
             }
             .sortedBy { it.label.lowercase() }

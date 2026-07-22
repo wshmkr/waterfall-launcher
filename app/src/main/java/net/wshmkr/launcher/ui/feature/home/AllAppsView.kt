@@ -34,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.AppListItem
-import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
@@ -98,13 +97,15 @@ fun AllAppsView(
                             )
                         }
                         is AppListItem.AppItem -> {
-                            val itemLetter = item.appInfo.label.sectionLetter
                             AppListItem(
                                 appInfo = item.appInfo,
-                                activeProfiles = activeProfiles,
-                                targetAlpha = viewModel.getAlpha(itemLetter),
-                                isActiveLetter = itemLetter == viewModel.activeLetter,
-                                viewModel = viewModel,
+                                isActiveUser = item.appInfo.userHandle in activeProfiles,
+                                onClick = { viewModel.launchApp(it.packageName, it.userHandle) },
+                                onToggleFavorite = viewModel::toggleFavorite,
+                                onToggleHidden = viewModel::toggleHidden,
+                                onToggleSuggest = viewModel::toggleSuggest,
+                                targetAlpha = viewModel.getAlpha(item.sectionLetter),
+                                isActiveLetter = item.sectionLetter == viewModel.activeLetter,
                             )
                         }
                     }

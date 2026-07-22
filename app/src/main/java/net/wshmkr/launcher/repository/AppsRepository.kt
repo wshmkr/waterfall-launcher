@@ -8,18 +8,26 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
-import androidx.compose.runtime.mutableStateListOf
 import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.core.graphics.drawable.toBitmap
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.datastore.AppPreferencesDataSource
 import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.model.AppInfo
@@ -40,7 +48,7 @@ class AppsRepository @Inject constructor(
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
 
-    private val _activeProfiles = MutableStateFlow<Set<UserHandle>>(emptySet())
+    private val _activeProfiles = MutableStateFlow<ImmutableSet<UserHandle>>(persistentSetOf())
     val activeProfiles = _activeProfiles.asStateFlow()
 
     private val appComparator =
@@ -88,7 +96,7 @@ class AppsRepository @Inject constructor(
     private fun updateActiveProfiles() {
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() }
             ?: listOf(Process.myUserHandle())
-        _activeProfiles.value = userHandles.filter { isProfileActive(it) }.toSet()
+        _activeProfiles.value = userHandles.filter { isProfileActive(it) }.toPersistentSet()
     }
 
     fun isProfileActive(userHandle: UserHandle): Boolean {
@@ -126,8 +134,10 @@ class AppsRepository @Inject constructor(
             }.sortedWith(appComparator)
         }
 
-        allApps.clear()
-        allApps.addAll(apps)
+        Snapshot.withMutableSnapshot {
+            allApps.clear()
+            allApps.addAll(apps)
+        }
     }
 
     private fun buildAppInfo(
@@ -139,18 +149,30 @@ class AppsRepository @Inject constructor(
     ): AppInfo {
         val appPackageName = activity.componentName.packageName
         val isSystemApp = activity.applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
+        val label = activity.label.toString()
 
         return AppInfo(
-            label = activity.label.toString(),
+            label = label,
             packageName = appPackageName,
-            icon = activity.getBadgedIcon(0),
+            icon = toBitmapPainter(activity.getBadgedIcon(0)),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
             isFavorite = favorites.contains(appPackageName),
             isHidden = hidden.contains(appPackageName),
             doNotSuggest = doNotSuggest.contains(appPackageName),
+            searchTokens = buildSearchTokens(label),
         )
     }
+
+    private fun toBitmapPainter(drawable: Drawable): BitmapPainter {
+        return BitmapPainter(drawable.toBitmap().asImageBitmap())
+    }
+
+    private fun buildSearchTokens(label: String) =
+        label.lowercase()
+            .split(' ')
+            .filter { it.isNotEmpty() }
+            .toImmutableList()
 
     private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
         if (packageName == application.packageName) return
@@ -171,10 +193,12 @@ class AppsRepository @Inject constructor(
             )
         }
 
-        allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
-        if (updated != null) {
-            allApps.add(updated)
-            allApps.sortWith(appComparator)
+        Snapshot.withMutableSnapshot {
+            allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
+            if (updated != null) {
+                allApps.add(updated)
+                allApps.sortWith(appComparator)
+            }
         }
     }
 
@@ -190,22 +214,24 @@ class AppsRepository @Inject constructor(
     suspend fun refreshAppIcons(profiles: Set<UserHandle>) {
         val appsToRefresh = allApps.filter { it.userHandle in profiles }
 
-        val updatedIcons: Map<String, Drawable> = withContext(Dispatchers.IO) {
+        val updatedIcons: Map<String, BitmapPainter> = withContext(Dispatchers.IO) {
             appsToRefresh.mapNotNull { app ->
                 try {
                     launcherApps.getActivityList(app.packageName, app.userHandle)
                         ?.firstOrNull()
                         ?.getBadgedIcon(0)
-                        ?.let { app.key to it }
+                        ?.let { app.key to toBitmapPainter(it) }
                 } catch (_: Exception) {
                     null
                 }
             }.toMap()
         }
 
-        for (index in allApps.indices) {
-            val app = allApps[index]
-            updatedIcons[app.key]?.let { allApps[index] = app.copy(icon = it) }
+        Snapshot.withMutableSnapshot {
+            for (index in allApps.indices) {
+                val app = allApps[index]
+                updatedIcons[app.key]?.let { allApps[index] = app.copy(icon = it) }
+            }
         }
     }
 
@@ -219,8 +245,10 @@ class AppsRepository @Inject constructor(
             .sortedByDescending { it.value }
             .map { it.key }
 
-        mostUsedApps.clear()
-        mostUsedApps.addAll(sortedByUsage)
+        Snapshot.withMutableSnapshot {
+            mostUsedApps.clear()
+            mostUsedApps.addAll(sortedByUsage)
+        }
     }
 
     suspend fun toggleFavorite(packageName: String, userHandle: UserHandle) {

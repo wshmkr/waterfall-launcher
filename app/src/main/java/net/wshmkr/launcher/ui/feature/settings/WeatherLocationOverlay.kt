@@ -62,7 +62,7 @@ fun WeatherLocationOverlay(
     }
 
     SearchOverlayScaffold(
-        query = query,
+        query = { query },
         onQueryChange = { query = it },
         placeholder = "Enter weather location",
         onDismiss = { navController.popBackStack() },

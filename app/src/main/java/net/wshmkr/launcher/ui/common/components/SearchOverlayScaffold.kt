@@ -20,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,10 +40,12 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
+private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchOverlayScaffold(
-    query: String,
+    query: () -> String,
     onQueryChange: (String) -> Unit,
     placeholder: String,
     onDismiss: () -> Unit,
@@ -62,7 +63,6 @@ fun SearchOverlayScaffold(
     val coroutineScope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
 
-    var totalDragY by remember { mutableFloatStateOf(0f) }
     val offsetY = remember { Animatable(0f) }
 
     val currentOnDismiss by rememberUpdatedState(onDismiss)
@@ -70,13 +70,16 @@ fun SearchOverlayScaffold(
         keyboardController?.hide()
         currentOnDismiss()
     }
+    val currentDismissOverlay by rememberUpdatedState(dismissOverlay)
 
     BackHandler {
-        dismissOverlay()
+        currentDismissOverlay()
     }
 
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
+            var totalDragY = 0f
+
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val isCurrentlyAtTop = listState.firstVisibleItemIndex == 0 &&
                     listState.firstVisibleItemScrollOffset == 0
@@ -97,7 +100,7 @@ fun SearchOverlayScaffold(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (totalDragY > VERTICAL_SWIPE_SENSITIVITY) {
-                    dismissOverlay()
+                    currentDismissOverlay()
                 } else if (totalDragY > 0) {
                     offsetY.animateTo(
                         targetValue = 0f,
@@ -120,7 +123,7 @@ fun SearchOverlayScaffold(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0f, 0f, 0f, 0.5f))
+            .background(ScrimColor)
     ) {
         Column(
             modifier = Modifier
@@ -139,7 +142,7 @@ fun SearchOverlayScaffold(
                 SearchBar(
                     inputField = {
                         SearchBarDefaults.InputField(
-                            query = query,
+                            query = query(),
                             onQueryChange = onQueryChange,
                             onSearch = onSearch,
                             expanded = false,

@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.accompanist.drawablepainter)
     implementation(libs.coil.compose)
+    implementation(libs.kotlinx.collections.immutable)
 
     implementation(libs.hilt.android)
     implementation(libs.play.services.location)

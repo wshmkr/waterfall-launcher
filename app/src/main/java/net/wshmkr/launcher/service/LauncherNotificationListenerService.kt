@@ -5,6 +5,8 @@ import android.media.session.MediaSession
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,9 +30,11 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         _isConnected.value = true
-        activeNotifications?.forEach {
-            onNotificationPosted(it)
-        }
+        val seed = activeNotifications
+            ?.map(::extractNotification)
+            ?.filter { !it.isOngoing && !it.isMedia }
+            ?: emptyList()
+        notificationRepository.reset(seed)
     }
 
     override fun onListenerDisconnected() {
@@ -76,7 +80,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                     actionIntent = action.actionIntent
                 )
             }
-        } ?: emptyList()
+        }?.toImmutableList() ?: persistentListOf()
         
         val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
         val isMedia = extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java) != null

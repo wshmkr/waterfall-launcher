@@ -27,7 +27,7 @@ fun SearchOverlay(
     AppLauncher(launchAppIntent = viewModel.launchAppIntent)
 
     SearchOverlayScaffold(
-        query = viewModel.searchQuery,
+        query = { viewModel.searchQuery },
         onQueryChange = viewModel::updateSearchQuery,
         placeholder = "Search apps",
         onDismiss = onDismiss,
@@ -39,8 +39,11 @@ fun SearchOverlay(
         ) { item ->
             AppListItem(
                 appInfo = item.appInfo,
-                activeProfiles = activeProfiles,
-                viewModel = viewModel,
+                isActiveUser = item.appInfo.userHandle in activeProfiles,
+                onClick = { viewModel.launchApp(it.packageName, it.userHandle) },
+                onToggleFavorite = viewModel::toggleFavorite,
+                onToggleHidden = viewModel::toggleHidden,
+                onToggleSuggest = viewModel::toggleSuggest,
             )
         }
     }

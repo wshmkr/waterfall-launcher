@@ -1,24 +1,25 @@
 package net.wshmkr.launcher.viewmodel
 
+import android.os.UserHandle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import android.os.UserHandle
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
-import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
+import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 const val HOME_SCREEN_APPS = 6
@@ -160,10 +161,10 @@ class HomeViewModel @Inject constructor(
                 items.add(AppListItem.SectionHeader(currentLetter, items.size))
             }
 
-            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
+            val appNotifications = notifications[app.packageName]?.get(app.userHandle).orEmpty().toImmutableList()
             val appWithNotifications = app.copy(notifications = appNotifications)
 
-            items.add(AppListItem.AppItem(appWithNotifications))
+            items.add(AppListItem.AppItem(appWithNotifications, firstChar))
         }
 
         return items
@@ -176,7 +177,7 @@ class HomeViewModel @Inject constructor(
 
         val favorites = appsRepository.allApps.filter { it.isFavorite }
         favorites.forEach { app ->
-            val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
+            val appNotifications = notifications[app.packageName]?.get(app.userHandle).orEmpty().toImmutableList()
             val appWithNotifications = app.copy(notifications = appNotifications)
             apps.add(appWithNotifications)
         }
@@ -202,7 +203,7 @@ class HomeViewModel @Inject constructor(
             }
 
             suggestions.forEach { app ->
-                val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
+                val appNotifications = notifications[app.packageName]?.get(app.userHandle).orEmpty().toImmutableList()
                 val appWithNotifications = app.copy(notifications = appNotifications, isSuggested = true)
                 apps.add(appWithNotifications)
             }

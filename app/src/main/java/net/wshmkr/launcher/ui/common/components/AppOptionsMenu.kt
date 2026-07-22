@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.icons.CheckIcon
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
@@ -35,14 +34,15 @@ import net.wshmkr.launcher.ui.common.icons.StarFilledIcon
 import net.wshmkr.launcher.ui.common.icons.StarIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
-import net.wshmkr.launcher.viewmodel.LauncherViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppOptionsMenu(
-    viewModel: LauncherViewModel,
     appInfo: AppInfo,
     onDismiss: () -> Unit,
+    onToggleFavorite: (AppInfo) -> Unit,
+    onToggleHidden: (AppInfo) -> Unit,
+    onToggleSuggest: (AppInfo) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
@@ -65,7 +65,7 @@ fun AppOptionsMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    painter = rememberDrawablePainter(drawable = appInfo.icon),
+                    painter = appInfo.icon,
                     contentDescription = appInfo.label,
                     modifier = Modifier.size(40.dp)
                 )
@@ -88,7 +88,7 @@ fun AppOptionsMenu(
                     text = "Stop suggesting",
                     subtext = "Don't show below favorites",
                     onClick = {
-                        viewModel.toggleSuggest(appInfo)
+                        onToggleSuggest(appInfo)
                         onDismiss()
                     }
                 )
@@ -99,7 +99,7 @@ fun AppOptionsMenu(
                     text = "Suggest again",
                     subtext = "Suggestions appear below favorites",
                     onClick = {
-                        viewModel.toggleSuggest(appInfo)
+                        onToggleSuggest(appInfo)
                         onDismiss()
                     }
                 )
@@ -110,7 +110,7 @@ fun AppOptionsMenu(
                     icon = StarIcon(),
                     text = "Remove from favorites",
                     onClick = {
-                        viewModel.toggleFavorite(appInfo)
+                        onToggleFavorite(appInfo)
                         onDismiss()
                     }
                 )
@@ -119,7 +119,7 @@ fun AppOptionsMenu(
                     icon = StarFilledIcon(),
                     text = "Favorite",
                     onClick = {
-                        viewModel.toggleFavorite(appInfo)
+                        onToggleFavorite(appInfo)
                         onDismiss()
                     }
                 )
@@ -143,7 +143,7 @@ fun AppOptionsMenu(
                     icon = VisibilityIcon(),
                     text = "Show in app list",
                     onClick = {
-                        viewModel.toggleHidden(appInfo)
+                        onToggleHidden(appInfo)
                         onDismiss()
                     }
                 )
@@ -152,7 +152,7 @@ fun AppOptionsMenu(
                     icon = VisibilityOffIcon(),
                     text = "Hide from app list",
                     onClick = {
-                        viewModel.toggleHidden(appInfo)
+                        onToggleHidden(appInfo)
                         onDismiss()
                     }
                 )

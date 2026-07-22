@@ -1,13 +1,14 @@
 package net.wshmkr.launcher.viewmodel
 
+import android.os.UserHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import android.os.UserHandle
-import net.wshmkr.launcher.model.AppInfo
-import net.wshmkr.launcher.repository.AppsRepository
+import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.repository.AppsRepository
 
 data class LaunchAppIntent(
     val packageName: String,
@@ -19,8 +20,8 @@ abstract class LauncherViewModel(
 ) : ViewModel() {
 
     val launchAppIntent = MutableSharedFlow<LaunchAppIntent>()
-    
-    val activeProfiles: StateFlow<Set<UserHandle>> = appsRepository.activeProfiles
+
+    val activeProfiles: StateFlow<ImmutableSet<UserHandle>> = appsRepository.activeProfiles
 
     fun launchApp(packageName: String, userHandle: UserHandle) {
         viewModelScope.launch {
@@ -49,4 +50,3 @@ abstract class LauncherViewModel(
         }
     }
 }
-

@@ -121,8 +121,11 @@ fun FavoritesView(
             ) { item ->
                 AppListItem(
                     appInfo = item,
-                    activeProfiles = activeProfiles,
-                    viewModel = viewModel,
+                    isActiveUser = item.userHandle in activeProfiles,
+                    onClick = { viewModel.launchApp(it.packageName, it.userHandle) },
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onToggleHidden = viewModel::toggleHidden,
+                    onToggleSuggest = viewModel::toggleSuggest,
                 )
             }
         }
