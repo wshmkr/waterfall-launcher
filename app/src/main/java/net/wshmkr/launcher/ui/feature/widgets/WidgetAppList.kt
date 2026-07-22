@@ -16,8 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.ui.feature.home.SectionHeaderItem
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
 import net.wshmkr.launcher.viewmodel.WidgetOption
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
@@ -27,7 +27,7 @@ fun WidgetAppList(
     viewModel: WidgetViewModel,
     listState: LazyListState,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 32.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = LocalDimensions.current.listHorizontalGutter),
     onWidgetSelected: () -> Unit = {},
 ) {
     val widgetListItems = viewModel.widgetAppListItems
@@ -42,7 +42,7 @@ fun WidgetAppList(
             Text(
                 text = "No widget-enabled apps found",
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = LocalDimensions.current.widgetAppListEmptyFont,
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {

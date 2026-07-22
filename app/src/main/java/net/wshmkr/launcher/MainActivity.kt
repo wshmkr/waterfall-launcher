@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -13,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import net.wshmkr.launcher.repository.WidgetRepository
 import net.wshmkr.launcher.ui.AppNavigation
+import net.wshmkr.launcher.ui.theme.WaterfallLauncherTheme
 import net.wshmkr.launcher.util.WidgetPickerHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         initWidgetPickerHelper()
         registerScreenOffReceiver()
         setContent {
-            MaterialTheme {
+            WaterfallLauncherTheme {
                 val navController = rememberNavController()
                 val widgetViewModel: WidgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {

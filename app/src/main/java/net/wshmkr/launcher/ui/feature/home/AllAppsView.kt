@@ -33,7 +33,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
@@ -41,6 +40,8 @@ import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
 import net.wshmkr.launcher.ui.common.icons.SearchIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.allAppsFabBottom
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 @Composable
@@ -63,6 +64,8 @@ fun AllAppsView(
     }
 
     val topPadding = calculateCenteredContentTopPadding()
+    val dimensions = LocalDimensions.current
+    val fabBottomOffset = dimensions.allAppsFabBottom()
 
     val listState = rememberLetterIndexedListState(
         activeLetter = activeLetter,
@@ -94,7 +97,7 @@ fun AllAppsView(
         ) {
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(vertical = topPadding, horizontal = 32.dp)
+                contentPadding = PaddingValues(vertical = topPadding, horizontal = dimensions.listHorizontalGutter)
             ) {
                 items(
                     items = listItems,
@@ -141,7 +144,7 @@ fun AllAppsView(
                 exit = fadeOut(animationSpec = tween(durationMillis = 200)),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = 48.dp, end = 64.dp)
+                    .padding(bottom = fabBottomOffset, end = dimensions.allAppsFabEndOffset)
             ) {
                 FloatingActionButton(
                     onClick = onOpenSearch,
@@ -161,14 +164,20 @@ fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolea
         isActiveLetter = isActiveLetter,
         label = "section_header_alpha"
     )
+    val dimensions = LocalDimensions.current
 
     Text(
         text = letter,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
+            .padding(
+                start = dimensions.sectionHeaderStartPadding,
+                end = dimensions.sectionHeaderEndPadding,
+                top = dimensions.sectionHeaderTopPadding,
+                bottom = dimensions.sectionHeaderBottomPadding,
+            )
             .alpha(animatedAlpha),
-        fontSize = 20.sp,
+        fontSize = dimensions.sectionHeaderFont,
         fontWeight = FontWeight.Bold,
         color = Color.White
     )

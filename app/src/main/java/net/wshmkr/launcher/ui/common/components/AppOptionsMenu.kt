@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.icons.CheckIcon
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
@@ -34,6 +33,7 @@ import net.wshmkr.launcher.ui.common.icons.StarFilledIcon
 import net.wshmkr.launcher.ui.common.icons.StarIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +46,7 @@ fun AppOptionsMenu(
 ) {
     val sheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
+    val dimensions = LocalDimensions.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -55,7 +56,7 @@ fun AppOptionsMenu(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = dimensions.appOptionsHorizontalPadding)
                 .padding(top = 18.dp)
         ) {
             Row(
@@ -67,12 +68,12 @@ fun AppOptionsMenu(
                 Image(
                     painter = appInfo.icon,
                     contentDescription = appInfo.label,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(dimensions.appOptionsIconSize)
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(dimensions.appOptionsIconGap))
                 Text(
                     text = appInfo.label,
-                    fontSize = 20.sp,
+                    fontSize = dimensions.appOptionsLabelFont,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
@@ -161,7 +162,7 @@ fun AppOptionsMenu(
             if (appInfo.isSystemApp) {
                 Text(
                     text = "This is a system app and can't be uninstalled.",
-                    fontSize = 14.sp,
+                    fontSize = dimensions.appOptionsNoteFont,
                     color = Color.Gray,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)
                 )

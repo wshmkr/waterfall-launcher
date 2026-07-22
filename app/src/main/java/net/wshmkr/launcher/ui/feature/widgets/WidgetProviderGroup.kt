@@ -27,11 +27,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
 import net.wshmkr.launcher.ui.common.icons.ArrowDropUpIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
@@ -45,6 +45,7 @@ fun WidgetProviderGroup(
     onProviderClick: () -> Unit,
     onWidgetSelected: (WidgetOption) -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Column {
         WidgetProviderRow(
             provider = provider,
@@ -57,7 +58,11 @@ fun WidgetProviderGroup(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 32.dp, top = 8.dp)
+                    .padding(
+                        start = dimensions.widgetProviderIndent,
+                        end = dimensions.widgetProviderEndPadding,
+                        top = 8.dp,
+                    )
             ) {
                 provider.widgets.forEachIndexed { index, widgetOption ->
                     key(widgetOption.info.provider) {
@@ -95,9 +100,11 @@ private fun WidgetProviderRow(
         isActiveLetter = isActiveLetter,
         label = "widget_provider_alpha"
     )
+    val dimensions = LocalDimensions.current
+
     Row(
         modifier = modifier
-            .padding(start = 8.dp, end = 32.dp)
+            .padding(start = 8.dp, end = dimensions.widgetProviderEndPadding)
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.08f))
@@ -110,7 +117,7 @@ private fun WidgetProviderRow(
             painter = rememberDrawablePainter(drawable = provider.icon),
             contentDescription = provider.label,
             modifier = Modifier
-                .size(40.dp)
+                .size(dimensions.widgetProviderIconSize)
                 .clip(RoundedCornerShape(8.dp))
         )
         Spacer(modifier = Modifier.width(16.dp))
@@ -120,7 +127,7 @@ private fun WidgetProviderRow(
             Text(
                 text = provider.label,
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = dimensions.widgetProviderLabelFont,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -129,13 +136,13 @@ private fun WidgetProviderRow(
             Text(
                 text = widgetCountLabel(provider.widgetCount),
                 color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp
+                fontSize = dimensions.widgetProviderSubtitleFont,
             )
         }
         Icon(
             painter = if (isExpanded) ArrowDropUpIcon() else ArrowDropDownIcon(),
             contentDescription = if (isExpanded) "Collapse Widgets" else "Expand Widgets",
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(dimensions.widgetProviderChevronSize),
             tint = Color.White
         )
     }

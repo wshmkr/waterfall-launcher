@@ -27,11 +27,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
 @Composable
@@ -60,6 +60,8 @@ fun WidgetListItem(
         }
     }
 
+    val dimensions = LocalDimensions.current
+
     Column(
         modifier = modifier
             .alpha(animatedAlpha)
@@ -75,7 +77,7 @@ fun WidgetListItem(
         ) {
             val density = LocalDensity.current
             val maxWidthPx = with(density) { maxWidth.toPx() }
-            val fallbackHeightPx = with(density) { 120.dp.toPx() }
+            val fallbackHeightPx = with(density) { dimensions.widgetListItemFallbackHeight.toPx() }
 
             val intrinsicWidthPx = previewDrawable?.intrinsicWidth?.takeIf { it > 0 }?.toFloat()
             val intrinsicHeightPx = previewDrawable?.intrinsicHeight?.takeIf { it > 0 }?.toFloat()
@@ -107,7 +109,7 @@ fun WidgetListItem(
                     Text(
                         text = "Preview unavailable",
                         color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 12.sp
+                        fontSize = dimensions.widgetListItemPreviewFont
                     )
                 }
             }
@@ -118,7 +120,7 @@ fun WidgetListItem(
         Text(
             text = widgetOption.label,
             color = Color.White,
-            fontSize = 16.sp,
+            fontSize = dimensions.widgetListItemLabelFont,
             fontWeight = FontWeight.Medium
         )
     }

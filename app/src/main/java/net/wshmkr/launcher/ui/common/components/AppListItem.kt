@@ -27,12 +27,12 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -66,9 +66,14 @@ fun AppListItem(
         }
     }
 
+    val dimensions = LocalDimensions.current
+
     Row(
         modifier = Modifier
-            .padding(start = 8.dp, end = 32.dp)
+            .padding(
+                start = dimensions.appRowOuterStartPadding,
+                end = dimensions.appRowOuterEndPadding,
+            )
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
@@ -78,17 +83,17 @@ fun AppListItem(
                     showBottomSheet = true
                 }
             )
-            .padding(8.dp)
+            .padding(dimensions.appRowInnerPadding)
             .alpha(animatedAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
             painter = appInfo.icon,
             contentDescription = appInfo.label,
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(dimensions.appRowIconSize),
             colorFilter = inactiveFilter
         )
-        Spacer(modifier = Modifier.width(20.dp))
+        Spacer(modifier = Modifier.width(dimensions.appRowIconGap))
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -115,7 +120,7 @@ fun AppListItem(
 fun AppTitle(title: String, isHidden: Boolean) {
     Text(
         text = title,
-        fontSize = 16.sp,
+        fontSize = LocalDimensions.current.appRowFont,
         color = Color.White,
         maxLines = 1,
         fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,

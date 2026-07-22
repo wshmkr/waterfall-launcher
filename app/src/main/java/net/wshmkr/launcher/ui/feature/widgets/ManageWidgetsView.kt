@@ -30,13 +30,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.icons.AddIcon
 import net.wshmkr.launcher.ui.common.icons.DeleteIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.viewmodel.ManagedWidget
 
 @Composable
@@ -47,21 +47,27 @@ fun ManageWidgetsView(
 ) {
     val listState = rememberLazyListState()
     val topPadding = calculateCenteredContentTopPadding()
+    val dimensions = LocalDimensions.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(start = 24.dp, end = 24.dp, top = topPadding, bottom = 16.dp)
+            .padding(
+                start = dimensions.manageWidgetsPagePadding,
+                end = dimensions.manageWidgetsPagePadding,
+                top = topPadding,
+                bottom = 16.dp,
+            )
     ) {
         Text(
             text = "Manage Widgets",
-            fontSize = 24.sp,
+            fontSize = dimensions.manageWidgetsTitleFont,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(dimensions.manageWidgetsTitleGap))
 
         Box(
             modifier = Modifier
@@ -101,6 +107,7 @@ private fun ManagedWidgetRow(
     item: ManagedWidget,
     onDelete: () -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -111,7 +118,7 @@ private fun ManagedWidgetRow(
             painter = rememberDrawablePainter(drawable = item.appIcon),
             contentDescription = item.appName,
             modifier = Modifier
-                .size(36.dp)
+                .size(dimensions.managedWidgetIconSize)
                 .clip(RoundedCornerShape(12.dp))
         )
 
@@ -123,7 +130,7 @@ private fun ManagedWidgetRow(
             Text(
                 text = item.widgetName,
                 color = Color.White,
-                fontSize = 16.sp,
+                fontSize = dimensions.managedWidgetNameFont,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -132,7 +139,7 @@ private fun ManagedWidgetRow(
             Text(
                 text = item.appName,
                 color = Color.White.copy(alpha = 0.7f),
-                fontSize = 13.sp,
+                fontSize = dimensions.managedWidgetSubtitleFont,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -152,6 +159,7 @@ private fun ManagedWidgetRow(
 private fun AddWidgetRow(
     onClick: () -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,7 +172,7 @@ private fun AddWidgetRow(
             painter = AddIcon(),
             contentDescription = "Add widget",
             tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(dimensions.addWidgetIconSize)
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -172,7 +180,7 @@ private fun AddWidgetRow(
         Text(
             text = "Add Widget",
             color = Color.White.copy(alpha = 0.7f),
-            fontSize = 16.sp,
+            fontSize = dimensions.addWidgetLabelFont,
             fontWeight = FontWeight.Medium
         )
     }

@@ -35,10 +35,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import kotlin.math.abs
+import kotlin.math.sign
+import kotlin.math.sqrt
 
 private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
 
@@ -57,6 +62,10 @@ fun SearchOverlayScaffold(
     LaunchedEffect(Unit) {
         isVisible = true
     }
+
+    val dimensions = LocalDimensions.current
+    val thresholdPx = with(LocalDensity.current) { dimensions.verticalSwipeThreshold.toPx() }
+    val feedbackScale = dimensions.verticalDragFeedbackScale
 
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -99,7 +108,7 @@ fun SearchOverlayScaffold(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (totalDragY > VERTICAL_SWIPE_SENSITIVITY) {
+                if (totalDragY > thresholdPx) {
                     currentDismissOverlay()
                 } else if (totalDragY > 0) {
                     offsetY.animateTo(
@@ -129,7 +138,7 @@ fun SearchOverlayScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationY = verticalDragFeedback(offsetY.value)
+                    translationY = sqrt(abs(offsetY.value)) * sign(offsetY.value) * feedbackScale
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -165,7 +174,7 @@ fun SearchOverlayScaffold(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = dimensions.searchListHorizontalGutter)
                     .nestedScroll(nestedScrollConnection)
             ) {
                 content()

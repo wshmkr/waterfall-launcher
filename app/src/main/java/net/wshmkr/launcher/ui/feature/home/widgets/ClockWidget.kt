@@ -21,8 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.util.formatDate
 import net.wshmkr.launcher.util.formatTime
 import net.wshmkr.launcher.util.launchCalendarToday
@@ -43,6 +43,7 @@ fun ClockWidget(
     if (!showClock && !showCalendar && !showWeather) return
 
     val context = LocalContext.current
+    val dimensions = LocalDimensions.current
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -67,7 +68,7 @@ fun ClockWidget(
                 if (showCalendar && showWeather) {
                     Text(
                         text = "•",
-                        fontSize = 16.sp,
+                        fontSize = dimensions.clockChipFont,
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
@@ -98,7 +99,7 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
     val display = remember(now, use24Hour) { formatTime(now, use24Hour) }
     Text(
         text = display,
-        fontSize = 48.sp,
+        fontSize = LocalDimensions.current.clockFont,
         color = Color.White,
         modifier = Modifier
             .padding(horizontal = 4.dp)
@@ -115,7 +116,7 @@ private fun ClockDateText(onClick: () -> Unit) {
     val display = remember(today) { formatDate(today) }
     Text(
         text = display,
-        fontSize = 16.sp,
+        fontSize = LocalDimensions.current.clockChipFont,
         color = Color.White,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))

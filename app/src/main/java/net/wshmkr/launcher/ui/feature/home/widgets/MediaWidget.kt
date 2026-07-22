@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -33,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.homeWidgetGap
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.util.launchPackage
 import net.wshmkr.launcher.viewmodel.MediaViewModel
@@ -40,7 +41,7 @@ import net.wshmkr.launcher.viewmodel.MediaViewModel
 @Composable
 fun MediaWidget(enabled: Boolean = true) {
     if (!enabled) {
-        return Spacer(modifier = Modifier.height(16.dp))
+        return Spacer(modifier = Modifier.height(LocalDimensions.current.homeWidgetGap()))
     }
 
     val context = LocalContext.current
@@ -86,7 +87,7 @@ private fun ActiveMediaControls(viewModel: MediaViewModel = hiltViewModel()) {
 
     val info = mediaInfo
     if (info == null) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(LocalDimensions.current.homeWidgetGap()))
     } else {
         val packageName = info.packageName
         val onMediaAppClick = remember(packageName, context) {
@@ -119,6 +120,7 @@ private fun buildOnMediaAppClick(context: Context, packageName: String?): () -> 
 
 @Composable
 private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
+    val dimensions = LocalDimensions.current
     Row(
         modifier = Modifier
             .padding(horizontal = 12.dp)
@@ -133,12 +135,12 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             painter = MusicNoteIcon(),
             contentDescription = "Media",
             tint = Color.White.copy(alpha = 0.5f),
-            modifier = Modifier.size(32.dp)
+            modifier = Modifier.size(dimensions.mediaPromptIconSize)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Enable notification access\nfor media controls",
-            fontSize = 14.sp,
+            fontSize = dimensions.mediaPromptFont,
             color = Color.White.copy(alpha = 0.5f),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()

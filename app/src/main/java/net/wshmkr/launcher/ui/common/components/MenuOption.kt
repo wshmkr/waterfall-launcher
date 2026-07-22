@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 
 enum class MenuOptionTextSize {
     Small, Medium, Large
@@ -43,16 +44,17 @@ fun MenuOption(
     endContent: (@Composable () -> Unit)? = null,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
 ) {
+    val dimensions = LocalDimensions.current
     val fontSize = when (textSize) {
-        MenuOptionTextSize.Small -> 16.sp
-        MenuOptionTextSize.Medium -> 18.sp
-        MenuOptionTextSize.Large -> 20.sp
+        MenuOptionTextSize.Small -> dimensions.menuOptionFontSmall
+        MenuOptionTextSize.Medium -> dimensions.menuOptionFontMedium
+        MenuOptionTextSize.Large -> dimensions.menuOptionFontLarge
     }
 
     val subtextSize = when (textSize) {
-        MenuOptionTextSize.Small -> 14.sp
-        MenuOptionTextSize.Medium -> 16.sp
-        MenuOptionTextSize.Large -> 18.sp
+        MenuOptionTextSize.Small -> dimensions.menuOptionSubFontSmall
+        MenuOptionTextSize.Medium -> dimensions.menuOptionSubFontMedium
+        MenuOptionTextSize.Large -> dimensions.menuOptionSubFontLarge
     }
 
     Row(
@@ -61,8 +63,8 @@ fun MenuOption(
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(
-                start = 16.dp * (indent + 1),
-                end = 16.dp,
+                start = dimensions.menuOptionHorizontalPadding * (indent + 1),
+                end = dimensions.menuOptionHorizontalPadding,
                 top = 8.dp,
                 bottom = 8.dp,
             ),
@@ -72,10 +74,10 @@ fun MenuOption(
             Icon(
                 painter = icon,
                 contentDescription = text,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(dimensions.menuOptionIconSize),
                 tint = color,
             )
-            Spacer(modifier = Modifier.width(24.dp))
+            Spacer(modifier = Modifier.width(dimensions.menuOptionIconGap))
         }
         Column(
             modifier = Modifier.weight(1f)

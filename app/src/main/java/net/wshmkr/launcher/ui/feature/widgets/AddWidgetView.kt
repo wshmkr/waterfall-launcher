@@ -16,10 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AlphabetSlider
 import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 @Composable
@@ -43,7 +43,10 @@ fun AddWidgetView(
     )
 
     val topPadding = calculateCenteredContentTopPadding()
-    val contentPadding = remember(topPadding) { PaddingValues(vertical = topPadding, horizontal = 32.dp) }
+    val listGutter = LocalDimensions.current.listHorizontalGutter
+    val contentPadding = remember(topPadding, listGutter) {
+        PaddingValues(vertical = topPadding, horizontal = listGutter)
+    }
     val onLetterSelected = remember(viewModel) { { letter: String -> viewModel.scrollToLetter(letter) } }
     val onSelectionCleared = remember(viewModel) { { viewModel.deselectLetter() } }
 
