@@ -161,7 +161,6 @@ object WeatherHelper {
         )
     }
 
-    @Suppress("TooGenericExceptionCaught")
     private suspend fun httpGetJson(url: String): Result<JSONObject> =
         withContext(Dispatchers.IO) {
             val connection = URL(url).openConnection() as HttpURLConnection
