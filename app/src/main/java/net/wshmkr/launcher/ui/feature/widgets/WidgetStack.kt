@@ -20,7 +20,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,42 +50,48 @@ fun WidgetStack(
 
     if (widgetIds.isEmpty()) return
 
-    val pageCount = widgetIds.size
-    val pagerState = rememberPagerState(
-        initialPage = loopStartPage(
-            pageCount = pageCount,
-            initialIndex = viewModel.initialPageIndex.coerceIn(0, widgetIds.lastIndex),
-        ),
-    ) { if (widgetIds.size > 1) LOOP_PAGE_COUNT else widgetIds.size }
-
-    LaunchedEffect(pagerState, viewModel) {
-        snapshotFlow { pagerState.settledPage }.collect { page ->
-            val ids = viewModel.widgetIds
-            if (ids.isNotEmpty()) viewModel.updateCurrentPage(ids[page % ids.size])
-        }
+    var currentWidgetId by remember {
+        mutableIntStateOf(widgetIds[viewModel.initialPageIndex.coerceIn(0, widgetIds.lastIndex)])
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight()
-    ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
-        ) { page ->
-            val widgetId = widgetIds[page % widgetIds.size]
-            key(widgetId) {
-                WidgetPage(
-                    widgetId = widgetId,
-                    viewModel = viewModel,
-                )
+    // Recreate the pager whenever the list changes so virtual pages always map
+    // to a fixed list snapshot, re-seeded at the widget the user was viewing.
+    key(widgetIds) {
+        val pageCount = widgetIds.size
+        val pagerState = rememberPagerState(
+            initialPage = loopStartPage(
+                pageCount = pageCount,
+                initialIndex = widgetIds.indexOf(currentWidgetId).coerceAtLeast(0),
+            ),
+        ) { if (pageCount > 1) LOOP_PAGE_COUNT else pageCount }
+
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.settledPage }.collect { page ->
+                val widgetId = widgetIds[page % pageCount]
+                currentWidgetId = widgetId
+                viewModel.updateCurrentPage(widgetId)
             }
         }
 
-        if (pageCount > 1) {
-            Spacer(modifier = Modifier.height(4.dp))
-            PageDashes(pagerState = pagerState, pageCount = pageCount)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxWidth(),
+            ) { page ->
+                WidgetPage(
+                    widgetId = widgetIds[page % pageCount],
+                    viewModel = viewModel,
+                )
+            }
+
+            if (pageCount > 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                PageDashes(pagerState = pagerState, pageCount = pageCount)
+            }
         }
     }
 }
