@@ -50,9 +50,6 @@ class MediaSessionRepository @Inject constructor(
             }
             .stateIn(repoScope, SharingStarted.WhileSubscribed(5_000), ActiveMediaSession())
 
-    // Combined flow retained for legacy consumers; downstream splits are the preferred entry points.
-    val activeMediaSession: Flow<ActiveMediaSession> = activeSession.distinctUntilChanged()
-
     val mediaInfo: Flow<MediaInfo?> =
         activeSession.map { it.mediaInfo }.distinctUntilChanged()
 
