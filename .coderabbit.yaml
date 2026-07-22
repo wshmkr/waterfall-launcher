@@ -95,8 +95,6 @@ reviews:
       enabled: false
     gitleaks:
       enabled: true
-    detekt:
-      enabled: true
 
 chat:
   art: false
