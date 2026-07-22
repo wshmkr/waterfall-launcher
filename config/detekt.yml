@@ -1,0 +1,24 @@
+# Overlay on top of detekt defaults (via --build-upon-default-config).
+# Only lists overrides; every unmentioned rule keeps its default behavior.
+
+complexity:
+  LongMethod:
+    active: false
+  LongParameterList:
+    active: false
+  TooManyFunctions:
+    active: false
+  CyclomaticComplexMethod:
+    threshold: 20
+
+style:
+  MagicNumber:
+    active: false
+  UnusedPrivateMember:
+    active: false
+  ReturnCount:
+    active: false
+  MaxLineLength:
+    maxLineLength: 140
+  ForbiddenComment:
+    active: false
