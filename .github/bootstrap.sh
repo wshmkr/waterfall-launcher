@@ -25,7 +25,7 @@ echo '{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_s
 
 gh api -X PUT "repos/$repo/branches/main/protection" --input - <<'JSON' >/dev/null
 {
-  "required_status_checks": null,
+  "required_status_checks": { "strict": true, "contexts": ["detekt"] },
   "enforce_admins": false,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
@@ -43,4 +43,4 @@ echo "Done. Applied:"
 echo "  - Merge: squash-only, delete branch, PR_TITLE + BLANK squash format"
 echo "  - Tabs: wiki and projects hidden"
 echo "  - Branch protection on main: PR + 1 approval, linear history, no force-push"
-echo "  - Note: no required status checks — add contexts to required_status_checks once CI exists"
+echo "  - Required checks: detekt"

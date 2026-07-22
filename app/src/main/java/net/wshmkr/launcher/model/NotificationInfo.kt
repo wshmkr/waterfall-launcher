@@ -2,7 +2,11 @@ package net.wshmkr.launcher.model
 
 import android.app.PendingIntent
 import android.os.UserHandle
+import androidx.compose.runtime.Immutable
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
+@Immutable
 data class NotificationInfo(
     val id: Int,
     val packageName: String,
@@ -11,12 +15,13 @@ data class NotificationInfo(
     val text: String? = null,
     val subText: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
-    val actions: List<NotificationAction> = emptyList(),
+    val actions: ImmutableList<NotificationAction> = persistentListOf(),
     val contentIntent: PendingIntent? = null,
     val isOngoing: Boolean = false,
     val isMedia: Boolean = false,
 )
 
+@Immutable
 data class NotificationAction(
     val title: String,
     val actionIntent: PendingIntent?,

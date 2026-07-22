@@ -8,19 +8,26 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.snapshots.Snapshot
 import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.core.graphics.drawable.toBitmap
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.datastore.AppPreferencesDataSource
 import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
@@ -48,7 +55,7 @@ class AppsRepository @Inject constructor(
     private var usageDirty = false
     private var pendingPublish = true
 
-    private val _activeProfiles = MutableStateFlow<Set<UserHandle>>(emptySet())
+    private val _activeProfiles = MutableStateFlow<ImmutableSet<UserHandle>>(persistentSetOf())
     val activeProfiles = _activeProfiles.asStateFlow()
 
     private val appComparator =
@@ -96,7 +103,7 @@ class AppsRepository @Inject constructor(
     private fun updateActiveProfiles() {
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() }
             ?: listOf(Process.myUserHandle())
-        _activeProfiles.value = userHandles.filter { isProfileActive(it) }.toSet()
+        _activeProfiles.value = userHandles.filter { isProfileActive(it) }.toPersistentSet()
     }
 
     fun isProfileActive(userHandle: UserHandle): Boolean {
@@ -126,20 +133,25 @@ class AppsRepository @Inject constructor(
 
                     for (activity in activities) {
                         val appPackageName = activity.componentName.packageName
-
-                        if (!seen.add(appPackageName to userHandle)) continue
-                        if (appPackageName == application.packageName) continue
-
-                        add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
+                        if (seen.add(appPackageName to userHandle) && appPackageName != application.packageName) {
+                            add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
+                        }
                     }
                 }
             }.sortedWith(appComparator)
         }
 
-        allApps.clear()
-        allApps.addAll(apps)
+        Snapshot.withMutableSnapshot {
+            allApps.clear()
+            allApps.addAll(apps)
+        }
 
+        val installedKeys = apps.mapTo(HashSet(apps.size)) { it.key }
         for ((key, diskEntry) in usageDataSource.loadAll()) {
+            if (key !in installedKeys) {
+                usageDirty = true
+                continue
+            }
             val existing = usageEntries[key]
             usageEntries[key] = if (existing == null) {
                 diskEntry
@@ -161,18 +173,32 @@ class AppsRepository @Inject constructor(
     ): AppInfo {
         val appPackageName = activity.componentName.packageName
         val isSystemApp = activity.applicationInfo.flags.and(ApplicationInfo.FLAG_SYSTEM) != 0
+        val label = activity.label.toString()
 
         return AppInfo(
-            label = activity.label.toString(),
+            label = label,
             packageName = appPackageName,
-            icon = activity.getBadgedIcon(0),
+            icon = toBitmapPainter(activity.getBadgedIcon(0)),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
             isFavorite = favorites.contains(appPackageName),
             isHidden = hidden.contains(appPackageName),
             doNotSuggest = doNotSuggest.contains(appPackageName),
+            searchTokens = buildSearchTokens(label),
         )
     }
+
+    private fun toBitmapPainter(drawable: Drawable): BitmapPainter {
+        val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
+        val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
+        return BitmapPainter(drawable.toBitmap(width = width, height = height).asImageBitmap())
+    }
+
+    private fun buildSearchTokens(label: String) =
+        label.lowercase()
+            .split(' ')
+            .filter { it.isNotEmpty() }
+            .toImmutableList()
 
     private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
         if (packageName == application.packageName) return
@@ -193,10 +219,12 @@ class AppsRepository @Inject constructor(
             )
         }
 
-        allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
-        if (updated != null) {
-            allApps.add(updated)
-            allApps.sortWith(appComparator)
+        Snapshot.withMutableSnapshot {
+            allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
+            if (updated != null) {
+                allApps.add(updated)
+                allApps.sortWith(appComparator)
+            }
         }
     }
 
@@ -235,22 +263,24 @@ class AppsRepository @Inject constructor(
     suspend fun refreshAppIcons(profiles: Set<UserHandle>) {
         val appsToRefresh = allApps.filter { it.userHandle in profiles }
 
-        val updatedIcons: Map<String, Drawable> = withContext(Dispatchers.IO) {
+        val updatedIcons: Map<String, BitmapPainter> = withContext(Dispatchers.IO) {
             appsToRefresh.mapNotNull { app ->
                 try {
                     launcherApps.getActivityList(app.packageName, app.userHandle)
                         ?.firstOrNull()
                         ?.getBadgedIcon(0)
-                        ?.let { app.key to it }
+                        ?.let { app.key to toBitmapPainter(it) }
                 } catch (_: Exception) {
                     null
                 }
             }.toMap()
         }
 
-        for (index in allApps.indices) {
-            val app = allApps[index]
-            updatedIcons[app.key]?.let { allApps[index] = app.copy(icon = it) }
+        Snapshot.withMutableSnapshot {
+            for (index in allApps.indices) {
+                val app = allApps[index]
+                updatedIcons[app.key]?.let { allApps[index] = app.copy(icon = it) }
+            }
         }
     }
 
@@ -324,5 +354,6 @@ class AppsRepository @Inject constructor(
         private const val DECAY_LAMBDA_PER_DAY = 0.05
         private const val FRECENCY_MIN_SCORE = 0.5
         private const val MAX_MOST_USED = 20
+        private const val FALLBACK_ICON_SIZE_PX = 96
     }
 }

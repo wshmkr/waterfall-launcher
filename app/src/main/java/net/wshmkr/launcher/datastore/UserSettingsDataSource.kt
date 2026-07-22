@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import java.util.Locale
@@ -23,7 +25,10 @@ class UserSettingsDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val dataStore: DataStore<Preferences> = context.userSettingsDataStore
-    
+
+    private val defaultUse24Hour: Boolean get() = DateFormat.is24HourFormat(context)
+    private val defaultUseFahrenheit: Boolean get() = Locale.getDefault().country == "US"
+
     companion object {
         private val KEY_BACKGROUND_URI = stringPreferencesKey("background_uri")
         private val KEY_SHOW_CLOCK = booleanPreferencesKey("show_clock")
@@ -37,28 +42,39 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
     }
 
-    val homeWidgetSettings = dataStore.data.map { preferences ->
-        val defaultUse24Hour = DateFormat.is24HourFormat(context)
-        val defaultUseFahrenheit = Locale.getDefault().country == "US"
-        val weatherLocationName = preferences[KEY_WEATHER_LOCATION_NAME]
-        val weatherLocationLatitude = preferences[KEY_WEATHER_LOCATION_LAT]
-        val weatherLocationLongitude = preferences[KEY_WEATHER_LOCATION_LON]
-        HomeWidgetSettings(
-            showClock = preferences[KEY_SHOW_CLOCK] ?: true,
-            showCalendar = preferences[KEY_SHOW_CALENDAR] ?: true,
-            showWeather = preferences[KEY_SHOW_WEATHER] ?: true,
-            showMediaControls = preferences[KEY_SHOW_MEDIA] ?: true,
-            use24Hour = preferences[KEY_USE_24_HOUR] ?: defaultUse24Hour,
-            useFahrenheit = preferences[KEY_USE_FAHRENHEIT] ?: defaultUseFahrenheit,
-            weatherLocationName = weatherLocationName,
-            weatherLocationLatitude = weatherLocationLatitude,
-            weatherLocationLongitude = weatherLocationLongitude,
-        )
-    }
+    val showClock: Flow<Boolean> = perField(KEY_SHOW_CLOCK) { true }
+    val showCalendar: Flow<Boolean> = perField(KEY_SHOW_CALENDAR) { true }
+    val showWeather: Flow<Boolean> = perField(KEY_SHOW_WEATHER) { true }
+    val showMediaControls: Flow<Boolean> = perField(KEY_SHOW_MEDIA) { true }
+    val use24Hour: Flow<Boolean> = perField(KEY_USE_24_HOUR) { defaultUse24Hour }
+    val useFahrenheit: Flow<Boolean> = perField(KEY_USE_FAHRENHEIT) { defaultUseFahrenheit }
+    val weatherLocationName: Flow<String?> = optionalField(KEY_WEATHER_LOCATION_NAME)
+    val weatherLat: Flow<Double?> = optionalField(KEY_WEATHER_LOCATION_LAT)
+    val weatherLon: Flow<Double?> = optionalField(KEY_WEATHER_LOCATION_LON)
 
-    val backgroundUri = dataStore.data.map { preferences ->
-        preferences[KEY_BACKGROUND_URI]
-    }
+    val homeWidgetSettings: Flow<HomeWidgetSettings> = dataStore.data
+        .map { preferences ->
+            HomeWidgetSettings(
+                showClock = preferences[KEY_SHOW_CLOCK] ?: true,
+                showCalendar = preferences[KEY_SHOW_CALENDAR] ?: true,
+                showWeather = preferences[KEY_SHOW_WEATHER] ?: true,
+                showMediaControls = preferences[KEY_SHOW_MEDIA] ?: true,
+                use24Hour = preferences[KEY_USE_24_HOUR] ?: defaultUse24Hour,
+                useFahrenheit = preferences[KEY_USE_FAHRENHEIT] ?: defaultUseFahrenheit,
+                weatherLocationName = preferences[KEY_WEATHER_LOCATION_NAME],
+                weatherLocationLatitude = preferences[KEY_WEATHER_LOCATION_LAT],
+                weatherLocationLongitude = preferences[KEY_WEATHER_LOCATION_LON],
+            )
+        }
+        .distinctUntilChanged()
+
+    val backgroundUri: Flow<String?> = optionalField(KEY_BACKGROUND_URI)
+
+    private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
+        dataStore.data.map { it[key] ?: default() }.distinctUntilChanged()
+
+    private fun <T> optionalField(key: Preferences.Key<T>): Flow<T?> =
+        dataStore.data.map { it[key] }.distinctUntilChanged()
 
     suspend fun setBackgroundUri(uri: String?) {
         dataStore.edit { preferences ->

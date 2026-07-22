@@ -52,20 +52,22 @@ fun PermissionSettings(
         checkPermissions()
     }
 
-    val openAccessibilitySettings = {
-        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    val openAccessibilitySettings = remember(context) {
+        { _: Boolean -> context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
     }
-    val openNotificationListenerSettings = {
-        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    val openNotificationListenerSettings = remember(context) {
+        { _: Boolean -> context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
     }
-    val handleLocationClick = {
-        if (isLocationEnabled) {
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.fromParts("package", context.packageName, null)
+    val handleLocationClick = remember(context, locationPermissionLauncher) {
+        { _: Boolean ->
+            if (isLocationEnabled) {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                }
+                context.startActivity(intent)
+            } else {
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             }
-            context.startActivity(intent)
-        } else {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
     }
 
@@ -77,7 +79,7 @@ fun PermissionSettings(
             subtext = "Used for notification drawer control",
             color = Color.White,
             checked = isAccessibilityEnabled,
-            onCheckedChange = { openAccessibilitySettings() },
+            onCheckedChange = openAccessibilitySettings,
         )
 
         ToggleMenuOption(
@@ -85,7 +87,7 @@ fun PermissionSettings(
             subtext = "Used for media controls",
             color = Color.White,
             checked = isNotificationAccessEnabled,
-            onCheckedChange = { openNotificationListenerSettings() },
+            onCheckedChange = openNotificationListenerSettings,
         )
 
         ToggleMenuOption(
@@ -93,7 +95,7 @@ fun PermissionSettings(
             subtext = "Used for weather",
             color = Color.White,
             checked = isLocationEnabled,
-            onCheckedChange = { handleLocationClick() },
+            onCheckedChange = handleLocationClick,
         )
     }
 }

@@ -28,20 +28,25 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.os.UserHandle
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
-import net.wshmkr.launcher.viewmodel.LauncherViewModel
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppListItem(
-    viewModel: LauncherViewModel,
     appInfo: AppInfo,
-    activeProfiles: Set<UserHandle>,
+    isActiveUser: Boolean,
+    onClick: (AppInfo) -> Unit,
+    onToggleFavorite: (AppInfo) -> Unit,
+    onToggleHidden: (AppInfo) -> Unit,
+    onToggleSuggest: (AppInfo) -> Unit,
+    onLongClick: ((AppInfo) -> Unit)? = null,
     targetAlpha: Float = 1f,
     isActiveLetter: Boolean = false,
+    notifications: ImmutableList<NotificationInfo> = persistentListOf(),
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -51,10 +56,6 @@ fun AppListItem(
         label = "app_item_alpha"
     )
 
-    val isActiveUser = remember(activeProfiles, appInfo.userHandle) {
-        appInfo.userHandle in activeProfiles
-    }
-    
     val inactiveFilter = remember(isActiveUser) {
         if (!isActiveUser) {
             ColorFilter.colorMatrix(ColorMatrix().apply {
@@ -71,17 +72,18 @@ fun AppListItem(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
-                onClick = {
-                    viewModel.launchApp(appInfo.packageName, appInfo.userHandle)
-                },
-                onLongClick = { showBottomSheet = true }
+                onClick = { onClick(appInfo) },
+                onLongClick = {
+                    onLongClick?.invoke(appInfo)
+                    showBottomSheet = true
+                }
             )
             .padding(8.dp)
             .alpha(animatedAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = rememberDrawablePainter(drawable = appInfo.icon),
+            painter = appInfo.icon,
             contentDescription = appInfo.label,
             modifier = Modifier.size(40.dp),
             colorFilter = inactiveFilter
@@ -90,19 +92,21 @@ fun AppListItem(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            if (appInfo.hasNotifications) {
-                NotificationPreview(appInfo)
+            if (notifications.isNotEmpty()) {
+                NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
             } else {
                 AppTitle(appInfo.label, appInfo.isHidden)
             }
         }
     }
-    
+
     if (showBottomSheet) {
         AppOptionsMenu(
             appInfo = appInfo,
             onDismiss = { showBottomSheet = false },
-            viewModel = viewModel,
+            onToggleFavorite = onToggleFavorite,
+            onToggleHidden = onToggleHidden,
+            onToggleSuggest = onToggleSuggest,
         )
     }
 }

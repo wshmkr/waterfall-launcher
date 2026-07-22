@@ -4,9 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import androidx.annotation.DrawableRes
 import androidx.annotation.RequiresPermission
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.Priority
@@ -16,6 +15,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import net.wshmkr.launcher.R
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -25,18 +25,6 @@ import java.time.LocalTime
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import net.wshmkr.launcher.ui.common.icons.BedtimeIcon
-import net.wshmkr.launcher.ui.common.icons.ClearDayIcon
-import net.wshmkr.launcher.ui.common.icons.CloudIcon
-import net.wshmkr.launcher.ui.common.icons.DrizzleIcon
-import net.wshmkr.launcher.ui.common.icons.FoggyIcon
-import net.wshmkr.launcher.ui.common.icons.HelpIcon
-import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
-import net.wshmkr.launcher.ui.common.icons.PartlyCloudyNightIcon
-import net.wshmkr.launcher.ui.common.icons.RainyIcon
-import net.wshmkr.launcher.ui.common.icons.ThunderstormIcon
-import net.wshmkr.launcher.ui.common.icons.WeatherMixIcon
-import net.wshmkr.launcher.ui.common.icons.WeatherSnowyIcon
 
 object WeatherHelper {
     const val REFRESH_INTERVAL_MS = 30 * 60 * 1000L
@@ -141,26 +129,24 @@ object WeatherHelper {
         val results = json.optJSONArray("results") ?: return emptyList()
         return buildList {
             for (index in 0 until results.length()) {
-                val item = results.optJSONObject(index) ?: continue
-                val name = item.optString("name").takeIf { it.isNotBlank() } ?: continue
-                val latitude = item.optDouble("latitude")
-                val longitude = item.optDouble("longitude")
-                if (latitude.isNaN() || longitude.isNaN()) continue
-                val admin1 = item.optString("admin1").takeIf { it.isNotBlank() }
-                val admin2 = item.optString("admin2").takeIf { it.isNotBlank() }
-                val country = item.optString("country").takeIf { it.isNotBlank() }
-                add(
-                    GeocodingResult(
-                        name = name,
-                        latitude = latitude,
-                        longitude = longitude,
-                        admin1 = admin1,
-                        admin2 = admin2,
-                        country = country
-                    )
-                )
+                results.optJSONObject(index)?.let(::parseGeocodingResult)?.let(::add)
             }
         }
+    }
+
+    private fun parseGeocodingResult(item: JSONObject): GeocodingResult? {
+        val name = item.optString("name").takeIf { it.isNotBlank() } ?: return null
+        val latitude = item.optDouble("latitude")
+        val longitude = item.optDouble("longitude")
+        if (latitude.isNaN() || longitude.isNaN()) return null
+        return GeocodingResult(
+            name = name,
+            latitude = latitude,
+            longitude = longitude,
+            admin1 = item.optString("admin1").takeIf { it.isNotBlank() },
+            admin2 = item.optString("admin2").takeIf { it.isNotBlank() },
+            country = item.optString("country").takeIf { it.isNotBlank() }
+        )
     }
 
     private suspend fun httpGetJson(url: String): Result<JSONObject> =
@@ -187,34 +173,32 @@ object WeatherHelper {
             }
         }
 
-    @Composable
-    fun getWeatherIcon(code: Int, isNight: Boolean): Painter = when (code) {
-        0, 1 -> if (isNight) BedtimeIcon() else ClearDayIcon()                  // clear
-        2 -> if (isNight) PartlyCloudyNightIcon() else PartlyCloudyDayIcon()    // partly cloudy
-        3 -> CloudIcon()                            // cloudy
-        45, 48 -> FoggyIcon()                       // fog
-        51, 53, 55 -> DrizzleIcon()                 // light rain
-        61, 63, 65, 80, 81, 82 -> RainyIcon()       // rain & showers
-        56, 57, 66, 67, 77 -> WeatherMixIcon()      // freezing rain & snow grains
-        71, 73, 75, 85, 86 -> WeatherSnowyIcon()    // snow & snow showers
-        95, 96, 99 -> ThunderstormIcon()            // thunderstorm, with or without hail
-        else -> HelpIcon()
+    @DrawableRes
+    fun weatherIconRes(code: Int, isNight: Boolean): Int = when (code) {
+        0, 1 -> if (isNight) R.drawable.icon_bedtime else R.drawable.icon_clear_day
+        2 -> if (isNight) R.drawable.icon_partly_cloudy_night else R.drawable.icon_partly_cloudy_day
+        3 -> R.drawable.icon_cloud                                          // cloudy
+        45, 48 -> R.drawable.icon_foggy                                     // fog
+        51, 53, 55 -> R.drawable.icon_drizzle                               // light rain
+        61, 63, 65, 80, 81, 82 -> R.drawable.icon_rainy                     // rain & showers
+        56, 57, 66, 67, 77 -> R.drawable.icon_weather_mix                   // freezing rain & snow grains
+        71, 73, 75, 85, 86 -> R.drawable.icon_weather_snowy                 // snow & snow showers
+        95, 96, 99 -> R.drawable.icon_thunderstorm                          // thunderstorm, with or without hail
+        else -> R.drawable.icon_help
     }
 
-    fun isNightTime(sunriseTime: String?, sunsetTime: String?): Boolean {
-        val sunrise = sunriseTime?.substringAfter('T')?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
-        val sunset = sunsetTime?.substringAfter('T')?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
-
-        if (sunrise == null || sunset == null) return isNightByHour()
-
-        val now = LocalTime.now()
+    // Sunrise/sunset ISO string form is `YYYY-MM-DDTHH:mm`; only the local-time part is compared.
+    fun isNightAt(now: LocalTime, sunriseTime: String?, sunsetTime: String?): Boolean {
+        val sunrise = parseLocalTime(sunriseTime)
+        val sunset = parseLocalTime(sunsetTime)
+        if (sunrise == null || sunset == null) return isNightHour(now.hour)
         return now.isBefore(sunrise) || !now.isBefore(sunset)
     }
 
-    private fun isNightByHour(): Boolean {
-        val hour = LocalTime.now().hour
-        return hour >= 18 || hour < 6
-    }
+    fun isNightHour(hour: Int): Boolean = hour >= 18 || hour < 6
+
+    private fun parseLocalTime(iso: String?): LocalTime? =
+        iso?.substringAfter('T')?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
 
     private suspend fun <T> Task<T>.suspendForTask(
         cancellationTokenSource: CancellationTokenSource? = null

@@ -1,5 +1,10 @@
 package net.wshmkr.launcher.util
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -28,14 +33,43 @@ private fun formattersForCurrentLocale(): LocalizedFormatters {
     return formatters
 }
 
-fun getCurrentTime(use24Hour: Boolean): String {
-    val localizedFormatters = formattersForCurrentLocale()
-    val formatter = if (use24Hour) localizedFormatters.time24Hour else localizedFormatters.time12Hour
-    return LocalTime.now().format(formatter)
+fun getCurrentTime(use24Hour: Boolean): String = formatTime(LocalTime.now(), use24Hour)
+
+fun getCurrentDate(): String = formatDate(LocalDate.now())
+
+fun formatTime(time: LocalTime, use24Hour: Boolean): String {
+    val localized = formattersForCurrentLocale()
+    val formatter = if (use24Hour) localized.time24Hour else localized.time12Hour
+    return time.format(formatter)
 }
 
-fun getCurrentDate(): String {
-    return LocalDate.now().format(formattersForCurrentLocale().date)
+fun formatDate(date: LocalDate): String = date.format(formattersForCurrentLocale().date)
+
+// Minute-precision clock — ticks at the next minute boundary so the reader
+// invalidates at most once per minute.
+@Composable
+fun rememberCurrentLocalTime(): State<LocalTime> =
+    produceState(initialValue = LocalTime.now()) {
+        while (isActive) {
+            delay(millisUntilNextMinute())
+            value = LocalTime.now()
+        }
+    }
+
+@Composable
+fun rememberCurrentDate(): State<LocalDate> =
+    produceState(initialValue = LocalDate.now()) {
+        while (isActive) {
+            delay(millisUntilNextMinute())
+            val today = LocalDate.now()
+            if (today != value) value = today
+        }
+    }
+
+private fun millisUntilNextMinute(): Long {
+    val now = LocalTime.now()
+    val elapsed = now.second * 1_000L + now.nano / 1_000_000L
+    return (ONE_MINUTE - elapsed).coerceAtLeast(1L)
 }
 
 fun timeSince(timestamp: Long): String {
