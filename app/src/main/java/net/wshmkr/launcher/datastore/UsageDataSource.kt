@@ -29,10 +29,11 @@ class UsageDataSource @Inject constructor(
         val counts = mutableMapOf<String, Long>()
         val lasts = mutableMapOf<String, Long>()
         for ((key, value) in prefs) {
+            val longValue = value as? Long ?: continue
             val name = key.name
             when {
-                name.startsWith(COUNT_PREFIX) -> counts[name.removePrefix(COUNT_PREFIX)] = value as Long
-                name.startsWith(LAST_PREFIX) -> lasts[name.removePrefix(LAST_PREFIX)] = value as Long
+                name.startsWith(COUNT_PREFIX) -> counts[name.removePrefix(COUNT_PREFIX)] = longValue
+                name.startsWith(LAST_PREFIX) -> lasts[name.removePrefix(LAST_PREFIX)] = longValue
             }
         }
         return counts.keys.associateWith { key ->
@@ -42,6 +43,15 @@ class UsageDataSource @Inject constructor(
 
     suspend fun flush(entries: Map<String, UsageEntry>) {
         dataStore.edit { prefs ->
+            val staleKeys = prefs.asMap().keys.filter { pref ->
+                val name = pref.name
+                when {
+                    name.startsWith(COUNT_PREFIX) -> name.removePrefix(COUNT_PREFIX) !in entries
+                    name.startsWith(LAST_PREFIX) -> name.removePrefix(LAST_PREFIX) !in entries
+                    else -> false
+                }
+            }
+            for (stale in staleKeys) prefs.remove(stale)
             for ((key, entry) in entries) {
                 prefs[longPreferencesKey(COUNT_PREFIX + key)] = entry.count
                 prefs[longPreferencesKey(LAST_PREFIX + key)] = entry.lastUsed

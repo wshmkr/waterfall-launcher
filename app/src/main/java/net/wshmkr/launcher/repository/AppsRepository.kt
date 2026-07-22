@@ -9,6 +9,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.Snapshot
 import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
@@ -138,8 +139,17 @@ class AppsRepository @Inject constructor(
         allApps.clear()
         allApps.addAll(apps)
 
-        usageEntries.clear()
-        usageEntries.putAll(usageDataSource.loadAll())
+        for ((key, diskEntry) in usageDataSource.loadAll()) {
+            val existing = usageEntries[key]
+            usageEntries[key] = if (existing == null) {
+                diskEntry
+            } else {
+                UsageEntry(
+                    count = existing.count + diskEntry.count,
+                    lastUsed = maxOf(existing.lastUsed, diskEntry.lastUsed),
+                )
+            }
+        }
     }
 
     private fun buildAppInfo(
@@ -192,6 +202,9 @@ class AppsRepository @Inject constructor(
 
     private fun removePackage(packageName: String, userHandle: UserHandle) {
         allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
+        if (usageEntries.remove(keyFor(packageName, userHandle)) != null) {
+            usageDirty = true
+        }
     }
 
     fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
@@ -200,17 +213,19 @@ class AppsRepository @Inject constructor(
         val existing = usageEntries[key]
         val next = when {
             existing == null -> UsageEntry(count = 1L, lastUsed = now)
-            now - existing.lastUsed < SESSION_DEDUP_WINDOW_MS -> existing.copy(lastUsed = now)
+            now - existing.lastUsed < SESSION_DEDUP_WINDOW_MS -> return
             else -> UsageEntry(count = existing.count + 1L, lastUsed = now)
         }
         usageEntries[key] = next
         usageDirty = true
+        scope.launch { flushUsage() }
     }
 
     suspend fun flushUsage() {
         if (!usageDirty) return
-        usageDataSource.flush(usageEntries)
         usageDirty = false
+        val snapshot = usageEntries.toMap()
+        usageDataSource.flush(snapshot)
     }
 
     fun releaseMostUsedPublish() {
@@ -247,14 +262,17 @@ class AppsRepository @Inject constructor(
         val ranked = usageEntries.entries
             .asSequence()
             .map { (key, entry) -> key to frecencyScore(entry, now) }
-            .filter { it.second > 0.0 }
+            .filter { it.second >= FRECENCY_MIN_SCORE }
             .sortedByDescending { it.second }
+            .take(MAX_MOST_USED)
             .map { it.first }
             .toList()
 
         if (ranked == mostUsedApps.toList()) return
-        mostUsedApps.clear()
-        mostUsedApps.addAll(ranked)
+        Snapshot.withMutableSnapshot {
+            mostUsedApps.clear()
+            mostUsedApps.addAll(ranked)
+        }
     }
 
     private fun frecencyScore(entry: UsageEntry, now: Long): Double {
@@ -304,5 +322,7 @@ class AppsRepository @Inject constructor(
         private const val SESSION_DEDUP_WINDOW_MS = 60_000L
         private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
         private const val DECAY_LAMBDA_PER_DAY = 0.05
+        private const val FRECENCY_MIN_SCORE = 0.5
+        private const val MAX_MOST_USED = 20
     }
 }

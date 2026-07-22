@@ -133,9 +133,9 @@ class HomeViewModel @Inject constructor(
 
     fun onLauncherStopped() {
         observedStop = true
+        appsRepository.releaseMostUsedPublish()
         viewModelScope.launch {
             appsRepository.flushUsage()
-            appsRepository.releaseMostUsedPublish()
         }
     }
 
