@@ -1,9 +1,11 @@
 package net.wshmkr.launcher.ui.common.components
 
 import android.view.MotionEvent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -177,11 +179,24 @@ private fun AnimatedLettersList(
         verticalArrangement = Arrangement.spacedBy((-6).dp),
     ) {
         letters.forEachIndexed { index, letter ->
+            // Per-letter Animatable driven off snapshotFlow so the wave settles smoothly on
+            // release without recomposing the Text — the value read stays inside graphicsLayer.
+            val waveAnimatable = remember { Animatable(0f) }
+            LaunchedEffect(index, viewModel) {
+                snapshotFlow { viewModel.waveOffsetAt(index) to (viewModel.touchYPosition == null) }
+                    .collect { (target, releasing) ->
+                        if (releasing) {
+                            waveAnimatable.animateTo(target, tween(durationMillis = 250))
+                        } else {
+                            waveAnimatable.snapTo(target)
+                        }
+                    }
+            }
             Text(
                 text = letter,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .graphicsLayer { translationX = viewModel.waveOffsetAt(index).dp.toPx() }
+                    .graphicsLayer { translationX = waveAnimatable.value.dp.toPx() }
                     .onGloballyPositioned { coordinates ->
                         val bounds = coordinates.boundsInParent()
                         viewModel.updateLetterBounds(index, bounds.top, bounds.bottom)
