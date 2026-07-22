@@ -1,8 +1,6 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
+import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -31,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
 @Composable
@@ -43,22 +44,20 @@ fun WidgetListItem(
 ) {
     val context = LocalContext.current
     val densityDpi = context.resources.displayMetrics.densityDpi
-    val previewDrawable = remember(widgetOption.info, densityDpi) {
-        try {
-            widgetOption.info.loadPreviewImage(context, densityDpi)
-                ?: widgetOption.info.loadIcon(context, densityDpi)
-        } catch (e: Exception) {
-            null
+    val previewDrawable by produceState<Drawable?>(null, widgetOption.info, densityDpi) {
+        value = withContext(Dispatchers.IO) {
+            try {
+                widgetOption.info.loadPreviewImage(context, densityDpi)
+                    ?: widgetOption.info.loadIcon(context, densityDpi)
+            } catch (e: Exception) {
+                null
+            }
         }
     }
 
-    val animatedAlpha by animateFloatAsState(
-        targetValue = targetAlpha,
-        animationSpec = if (isActiveLetter || targetAlpha < 1f) {
-            snap()
-        } else {
-            tween(durationMillis = 300)
-        },
+    val animatedAlpha by animateLetterFilterAlpha(
+        targetAlpha = targetAlpha,
+        isActiveLetter = isActiveLetter,
         label = "widget_list_item_alpha"
     )
 

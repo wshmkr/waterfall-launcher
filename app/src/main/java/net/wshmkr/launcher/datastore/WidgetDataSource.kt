@@ -8,8 +8,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,13 +25,7 @@ class WidgetDataSource @Inject constructor(
     }
 
     suspend fun getWidgetIds(): List<Int> {
-        val jsonString = dataStore.data.map { it[WIDGETS_KEY] }.first() ?: return emptyList()
-        return try {
-            val jsonArray = JSONArray(jsonString)
-            (0 until jsonArray.length()).map { jsonArray.getInt(it) }
-        } catch (e: Exception) {
-            emptyList()
-        }
+        return decodeWidgetIds(dataStore.data.first()[WIDGETS_KEY])
     }
 
     suspend fun addWidget(widgetId: Int) = updateWidgets { ids ->
@@ -44,14 +36,14 @@ class WidgetDataSource @Inject constructor(
         ids.filter { it != widgetId }
     }
 
-    suspend fun clearAllWidgets() {
-        dataStore.edit { it.clear() }
+    private suspend fun updateWidgets(transform: (List<Int>) -> List<Int>) {
+        dataStore.edit { preferences ->
+            val current = decodeWidgetIds(preferences[WIDGETS_KEY])
+            preferences[WIDGETS_KEY] = encodeStringList(transform(current).map { it.toString() })
+        }
     }
 
-    private suspend fun updateWidgets(transform: (List<Int>) -> List<Int>) {
-        val current = getWidgetIds()
-        val updated = transform(current)
-        val jsonArray = JSONArray().apply { updated.forEach { put(it) } }
-        dataStore.edit { it[WIDGETS_KEY] = jsonArray.toString() }
+    private fun decodeWidgetIds(json: String?): List<Int> {
+        return decodeStringList(json).mapNotNull { it.toIntOrNull() }
     }
 }

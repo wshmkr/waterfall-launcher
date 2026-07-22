@@ -4,14 +4,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.core.net.toUri
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.currentStateAsState
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import net.wshmkr.launcher.ui.common.components.AlphabetSlider
@@ -25,15 +21,6 @@ fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel,
 ) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val lifecycleState = lifecycleOwner.lifecycle.currentStateAsState()
-    
-    LaunchedEffect(lifecycleState.value) {
-        if (lifecycleState.value == Lifecycle.State.RESUMED) {
-            viewModel.refreshBackground()
-        }
-    }
-    
     AppLauncher(launchAppIntent = viewModel.launchAppIntent)
     Box(modifier = Modifier.fillMaxSize()) {
         viewModel.backgroundUri?.let { uriString ->

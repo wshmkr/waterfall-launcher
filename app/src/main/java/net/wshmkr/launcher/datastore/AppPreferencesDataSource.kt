@@ -5,12 +5,10 @@ import android.os.UserHandle
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,109 +16,36 @@ private val Context.appPreferencesDataStore: DataStore<Preferences> by preferenc
 
 @Singleton
 class AppPreferencesDataSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext context: Context
 ) {
     private val dataStore: DataStore<Preferences> = context.appPreferencesDataStore
-    
-    companion object {
-        private const val KEY_NAME_FAVORITES = "favorites"
-        private const val KEY_NAME_DO_NOT_SUGGEST = "do_not_suggest"
-        private const val KEY_NAME_HIDDEN = "hidden"
-    }
 
-    suspend fun getFavorites(userHandle: UserHandle): Set<String> {
-        return getPackageNameSet(keyForUser(KEY_NAME_FAVORITES, userHandle))
-    }
-    
-    suspend fun addToFavorites(packageName: String, userHandle: UserHandle) {
-        addToPackageNameSet(keyForUser(KEY_NAME_FAVORITES, userHandle), packageName)
-    }
-    
-    suspend fun removeFromFavorites(packageName: String, userHandle: UserHandle) {
-        removeFromPackageNameSet(keyForUser(KEY_NAME_FAVORITES, userHandle), packageName)
-    }
-    
-    suspend fun isFavorite(packageName: String, userHandle: UserHandle): Boolean {
-        return getFavorites(userHandle).contains(packageName)
-    }
-    
-    suspend fun getDoNotSuggest(userHandle: UserHandle): Set<String> {
-        return getPackageNameSet(keyForUser(KEY_NAME_DO_NOT_SUGGEST, userHandle))
-    }
-    
-    suspend fun addToDoNotSuggest(packageName: String, userHandle: UserHandle) {
-        addToPackageNameSet(keyForUser(KEY_NAME_DO_NOT_SUGGEST, userHandle), packageName)
-    }
-    
-    suspend fun removeFromDoNotSuggest(packageName: String, userHandle: UserHandle) {
-        removeFromPackageNameSet(keyForUser(KEY_NAME_DO_NOT_SUGGEST, userHandle), packageName)
-    }
-    
-    suspend fun isDoNotSuggest(packageName: String, userHandle: UserHandle): Boolean {
-        return getDoNotSuggest(userHandle).contains(packageName)
-    }
-    
-    suspend fun getHidden(userHandle: UserHandle): Set<String> {
-        return getPackageNameSet(keyForUser(KEY_NAME_HIDDEN, userHandle))
-    }
-    
-    suspend fun addToHidden(packageName: String, userHandle: UserHandle) {
-        addToPackageNameSet(keyForUser(KEY_NAME_HIDDEN, userHandle), packageName)
-    }
-    
-    suspend fun removeFromHidden(packageName: String, userHandle: UserHandle) {
-        removeFromPackageNameSet(keyForUser(KEY_NAME_HIDDEN, userHandle), packageName)
-    }
-    
-    suspend fun isHidden(packageName: String, userHandle: UserHandle): Boolean {
-        return getHidden(userHandle).contains(packageName)
-    }
+    val favorites = PackageNameSetStore("favorites")
+    val doNotSuggest = PackageNameSetStore("do_not_suggest")
+    val hidden = PackageNameSetStore("hidden")
 
-    private fun keyForUser(baseName: String, userHandle: UserHandle): Preferences.Key<String> {
-        return stringPreferencesKey("${baseName}_${userHandle.hashCode()}")
-    }
+    inner class PackageNameSetStore internal constructor(private val baseName: String) {
+        suspend fun get(userHandle: UserHandle): Set<String> {
+            return dataStore.data.first()[keyForUser(userHandle)] ?: emptySet()
+        }
 
-    private suspend fun getPackageNameSet(key: Preferences.Key<String>): Set<String> {
-        val jsonString = dataStore.data.map { preferences ->
-            preferences[key]
-        }.first() ?: return emptySet()
-        
-        return try {
-            val jsonArray = JSONArray(jsonString)
-            val packageNames = mutableSetOf<String>()
-            
-            for (i in 0 until jsonArray.length()) {
-                packageNames.add(jsonArray.getString(i))
+        suspend fun add(packageName: String, userHandle: UserHandle) {
+            update(userHandle) { it + packageName }
+        }
+
+        suspend fun remove(packageName: String, userHandle: UserHandle) {
+            update(userHandle) { it - packageName }
+        }
+
+        private suspend fun update(userHandle: UserHandle, transform: (Set<String>) -> Set<String>) {
+            dataStore.edit { preferences ->
+                val key = keyForUser(userHandle)
+                preferences[key] = transform(preferences[key] ?: emptySet())
             }
-            
-            packageNames
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptySet()
         }
-    }
-    
-    private suspend fun savePackageNameSet(key: Preferences.Key<String>, packageNames: Set<String>) {
-        val jsonArray = JSONArray()
-        
-        for (packageName in packageNames) {
-            jsonArray.put(packageName)
+
+        private fun keyForUser(userHandle: UserHandle): Preferences.Key<Set<String>> {
+            return stringSetPreferencesKey("${baseName}_${userHandle.hashCode()}")
         }
-        
-        dataStore.edit { preferences ->
-            preferences[key] = jsonArray.toString()
-        }
-    }
-    
-    private suspend fun addToPackageNameSet(key: Preferences.Key<String>, packageName: String) {
-        val currentSet = getPackageNameSet(key).toMutableSet()
-        currentSet.add(packageName)
-        savePackageNameSet(key, currentSet)
-    }
-    
-    private suspend fun removeFromPackageNameSet(key: Preferences.Key<String>, packageName: String) {
-        val currentSet = getPackageNameSet(key).toMutableSet()
-        currentSet.remove(packageName)
-        savePackageNameSet(key, currentSet)
     }
 }

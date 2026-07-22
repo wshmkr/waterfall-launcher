@@ -6,18 +6,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
-import net.wshmkr.launcher.ui.common.components.MenuOptionSwitch
 import net.wshmkr.launcher.ui.common.components.MenuOptionTextSize
+import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
@@ -45,14 +42,7 @@ fun HomeScreenSettings(
         }
     }
 
-    Text(
-        text = "Home Screen",
-        color = Color.White,
-        fontSize = 20.sp,
-        fontWeight = FontWeight.SemiBold
-    )
-
-    Spacer(modifier = Modifier.height(12.dp))
+    SettingsSectionHeader("Home Screen")
 
     MenuOption(
         icon = WallpaperIcon(),
@@ -65,79 +55,54 @@ fun HomeScreenSettings(
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    MenuOption(
+    ToggleMenuOption(
         icon = ScheduleIcon(),
         text = "Clock",
         color = Color.White,
-        onClick = { viewModel.setShowClock(!settings.showClock) },
-        endContent = {
-            MenuOptionSwitch(
-                checked = settings.showClock,
-                onCheckedChange = { viewModel.setShowClock(it) }
-            )
-        }
+        checked = settings.showClock,
+        onCheckedChange = { viewModel.setShowClock(it) },
     )
 
-    MenuOption(
+    ToggleMenuOption(
         text = "Time format",
         textSize = MenuOptionTextSize.Small,
         indent = 1,
         color = Color.White,
-        onClick = { viewModel.setUse24Hour(!settings.use24Hour) },
-        endContent = {
-            MenuOptionSwitch(
-                checked = settings.use24Hour,
-                onCheckedChange = { viewModel.setUse24Hour(it) },
-                offText = "12",
-                onText = "24"
-            )
-        }
+        checked = settings.use24Hour,
+        onCheckedChange = { viewModel.setUse24Hour(it) },
+        offText = "12",
+        onText = "24",
     )
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    MenuOption(
+    ToggleMenuOption(
         icon = CalendarTodayIcon(),
         text = "Calendar",
         color = Color.White,
-        onClick = { viewModel.setShowCalendar(!settings.showCalendar) },
-        endContent = {
-            MenuOptionSwitch(
-                checked = settings.showCalendar,
-                onCheckedChange = { viewModel.setShowCalendar(it) }
-            )
-        }
+        checked = settings.showCalendar,
+        onCheckedChange = { viewModel.setShowCalendar(it) },
     )
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    MenuOption(
+    ToggleMenuOption(
         icon = PartlyCloudyDayIcon(),
         text = "Weather",
         color = Color.White,
-        onClick = { viewModel.setShowWeather(!settings.showWeather) },
-        endContent = {
-            MenuOptionSwitch(
-                checked = settings.showWeather,
-                onCheckedChange = { viewModel.setShowWeather(it) }
-            )
-        }
+        checked = settings.showWeather,
+        onCheckedChange = { viewModel.setShowWeather(it) },
     )
 
-    MenuOption(
+    ToggleMenuOption(
         text = "Temperature unit",
         textSize = MenuOptionTextSize.Small,
         indent = 1,
         color = Color.White,
-        onClick = { viewModel.setUseFahrenheit(!settings.useFahrenheit) },
-        endContent = {
-            MenuOptionSwitch(
-                checked = settings.useFahrenheit,
-                onCheckedChange = { viewModel.setUseFahrenheit(it) },
-                offText = "°C",
-                onText = "°F"
-            )
-        }
+        checked = settings.useFahrenheit,
+        onCheckedChange = { viewModel.setUseFahrenheit(it) },
+        offText = "°C",
+        onText = "°F",
     )
 
     val hasStaticWeatherLocation =
@@ -161,17 +126,12 @@ fun HomeScreenSettings(
 
     Spacer(modifier = Modifier.height(8.dp))
 
-    MenuOption(
+    ToggleMenuOption(
         icon = MusicVideoIcon(),
         text = "Media controls",
         color = Color.White,
-        onClick = { viewModel.setShowMedia(!settings.showMediaControls) },
-        endContent = {
-            MenuOptionSwitch(
-                checked = settings.showMediaControls,
-                onCheckedChange = { viewModel.setShowMedia(it) }
-            )
-        }
+        checked = settings.showMediaControls,
+        onCheckedChange = { viewModel.setShowMedia(it) },
     )
 
     Spacer(modifier = Modifier.height(8.dp))

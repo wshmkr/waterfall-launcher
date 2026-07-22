@@ -10,28 +10,29 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
-import net.wshmkr.launcher.ui.common.components.MenuOptionSwitch
+import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.SettingsIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
-import net.wshmkr.launcher.viewmodel.HomeViewModel
+import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeOptionsMenu(
     navController: NavController,
-    viewModel: HomeViewModel,
     onDismiss: () -> Unit,
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val sheetState = rememberModalBottomSheetState()
-    val settings = viewModel.homeWidgetSettings
+    val settings = settingsViewModel.homeWidgetSettings
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -44,52 +45,32 @@ fun HomeOptionsMenu(
                 .padding(horizontal = 16.dp)
                 .padding(vertical = 18.dp)
         ) {
-            MenuOption(
+            ToggleMenuOption(
                 icon = ScheduleIcon(),
                 text = "Clock",
-                onClick = { viewModel.setShowClock(!settings.showClock) },
-                endContent = {
-                    MenuOptionSwitch(
-                        checked = settings.showClock,
-                        onCheckedChange = { viewModel.setShowClock(it) }
-                    )
-                }
+                checked = settings.showClock,
+                onCheckedChange = { settingsViewModel.setShowClock(it) },
             )
 
-            MenuOption(
+            ToggleMenuOption(
                 icon = CalendarTodayIcon(),
                 text = "Calendar",
-                onClick = { viewModel.setShowCalendar(!settings.showCalendar) },
-                endContent = {
-                    MenuOptionSwitch(
-                        checked = settings.showCalendar,
-                        onCheckedChange = { viewModel.setShowCalendar(it) }
-                    )
-                }
+                checked = settings.showCalendar,
+                onCheckedChange = { settingsViewModel.setShowCalendar(it) },
             )
 
-            MenuOption(
+            ToggleMenuOption(
                 icon = PartlyCloudyDayIcon(),
                 text = "Weather",
-                onClick = { viewModel.setShowWeather(!settings.showWeather) },
-                endContent = {
-                    MenuOptionSwitch(
-                        checked = settings.showWeather,
-                        onCheckedChange = { viewModel.setShowWeather(it) }
-                    )
-                }
+                checked = settings.showWeather,
+                onCheckedChange = { settingsViewModel.setShowWeather(it) },
             )
 
-            MenuOption(
+            ToggleMenuOption(
                 icon = MusicVideoIcon(),
                 text = "Media controls",
-                onClick = { viewModel.setShowMedia(!settings.showMediaControls) },
-                endContent = {
-                    MenuOptionSwitch(
-                        checked = settings.showMediaControls,
-                        onCheckedChange = { viewModel.setShowMedia(it) }
-                    )
-                }
+                checked = settings.showMediaControls,
+                onCheckedChange = { settingsViewModel.setShowMedia(it) },
             )
 
             MenuOption(

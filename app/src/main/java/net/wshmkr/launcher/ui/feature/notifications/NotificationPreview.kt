@@ -30,23 +30,21 @@ fun NotificationPreview(appInfo: AppInfo) {
         notification?.let { notification ->
             while (isActive) {
                 val age = System.currentTimeMillis() - notification.timestamp
-                val delay = when {
+                val refreshInterval = when {
                     age < ONE_HOUR -> ONE_MINUTE/2
                     age < ONE_DAY -> ONE_HOUR/2
                     age < ONE_WEEK -> ONE_DAY/2
                     else -> ONE_WEEK/2
                 }
 
-                delay(delay.toLong())
+                delay(refreshInterval.toLong())
                 currentTime = System.currentTimeMillis()
             }
         }
     }
 
-    val age = remember(appInfo.mostRecentNotification?.timestamp, currentTime) {
-        appInfo.mostRecentNotification?.let { notification ->
-            " · ${timeSince(notification.timestamp)}"
-        } ?: ""
+    val age = remember(notification?.timestamp, currentTime) {
+        notification?.let { " · ${timeSince(it.timestamp)}" } ?: ""
     }
 
     AppTitle(appInfo.label + age, appInfo.isHidden)

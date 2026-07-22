@@ -142,14 +142,6 @@ private fun WeatherContent(
             }
         }
 
-        state is WeatherState.Loading -> {
-            CircularProgressIndicator(
-                modifier = modifier.size(18.dp),
-                color = Color.White,
-                strokeWidth = 2.dp
-            )
-        }
-
         state is WeatherState.Ready -> {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

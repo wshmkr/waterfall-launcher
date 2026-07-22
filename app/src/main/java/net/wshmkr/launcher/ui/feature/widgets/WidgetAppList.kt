@@ -79,9 +79,8 @@ fun WidgetAppList(
 
                         is WidgetAppListItem.Provider -> {
                             val isExpanded = expandedProviders.contains(listItem.packageName)
-                            val letter = listItem.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
-                            val targetAlpha = viewModel.getAlpha(letter)
-                            val isActiveLetter = viewModel.activeLetter == letter
+                            val targetAlpha = viewModel.getAlpha(listItem.letter)
+                            val isActiveLetter = viewModel.activeLetter == listItem.letter
                             WidgetProviderGroup(
                                 provider = listItem,
                                 isExpanded = isExpanded,

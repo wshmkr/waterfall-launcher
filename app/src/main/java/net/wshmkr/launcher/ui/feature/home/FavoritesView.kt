@@ -131,7 +131,6 @@ fun FavoritesView(
     if (showHomeOptionsMenu) {
         HomeOptionsMenu(
             navController = navController,
-            viewModel = viewModel,
             onDismiss = { showHomeOptionsMenu = false }
         )
     }

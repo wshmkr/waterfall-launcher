@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -27,12 +28,14 @@ fun Modifier.verticalSwipeDetection(
     onSwipeDown: (() -> Unit)? = null,
 ): Modifier {
     var totalDragY by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    val offsetY = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
-    
+    val currentOnSwipeUp by rememberUpdatedState(onSwipeUp)
+    val currentOnSwipeDown by rememberUpdatedState(onSwipeDown)
+
     return this
         .graphicsLayer {
-            translationY = verticalDragFeedback(offsetY)
+            translationY = verticalDragFeedback(offsetY.value)
         }
         .pointerInput(Unit) {
             detectVerticalDragGestures(
@@ -40,25 +43,21 @@ fun Modifier.verticalSwipeDetection(
                     totalDragY = 0f
                 },
                 onDragEnd = {
-                    if (totalDragY > VERTICAL_SWIPE_SENSITIVITY && onSwipeDown != null) {
-                        onSwipeDown()
-                    } else if (totalDragY < -VERTICAL_SWIPE_SENSITIVITY && onSwipeUp != null) {
-                        onSwipeUp()
+                    if (totalDragY > VERTICAL_SWIPE_SENSITIVITY) {
+                        currentOnSwipeDown?.invoke()
+                    } else if (totalDragY < -VERTICAL_SWIPE_SENSITIVITY) {
+                        currentOnSwipeUp?.invoke()
                     }
                     totalDragY = 0f
                     coroutineScope.launch {
-                        val animatable = Animatable(offsetY)
-                        animatable.animateTo(
-                            targetValue = 0f,
-                            animationSpec = spring()
-                        ) {
-                            offsetY = value
-                        }
+                        offsetY.animateTo(targetValue = 0f, animationSpec = spring())
                     }
                 },
                 onVerticalDrag = { _, dragAmount ->
                     totalDragY += dragAmount
-                    offsetY = totalDragY
+                    coroutineScope.launch {
+                        offsetY.snapTo(totalDragY)
+                    }
                 }
             )
         }

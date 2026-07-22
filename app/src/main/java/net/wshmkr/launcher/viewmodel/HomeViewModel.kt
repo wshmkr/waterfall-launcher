@@ -11,6 +11,7 @@ import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.model.NotificationInfo
+import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
@@ -30,7 +31,7 @@ class HomeViewModel @Inject constructor(
 ) : LauncherViewModel(appsRepository) {
 
     private var notifications by mutableStateOf<Map<String, Map<UserHandle, List<NotificationInfo>>>>(emptyMap())
-    
+
     var backgroundUri by mutableStateOf<String?>(null)
         private set
 
@@ -40,19 +41,19 @@ class HomeViewModel @Inject constructor(
     val allAppsListItems by derivedStateOf {
         buildListItems(appsRepository.allApps.filter { !it.isHidden }, notifications)
     }
-    
+
     val alphabetLetters by derivedStateOf {
         buildList {
             add(STAR_SYMBOL)
             val letters = appsRepository.allApps
                 .filter { !it.isHidden }
-                .map { it.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#" }
+                .map { it.label.sectionLetter }
                 .distinct()
                 .sorted()
             addAll(letters)
         }
     }
-    
+
     val favoriteApps by derivedStateOf { buildFavoriteAppsList(notifications) }
 
     var activeLetter by mutableStateOf<String?>(null)
@@ -89,9 +90,11 @@ class HomeViewModel @Inject constructor(
                     previousProfiles = newProfiles
                 }
         }
-        
+
         viewModelScope.launch {
-            backgroundUri = userSettingsDataSource.getBackgroundUri()
+            userSettingsDataSource.backgroundUri.collect { uri ->
+                backgroundUri = uri
+            }
         }
 
         viewModelScope.launch {
@@ -100,26 +103,20 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-    
-    fun refreshBackground() {
-        viewModelScope.launch {
-            backgroundUri = userSettingsDataSource.getBackgroundUri()
-        }
-    }
 
     fun scrollToLetter(letter: String) {
         activeLetter = letter
         showingFavorites = letter == STAR_SYMBOL
         observedStop = false
     }
-    
+
     fun getScrollPosition(letter: String): Int? {
         if (letter == STAR_SYMBOL) return null
-        
-        val header = allAppsListItems.find { 
+
+        val header = allAppsListItems.find {
             it is AppListItem.SectionHeader && it.letter == letter
         } as? AppListItem.SectionHeader
-        
+
         return header?.position
     }
 
@@ -148,49 +145,13 @@ class HomeViewModel @Inject constructor(
         return if (activeLetter == null || letter == activeLetter) 1f else 0.2f
     }
 
-    fun setShowClock(enabled: Boolean) {
-        viewModelScope.launch {
-            userSettingsDataSource.setShowClock(enabled)
-        }
-    }
-
-    fun setShowCalendar(enabled: Boolean) {
-        viewModelScope.launch {
-            userSettingsDataSource.setShowCalendar(enabled)
-        }
-    }
-
-    fun setShowWeather(enabled: Boolean) {
-        viewModelScope.launch {
-            userSettingsDataSource.setShowWeather(enabled)
-        }
-    }
-
-    fun setShowMedia(enabled: Boolean) {
-        viewModelScope.launch {
-            userSettingsDataSource.setShowMedia(enabled)
-        }
-    }
-
-    fun setUse24Hour(enabled: Boolean) {
-        viewModelScope.launch {
-            userSettingsDataSource.setUse24Hour(enabled)
-        }
-    }
-
-    fun setUseFahrenheit(enabled: Boolean) {
-        viewModelScope.launch {
-            userSettingsDataSource.setUseFahrenheit(enabled)
-        }
-    }
-
     private fun buildListItems(apps: List<AppInfo>, notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()
         var currentLetter = ""
-        
+
         for (app in apps) {
-            val firstChar = app.label.firstOrNull()?.uppercaseChar()?.toString() ?: "#"
-            
+            val firstChar = app.label.sectionLetter
+
             if (firstChar != currentLetter) {
                 currentLetter = firstChar
                 items.add(AppListItem.SectionHeader(currentLetter, items.size))
@@ -198,13 +159,13 @@ class HomeViewModel @Inject constructor(
 
             val appNotifications = notifications[app.packageName]?.get(app.userHandle) ?: emptyList()
             val appWithNotifications = app.copy(notifications = appNotifications)
-            
+
             items.add(AppListItem.AppItem(appWithNotifications))
         }
-        
+
         return items
     }
-    
+
     private fun buildFavoriteAppsList(
         notifications: Map<String, Map<UserHandle, List<NotificationInfo>>>
     ): List<AppInfo> {
@@ -229,8 +190,10 @@ class HomeViewModel @Inject constructor(
                     .toMutableList()
 
             if (suggestions.size < remainingSlots) {
+                val suggestedKeys = suggestions.mapTo(mutableSetOf()) { it.key }
                 suggestions.addAll(
-                    appsRepository.allApps.filter { !it.isFavorite && !it.isHidden && !it.doNotSuggest }
+                    appsRepository.allApps
+                        .filter { !it.isFavorite && !it.isHidden && !it.doNotSuggest && it.key !in suggestedKeys }
                         .take(remainingSlots - suggestions.size)
                 )
             }

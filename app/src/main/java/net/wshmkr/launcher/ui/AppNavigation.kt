@@ -40,41 +40,27 @@ fun AppNavigation(
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,
+            enterTransition = { fadeIn(animationSpec = tween(500)) },
+            exitTransition = { fadeOut(animationSpec = tween(500)) },
         ) {
-            composable(
-                route = Screen.Home.route,
-                enterTransition = { fadeIn(animationSpec = tween(500)) },
-                exitTransition = { fadeOut(animationSpec = tween(500)) }
-            ) {
+            composable(route = Screen.Home.route) {
                 HomeScreen(
                     navController = navController,
                     viewModel = homeViewModel
                 )
             }
-            composable(
-                route = Screen.Settings.route,
-                enterTransition = { fadeIn(animationSpec = tween(500)) },
-                exitTransition = { fadeOut(animationSpec = tween(500)) }
-            ) {
+            composable(route = Screen.Settings.route) {
                 SettingsScreen(
                     navController = navController
                 )
             }
-            composable(
-                route = Screen.WidgetList.route,
-                enterTransition = { fadeIn(animationSpec = tween(500)) },
-                exitTransition = { fadeOut(animationSpec = tween(500)) }
-            ) {
+            composable(route = Screen.WidgetList.route) {
                 WidgetsScreen(
                     navController = navController,
                     viewModel = widgetViewModel
                 )
             }
-            composable(
-                route = Screen.WeatherLocation.route,
-                enterTransition = { fadeIn(animationSpec = tween(500)) },
-                exitTransition = { fadeOut(animationSpec = tween(500)) }
-            ) {
+            composable(route = Screen.WeatherLocation.route) {
                 WeatherLocationOverlay(
                     navController = navController,
                 )

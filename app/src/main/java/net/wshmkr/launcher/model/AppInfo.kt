@@ -10,17 +10,17 @@ data class AppInfo(
     val userHandle: UserHandle,
     val isSystemApp: Boolean = false,
 
-    var isFavorite: Boolean,
-    var isHidden: Boolean,
-    var doNotSuggest: Boolean,
-    var isSuggested: Boolean = false,
-    var notifications: List<NotificationInfo> = emptyList(),
+    val isFavorite: Boolean,
+    val isHidden: Boolean,
+    val doNotSuggest: Boolean,
+    val isSuggested: Boolean = false,
+    val notifications: List<NotificationInfo> = emptyList(),
 ) {
     val mostRecentNotification: NotificationInfo?
         get() = notifications.maxByOrNull { it.timestamp }
 
     val hasNotifications: Boolean
-        get() = !notifications.isEmpty()
+        get() = notifications.isNotEmpty()
 
     val key: String
         get() = keyFor(packageName, userHandle)
@@ -29,3 +29,6 @@ data class AppInfo(
 fun keyFor(packageName: String, userHandle: UserHandle): String {
     return "${packageName}_${userHandle.hashCode()}"
 }
+
+val String.sectionLetter: String
+    get() = firstOrNull()?.uppercaseChar()?.toString() ?: "#"
