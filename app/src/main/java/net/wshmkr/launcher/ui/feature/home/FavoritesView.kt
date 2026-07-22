@@ -24,6 +24,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
@@ -44,22 +45,34 @@ fun FavoritesView(
     val context = LocalContext.current
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
-    var showHomeOptionsMenu by remember { mutableStateOf(false) }
+    val showHomeOptionsMenu = remember { mutableStateOf(false) }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
+    val favoritesVisible by viewModel.favoritesVisible.collectAsState()
+    val favoriteApps = viewModel.favoriteApps
+    val widgetSettings = viewModel.homeWidgetSettings
 
-    LaunchedEffect(viewModel.favoriteApps.isNotEmpty()) {
-        if (viewModel.favoriteApps.isNotEmpty()) {
+    LaunchedEffect(favoritesVisible) {
+        if (favoritesVisible) {
             isVisible = true
         }
     }
 
-    val onSwipeUp = remember {{ viewModel.showSearchOverlay = true }}
-    val onSwipeDown = remember {{
-        if (!NotificationPanelHelper.expandNotificationPanel()) {
-            showAccessibilityDialog = true
+    val onSwipeUp = remember(viewModel) { { viewModel.showSearchOverlay = true } }
+    val onSwipeDown = remember {
+        {
+            if (!NotificationPanelHelper.expandNotificationPanel()) {
+                showAccessibilityDialog = true
+            }
         }
-    }}
-    val onLongPress = { showHomeOptionsMenu = true }
+    }
+    val onLongPress = remember(showHomeOptionsMenu) { { showHomeOptionsMenu.value = true } }
+
+    val onClick = remember(viewModel) {
+        { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
+    }
+    val onToggleFavorite = remember(viewModel) { viewModel::toggleFavorite }
+    val onToggleHidden = remember(viewModel) { viewModel::toggleHidden }
+    val onToggleSuggest = remember(viewModel) { viewModel::toggleSuggest }
 
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
@@ -82,7 +95,7 @@ fun FavoritesView(
                     onSwipeUp = onSwipeUp,
                     onSwipeDown = onSwipeDown
                 )
-                .pointerInput(Unit) {
+                .pointerInput(onLongPress) {
                     detectTapGestures(
                         onLongPress = { onLongPress() }
                     )
@@ -95,13 +108,13 @@ fun FavoritesView(
 
             item(key = "clock_widget") {
                 ClockWidget(
-                    showClock = viewModel.homeWidgetSettings.showClock,
-                    showCalendar = viewModel.homeWidgetSettings.showCalendar,
-                    showWeather = viewModel.homeWidgetSettings.showWeather,
-                    use24Hour = viewModel.homeWidgetSettings.use24Hour,
-                    useFahrenheit = viewModel.homeWidgetSettings.useFahrenheit,
-                    weatherLocationLatitude = viewModel.homeWidgetSettings.weatherLocationLatitude,
-                    weatherLocationLongitude = viewModel.homeWidgetSettings.weatherLocationLongitude,
+                    showClock = widgetSettings.showClock,
+                    showCalendar = widgetSettings.showCalendar,
+                    showWeather = widgetSettings.showWeather,
+                    use24Hour = widgetSettings.use24Hour,
+                    useFahrenheit = widgetSettings.useFahrenheit,
+                    weatherLocationLatitude = widgetSettings.weatherLocationLatitude,
+                    weatherLocationLongitude = widgetSettings.weatherLocationLongitude,
                 )
             }
 
@@ -111,30 +124,38 @@ fun FavoritesView(
 
             item(key = "media_widget") {
                 MediaWidget(
-                    enabled = viewModel.homeWidgetSettings.showMediaControls,
+                    enabled = widgetSettings.showMediaControls,
                 )
             }
 
             items(
-                items = viewModel.favoriteApps,
+                items = favoriteApps,
                 key = { item -> item.key },
+                contentType = { "favorite_app" },
             ) { item ->
+                val isActiveUser = remember(item.userHandle, activeProfiles) {
+                    item.userHandle in activeProfiles
+                }
+                val notifications by viewModel
+                    .notificationsFor(item.packageName, item.userHandle)
+                    .collectAsState()
                 AppListItem(
                     appInfo = item,
-                    isActiveUser = item.userHandle in activeProfiles,
-                    onClick = { viewModel.launchApp(it.packageName, it.userHandle) },
-                    onToggleFavorite = viewModel::toggleFavorite,
-                    onToggleHidden = viewModel::toggleHidden,
-                    onToggleSuggest = viewModel::toggleSuggest,
+                    isActiveUser = isActiveUser,
+                    onClick = onClick,
+                    onToggleFavorite = onToggleFavorite,
+                    onToggleHidden = onToggleHidden,
+                    onToggleSuggest = onToggleSuggest,
+                    notifications = notifications,
                 )
             }
         }
     }
 
-    if (showHomeOptionsMenu) {
+    if (showHomeOptionsMenu.value) {
         HomeOptionsMenu(
             navController = navController,
-            onDismiss = { showHomeOptionsMenu = false }
+            onDismiss = { showHomeOptionsMenu.value = false }
         )
     }
 }

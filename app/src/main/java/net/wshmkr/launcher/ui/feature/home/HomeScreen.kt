@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -22,10 +23,22 @@ fun HomeScreen(
     viewModel: HomeViewModel,
 ) {
     AppLauncher(launchAppIntent = viewModel.launchAppIntent)
+
+    val onSearchDismiss = remember(viewModel) {
+        {
+            viewModel.navigateToFavorites()
+            viewModel.showSearchOverlay = false
+        }
+    }
+    val onLetterSelected = remember(viewModel) { viewModel::scrollToLetter }
+    val onSelectionCleared = remember(viewModel) { { viewModel.deselectLetter() } }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        viewModel.backgroundUri?.let { uriString ->
+        val uriString = viewModel.backgroundUri
+        if (uriString != null) {
+            val backgroundUri = remember(uriString) { uriString.toUri() }
             Image(
-                painter = rememberAsyncImagePainter(uriString.toUri()),
+                painter = rememberAsyncImagePainter(backgroundUri),
                 contentDescription = "Home screen background",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -33,12 +46,7 @@ fun HomeScreen(
         }
 
         if (viewModel.showSearchOverlay) {
-            SearchOverlay(
-                onDismiss = {
-                    viewModel.navigateToFavorites()
-                    viewModel.showSearchOverlay = false
-                }
-            )
+            SearchOverlay(onDismiss = onSearchDismiss)
         } else {
             if (viewModel.showingFavorites) {
                 FavoritesView(
@@ -58,8 +66,8 @@ fun HomeScreen(
             ) {
                 AlphabetSlider(
                     letters = viewModel.alphabetLetters,
-                    onLetterSelected = { letter -> viewModel.scrollToLetter(letter) },
-                    onSelectionCleared = { viewModel.deselectLetter() },
+                    onLetterSelected = onLetterSelected,
+                    onSelectionCleared = onSelectionCleared,
                 )
             }
         }

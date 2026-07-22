@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.viewmodel
 
+import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -26,15 +27,15 @@ class AlphabetSliderViewModel : ViewModel() {
     var horizontalDelta by mutableFloatStateOf(0f)
         private set
 
-    var waveOffsets by mutableStateOf<Map<Int, Float>>(emptyMap())
-        private set
+    // Per-index float states — writes to one index only invalidate that index's readers.
+    private var waveOffsetStates: Array<MutableFloatState> = emptyArray()
 
     private var touchXStart: Float? = null
 
     private data class LetterBounds(val top: Float, val bottom: Float)
 
     private val letterBounds = mutableMapOf<Int, LetterBounds>()
-    
+
     private var letters: List<String> = emptyList()
 
     companion object {
@@ -45,13 +46,13 @@ class AlphabetSliderViewModel : ViewModel() {
     fun setLetters(lettersList: List<String>) {
         letters = lettersList
         letterBounds.clear()
-        waveOffsets = emptyMap()
+        waveOffsetStates = Array(lettersList.size) { mutableFloatStateOf(0f) }
         activeLetter = null
     }
 
     fun updateTouchPosition(
-        y: Float?, 
-        x: Float? = null, 
+        y: Float?,
+        x: Float? = null,
         isInitialTouch: Boolean = false,
         density: Float = 1f,
         screenWidthDp: Int = 0
@@ -78,7 +79,7 @@ class AlphabetSliderViewModel : ViewModel() {
             sliderVerticalOffset = 0f
             touchXStart = null
             horizontalDelta = 0f
-            waveOffsets = emptyMap()
+            resetWaveOffsets()
         }
     }
 
@@ -137,20 +138,27 @@ class AlphabetSliderViewModel : ViewModel() {
     }
 
     private fun computeWaveOffsets(touchY: Float, density: Float, screenWidthDp: Int) {
-        val offsets = mutableMapOf<Int, Float>()
-        
         for ((index, bounds) in letterBounds) {
+            if (index >= waveOffsetStates.size) continue
             val letterY = bounds.top + sliderVerticalOffset
-            offsets[index] = calculateWaveOffsetInternal(
+            val next = calculateWaveOffsetInternal(
                 letterY = letterY,
                 touchY = touchY,
                 density = density,
                 horizontalDelta = horizontalDelta,
                 screenWidthDp = screenWidthDp
             )
+            val state = waveOffsetStates[index]
+            if (state.floatValue != next) {
+                state.floatValue = next
+            }
         }
-        
-        waveOffsets = offsets
+    }
+
+    private fun resetWaveOffsets() {
+        for (state in waveOffsetStates) {
+            if (state.floatValue != 0f) state.floatValue = 0f
+        }
     }
 
     private fun calculateWaveOffsetInternal(
@@ -169,14 +177,14 @@ class AlphabetSliderViewModel : ViewModel() {
 
         val waveWidth = WAVE_WIDTH + (horizontalDeltaDp * 0.4f)
 
-        // Fast Gaussian approximation: exp(-t) ≈ 1/(1 + t + t²/2) 
+        // Fast Gaussian approximation: exp(-t) ≈ 1/(1 + t + t²/2)
         val t = (distanceDp * distanceDp) / (waveWidth * waveWidth)
         val offset = amplitude / (1f + t + 0.5f * t * t)
 
         return offset * -1
     }
 
-    fun getWaveOffset(index: Int): Float {
-        return waveOffsets[index] ?: 0f
+    fun waveOffsetAt(index: Int): Float {
+        return if (index < waveOffsetStates.size) waveOffsetStates[index].floatValue else 0f
     }
 }

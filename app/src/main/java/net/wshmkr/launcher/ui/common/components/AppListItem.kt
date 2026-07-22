@@ -28,7 +28,10 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -43,6 +46,7 @@ fun AppListItem(
     onLongClick: ((AppInfo) -> Unit)? = null,
     targetAlpha: Float = 1f,
     isActiveLetter: Boolean = false,
+    notifications: ImmutableList<NotificationInfo> = persistentListOf(),
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -88,8 +92,8 @@ fun AppListItem(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            if (appInfo.hasNotifications) {
-                NotificationPreview(appInfo)
+            if (notifications.isNotEmpty()) {
+                NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
             } else {
                 AppTitle(appInfo.label, appInfo.isHidden)
             }

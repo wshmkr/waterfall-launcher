@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -18,14 +19,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -56,8 +61,6 @@ fun AlphabetSlider(
         viewModel.setLetters(letters)
     }
 
-    val touchYPosition = viewModel.touchYPosition
-    val isInitialTouch = viewModel.isInitialTouch
     val viewModelActiveLetter = viewModel.activeLetter
 
     LaunchedEffect(viewModelActiveLetter) {
@@ -68,35 +71,43 @@ fun AlphabetSlider(
         }
     }
 
-    fun Modifier.touchHandler(trackHorizontalMovement: Boolean = true): Modifier = this.pointerInteropFilter { event ->
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                viewModel.updateTouchPosition(
-                    y = event.y,
-                    x = if (trackHorizontalMovement) event.x else null,
-                    isInitialTouch = true,
-                    density = density.density,
-                    screenWidthDp = screenWidthDp
-                )
-                true
+    val touchHandler = remember(viewModel, density, screenWidthDp) {
+        { trackHorizontalMovement: Boolean ->
+            Modifier.pointerInteropFilter { event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        viewModel.updateTouchPosition(
+                            y = event.y,
+                            x = if (trackHorizontalMovement) event.x else null,
+                            isInitialTouch = true,
+                            density = density.density,
+                            screenWidthDp = screenWidthDp
+                        )
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        viewModel.updateTouchPosition(
+                            y = event.y,
+                            x = if (trackHorizontalMovement) event.x else null,
+                            isInitialTouch = false,
+                            density = density.density,
+                            screenWidthDp = screenWidthDp
+                        )
+                        true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        viewModel.updateTouchPosition(null)
+                        true
+                    }
+                    else -> false
+                }
             }
-            MotionEvent.ACTION_MOVE -> {
-                viewModel.updateTouchPosition(
-                    y = event.y,
-                    x = if (trackHorizontalMovement) event.x else null,
-                    isInitialTouch = false,
-                    density = density.density,
-                    screenWidthDp = screenWidthDp
-                )
-                true
-            }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                viewModel.updateTouchPosition(null)
-                true
-            }
-            else -> false
         }
     }
+
+    // Track RIGHT column height so LEFT touch spacer matches it for consistent y-coordinate mapping.
+    var letterListHeightPx by remember { mutableIntStateOf(0) }
+    val letterListHeightDp = with(density) { letterListHeightPx.toDp() }
 
     Row(
         modifier = modifier
@@ -105,50 +116,26 @@ fun AlphabetSlider(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom
     ) {
-        Box(
+        Spacer(
             modifier = Modifier
                 .padding(bottom = 96.dp)
-                .alpha(0f)
-                .touchHandler(trackHorizontalMovement = false)
-        ) {
-            LeftHandControls(letters = letters)
-        }
+                .width(40.dp)
+                .height(letterListHeightDp)
+                .then(touchHandler(false))
+        )
 
         Spacer(modifier = Modifier.weight(1f))
 
         Box(
             modifier = Modifier
                 .padding(bottom = 96.dp)
-                .touchHandler()
+                .onSizeChanged { letterListHeightPx = it.height }
+                .then(touchHandler(true))
         ) {
             AnimatedLettersList(
                 letters = letters,
                 activeLetter = viewModelActiveLetter,
-                touchYPosition = touchYPosition,
-                isInitialTouch = isInitialTouch,
                 viewModel = viewModel,
-                onLetterPositioned = { index, top, bottom ->
-                    viewModel.updateLetterBounds(index, top, bottom)
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun LeftHandControls(letters: List<String>) {
-    Column(
-        modifier = Modifier.width(40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy((-6).dp),
-    ) {
-        letters.forEach { letter ->
-            Text(
-                text = letter,
-                modifier = Modifier.fillMaxWidth(),
-                fontSize = 16.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center
             )
         }
     }
@@ -158,19 +145,14 @@ private fun LeftHandControls(letters: List<String>) {
 private fun AnimatedLettersList(
     letters: List<String>,
     activeLetter: String?,
-    touchYPosition: Float?,
-    isInitialTouch: Boolean,
     viewModel: AlphabetSliderViewModel,
-    onLetterPositioned: (index: Int, top: Float, bottom: Float) -> Unit
 ) {
     val sliderVerticalOffsetPx = viewModel.sliderVerticalOffset
+    val isReleasing = viewModel.touchYPosition == null
 
     val animatedVerticalOffset by animateFloatAsState(
         targetValue = sliderVerticalOffsetPx,
-        animationSpec = when {
-            touchYPosition == null -> tween(durationMillis = 250)
-            else -> snap()
-        },
+        animationSpec = if (isReleasing) tween(durationMillis = 250) else snap(),
         label = "sliderVerticalOffset"
     )
 
@@ -182,25 +164,14 @@ private fun AnimatedLettersList(
         verticalArrangement = Arrangement.spacedBy((-6).dp),
     ) {
         letters.forEachIndexed { index, letter ->
-            val targetOffset = viewModel.getWaveOffset(index)
-
-            val animatedOffset by animateFloatAsState(
-                targetValue = targetOffset,
-                animationSpec = when {
-                    touchYPosition == null || isInitialTouch -> tween(durationMillis = 250)
-                    else -> snap()
-                },
-                label = "waveOffset_$index"
-            )
-
             Text(
                 text = letter,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset { IntOffset(animatedOffset.dp.roundToPx(), 0) }
+                    .graphicsLayer { translationX = viewModel.waveOffsetAt(index).dp.toPx() }
                     .onGloballyPositioned { coordinates ->
                         val bounds = coordinates.boundsInParent()
-                        onLetterPositioned(index, bounds.top, bounds.bottom)
+                        viewModel.updateLetterBounds(index, bounds.top, bounds.bottom)
                     },
                 fontSize = 16.sp,
                 color = if (letter == activeLetter) Color.Red else Color.White,

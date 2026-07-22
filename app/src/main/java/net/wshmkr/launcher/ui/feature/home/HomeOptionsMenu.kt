@@ -8,6 +8,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -34,6 +35,23 @@ fun HomeOptionsMenu(
     val sheetState = rememberModalBottomSheetState()
     val settings = settingsViewModel.homeWidgetSettings
 
+    val onToggleClock = remember(settingsViewModel) { settingsViewModel::setShowClock }
+    val onToggleCalendar = remember(settingsViewModel) { settingsViewModel::setShowCalendar }
+    val onToggleWeather = remember(settingsViewModel) { settingsViewModel::setShowWeather }
+    val onToggleMedia = remember(settingsViewModel) { settingsViewModel::setShowMedia }
+    val onOpenWidgets = remember(navController, onDismiss) {
+        {
+            onDismiss()
+            navController.navigate(Screen.WidgetList.route)
+        }
+    }
+    val onOpenSettings = remember(navController, onDismiss) {
+        {
+            onDismiss()
+            navController.navigate(Screen.Settings.route)
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -49,37 +67,34 @@ fun HomeOptionsMenu(
                 icon = ScheduleIcon(),
                 text = "Clock",
                 checked = settings.showClock,
-                onCheckedChange = { settingsViewModel.setShowClock(it) },
+                onCheckedChange = onToggleClock,
             )
 
             ToggleMenuOption(
                 icon = CalendarTodayIcon(),
                 text = "Calendar",
                 checked = settings.showCalendar,
-                onCheckedChange = { settingsViewModel.setShowCalendar(it) },
+                onCheckedChange = onToggleCalendar,
             )
 
             ToggleMenuOption(
                 icon = PartlyCloudyDayIcon(),
                 text = "Weather",
                 checked = settings.showWeather,
-                onCheckedChange = { settingsViewModel.setShowWeather(it) },
+                onCheckedChange = onToggleWeather,
             )
 
             ToggleMenuOption(
                 icon = MusicVideoIcon(),
                 text = "Media controls",
                 checked = settings.showMediaControls,
-                onCheckedChange = { settingsViewModel.setShowMedia(it) },
+                onCheckedChange = onToggleMedia,
             )
 
             MenuOption(
                 icon = WidgetsIcon(),
                 text = "Manage widgets",
-                onClick = {
-                    onDismiss()
-                    navController.navigate(Screen.WidgetList.route)
-                }
+                onClick = onOpenWidgets,
             )
 
             HorizontalDivider(
@@ -89,10 +104,7 @@ fun HomeOptionsMenu(
             MenuOption(
                 icon = SettingsIcon(),
                 text = "Waterfall launcher settings",
-                onClick = {
-                    onDismiss()
-                    navController.navigate(Screen.Settings.route)
-                }
+                onClick = onOpenSettings,
             )
         }
     }

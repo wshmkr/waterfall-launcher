@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
@@ -51,9 +53,11 @@ fun AllAppsView(
 
     var isVisible by remember { mutableStateOf(false) }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
+    val activeLetter = viewModel.activeLetter
+    val listItems = viewModel.allAppsListItems
 
-    LaunchedEffect(viewModel.allAppsListItems.isNotEmpty()) {
-        if (viewModel.allAppsListItems.isNotEmpty()) {
+    LaunchedEffect(listItems.isNotEmpty()) {
+        if (listItems.isNotEmpty()) {
             isVisible = true
         }
     }
@@ -61,9 +65,23 @@ fun AllAppsView(
     val topPadding = calculateCenteredContentTopPadding()
 
     val listState = rememberLetterIndexedListState(
-        activeLetter = viewModel.activeLetter,
+        activeLetter = activeLetter,
         getScrollPosition = viewModel::getScrollPosition,
     )
+
+    val alphaByLetter by remember(viewModel) {
+        derivedStateOf {
+            viewModel.alphabetLetters.associateWith { viewModel.getAlpha(it) }
+        }
+    }
+
+    val onClick = remember(viewModel) {
+        { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
+    }
+    val onToggleFavorite = remember(viewModel) { viewModel::toggleFavorite }
+    val onToggleHidden = remember(viewModel) { viewModel::toggleHidden }
+    val onToggleSuggest = remember(viewModel) { viewModel::toggleSuggest }
+    val onOpenSearch = remember(viewModel) { { viewModel.showSearchOverlay = true } }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -79,33 +97,38 @@ fun AllAppsView(
                 contentPadding = PaddingValues(vertical = topPadding, horizontal = 32.dp)
             ) {
                 items(
-                    items = viewModel.allAppsListItems,
+                    items = listItems,
                     key = { item ->
                         when (item) {
                             is AppListItem.SectionHeader -> "header_${item.letter}"
                             is AppListItem.AppItem -> item.appInfo.key
                         }
                     },
+                    contentType = { it::class },
                 ) { item ->
                     when (item) {
                         is AppListItem.SectionHeader -> {
                             Spacer(modifier = Modifier.height(8.dp))
                             SectionHeaderItem(
                                 letter = item.letter,
-                                targetAlpha = viewModel.getAlpha(item.letter),
-                                isActiveLetter = item.letter == viewModel.activeLetter,
+                                targetAlpha = alphaByLetter[item.letter] ?: 1f,
+                                isActiveLetter = item.letter == activeLetter,
                             )
                         }
                         is AppListItem.AppItem -> {
+                            val notifications by viewModel
+                                .notificationsFor(item.appInfo.packageName, item.appInfo.userHandle)
+                                .collectAsState()
                             AppListItem(
                                 appInfo = item.appInfo,
                                 isActiveUser = item.appInfo.userHandle in activeProfiles,
-                                onClick = { viewModel.launchApp(it.packageName, it.userHandle) },
-                                onToggleFavorite = viewModel::toggleFavorite,
-                                onToggleHidden = viewModel::toggleHidden,
-                                onToggleSuggest = viewModel::toggleSuggest,
-                                targetAlpha = viewModel.getAlpha(item.sectionLetter),
-                                isActiveLetter = item.sectionLetter == viewModel.activeLetter,
+                                onClick = onClick,
+                                onToggleFavorite = onToggleFavorite,
+                                onToggleHidden = onToggleHidden,
+                                onToggleSuggest = onToggleSuggest,
+                                targetAlpha = alphaByLetter[item.sectionLetter] ?: 1f,
+                                isActiveLetter = item.sectionLetter == activeLetter,
+                                notifications = notifications,
                             )
                         }
                     }
@@ -113,7 +136,7 @@ fun AllAppsView(
             }
 
             AnimatedVisibility(
-                visible = viewModel.activeLetter == null,
+                visible = activeLetter == null,
                 enter = fadeIn(animationSpec = tween(durationMillis = 200)),
                 exit = fadeOut(animationSpec = tween(durationMillis = 200)),
                 modifier = Modifier
@@ -121,7 +144,7 @@ fun AllAppsView(
                     .padding(bottom = 48.dp, end = 64.dp)
             ) {
                 FloatingActionButton(
-                    onClick = { viewModel.showSearchOverlay = true },
+                    onClick = onOpenSearch,
                     shape = CircleShape
                 ) {
                     Icon(painter = SearchIcon(), contentDescription = "Search")
