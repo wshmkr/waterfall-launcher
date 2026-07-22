@@ -4,10 +4,13 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,8 +24,11 @@ class WidgetDataSource @Inject constructor(
 
     companion object {
         private val WIDGETS_KEY = stringPreferencesKey("widgets")
-        const val MAX_WIDGETS = 3
+        private val KEY_STACK_LAST_PAGE = intPreferencesKey("widget_stack_last_page")
+        const val MAX_WIDGETS = 10
     }
+
+    val lastPageIndex: Flow<Int> = dataStore.data.map { it[KEY_STACK_LAST_PAGE] ?: 0 }
 
     suspend fun getWidgetIds(): List<Int> {
         return decodeWidgetIds(dataStore.data.first()[WIDGETS_KEY])
@@ -34,6 +40,10 @@ class WidgetDataSource @Inject constructor(
 
     suspend fun removeWidget(widgetId: Int) = updateWidgets { ids ->
         ids.filter { it != widgetId }
+    }
+
+    suspend fun setLastPageIndex(idx: Int) {
+        dataStore.edit { it[KEY_STACK_LAST_PAGE] = idx }
     }
 
     private suspend fun updateWidgets(transform: (List<Int>) -> List<Int>) {

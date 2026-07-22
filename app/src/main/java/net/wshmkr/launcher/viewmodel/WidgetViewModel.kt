@@ -55,6 +55,9 @@ class WidgetViewModel @Inject constructor(
     var activeLetter by mutableStateOf<String?>(null)
         private set
 
+    var currentPageIndex by mutableStateOf(0)
+        private set
+
     private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
     val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
 
@@ -75,6 +78,18 @@ class WidgetViewModel @Inject constructor(
             userSettingsDataSource.backgroundUri.collect {
                 backgroundUri = it
             }
+        }
+
+        viewModelScope.launch {
+            widgetRepository.lastPageIndex.collect {
+                currentPageIndex = it
+            }
+        }
+    }
+
+    fun updateCurrentPage(idx: Int) {
+        viewModelScope.launch {
+            widgetRepository.setLastPageIndex(idx)
         }
     }
 

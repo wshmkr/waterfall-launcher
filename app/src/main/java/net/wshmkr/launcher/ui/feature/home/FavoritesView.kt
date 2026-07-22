@@ -25,13 +25,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
-import net.wshmkr.launcher.ui.feature.widgets.WidgetHost
+import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -66,6 +67,9 @@ fun FavoritesView(
         }
     }
     val onLongPress = remember(showHomeOptionsMenu) { { showHomeOptionsMenu.value = true } }
+    val onOpenWidgetList = remember(navController) {
+        { navController.navigate(Screen.WidgetList.route) }
+    }
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -118,8 +122,8 @@ fun FavoritesView(
                 )
             }
 
-            item(key = "widget_host") {
-                WidgetHost()
+            item(key = "widget_stack") {
+                WidgetStack(onAddWidget = onOpenWidgetList)
             }
 
             item(key = "media_widget") {
