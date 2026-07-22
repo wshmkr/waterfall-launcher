@@ -51,11 +51,18 @@ class CalendarRepository @Inject constructor(
                 invalidations.trySend(Unit)
             }
         }
-        context.contentResolver.registerContentObserver(
-            CalendarContract.Events.CONTENT_URI,
-            true,
-            observer,
-        )
+        // Registering on the calendar provider requires READ_CALENDAR, so retry until granted.
+        var observerRegistered = false
+        fun registerObserverIfPermitted() {
+            if (observerRegistered || !hasReadCalendarPermission(context)) return
+            context.contentResolver.registerContentObserver(
+                CalendarContract.Events.CONTENT_URI,
+                true,
+                observer,
+            )
+            observerRegistered = true
+        }
+        registerObserverIfPermitted()
 
         val refreshJob = launch {
             refreshTrigger.collect { invalidations.trySend(Unit) }
@@ -66,13 +73,14 @@ class CalendarRepository @Inject constructor(
             trySend(events)
             while (isActive) {
                 withTimeoutOrNull(nextInvalidationDelay(events)) { invalidations.receive() }
+                registerObserverIfPermitted()
                 events = queryTodayEvents(maxEvents)
                 trySend(events)
             }
         }
 
         awaitClose {
-            context.contentResolver.unregisterContentObserver(observer)
+            if (observerRegistered) context.contentResolver.unregisterContentObserver(observer)
             worker.cancel()
             refreshJob.cancel()
         }
