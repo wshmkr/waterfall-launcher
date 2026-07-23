@@ -63,11 +63,7 @@ fun MediaControls(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MediaAlbumArt(
-            albumArt = mediaInfo.albumArt,
-            artExpected = mediaInfo.artExpected,
-            packageName = mediaInfo.packageName,
-        )
+        MediaAlbumArt(albumArt = mediaInfo.albumArt, artExpected = mediaInfo.artExpected)
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -92,10 +88,9 @@ fun MediaControls(
 }
 
 @Composable
-private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, packageName: String?) {
+private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean) {
     // Keep the previous art while the new track's art loads, instead of flashing the placeholder.
-    // Keyed per app so one app's held art can never linger over another's.
-    val lastArt = remember(packageName) { ArtHolder(albumArt) }
+    val lastArt = remember { ArtHolder(albumArt) }
     val displayedArt = if (albumArt == null && artExpected) lastArt.value else albumArt
     lastArt.value = displayedArt
 
