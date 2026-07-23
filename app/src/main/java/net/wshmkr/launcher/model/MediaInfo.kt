@@ -7,7 +7,6 @@ import androidx.compose.runtime.Immutable
 data class MediaInfo(
     val title: String?,
     val artist: String?,
-    val isPlaying: Boolean,
     val packageName: String?,
     val albumArt: Bitmap?,
     // Metadata references art (bitmap or URI); a null albumArt with this set
@@ -18,7 +17,6 @@ data class MediaInfo(
         return other != null &&
             title == other.title &&
             artist == other.artist &&
-            isPlaying == other.isPlaying &&
             packageName == other.packageName &&
             albumArt.hasSamePixelsAs(other.albumArt) &&
             artExpected == other.artExpected

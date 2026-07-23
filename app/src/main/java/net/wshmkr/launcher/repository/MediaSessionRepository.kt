@@ -30,6 +30,7 @@ import javax.inject.Singleton
 
 data class ActiveMediaSession(
     val mediaInfo: MediaInfo? = null,
+    val isPlaying: Boolean = false,
     val controller: MediaController? = null,
 )
 
@@ -54,7 +55,7 @@ class MediaSessionRepository @Inject constructor(
         activeSession.map { it.mediaInfo }.distinctUntilChanged()
 
     val isPlaying: Flow<Boolean> =
-        activeSession.map { it.mediaInfo?.isPlaying == true }.distinctUntilChanged()
+        activeSession.map { it.isPlaying }.distinctUntilChanged()
 
     val controller: Flow<MediaController?> =
         activeSession
@@ -98,7 +99,6 @@ class MediaSessionRepository @Inject constructor(
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
         private var lastMediaInfo: MediaInfo? = null
         private var lastMetadata: MediaMetadata? = null
-        private var lastPlaybackState: PlaybackState? = null
         private var lastControllerRef: MediaController? = null
 
         private val sessionsChangedListener =
@@ -164,7 +164,6 @@ class MediaSessionRepository @Inject constructor(
 
             if (controller == null) {
                 lastMetadata = null
-                lastPlaybackState = null
                 lastControllerRef = null
                 lastMediaInfo = null
                 emit(ActiveMediaSession(mediaInfo = null, controller = null))
@@ -172,38 +171,40 @@ class MediaSessionRepository @Inject constructor(
             }
 
             val metadata = controller.metadata
-            val playbackState = controller.playbackState
 
+            // MediaInfo is metadata-derived; playback state changes reuse the cached instance
+            // so play/pause doesn't invalidate metadata-driven UI.
             val snapshotUnchanged =
-                controller === lastControllerRef &&
-                metadata === lastMetadata &&
-                playbackState === lastPlaybackState
+                controller === lastControllerRef && metadata === lastMetadata
             val mediaInfo = if (snapshotUnchanged && lastMediaInfo != null) {
                 lastMediaInfo
             } else {
-                val extracted = extractMediaInfo(controller, metadata, playbackState)
+                val extracted = extractMediaInfo(controller, metadata)
                 if (extracted.hasSameDisplayContentAs(lastMediaInfo)) lastMediaInfo else extracted
             }
 
             lastControllerRef = controller
             lastMetadata = metadata
-            lastPlaybackState = playbackState
             lastMediaInfo = mediaInfo
 
-            emit(ActiveMediaSession(mediaInfo, controller))
+            emit(
+                ActiveMediaSession(
+                    mediaInfo = mediaInfo,
+                    isPlaying = controller.playbackState?.state == PlaybackState.STATE_PLAYING,
+                    controller = controller,
+                )
+            )
         }
 
         private fun extractMediaInfo(
             controller: MediaController,
             metadata: MediaMetadata?,
-            playbackState: PlaybackState?,
         ): MediaInfo {
             val albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
             return MediaInfo(
                 title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
                 artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
-                isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
                 packageName = controller.packageName,
                 albumArt = albumArt,
                 artExpected = albumArt != null || metadata.referencesArtUri()
