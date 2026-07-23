@@ -120,7 +120,12 @@ class CalendarRepository @Inject constructor(
 
             val selection = "${CalendarContract.Instances.VISIBLE} = 1 AND " +
                 "(${CalendarContract.Instances.ALL_DAY} = 1 OR " +
-                "${CalendarContract.Instances.END} >= ?)"
+                "${CalendarContract.Instances.END} >= ?) AND " +
+                "(${CalendarContract.Instances.SELF_ATTENDEE_STATUS} IS NULL OR " +
+                "${CalendarContract.Instances.SELF_ATTENDEE_STATUS} != " +
+                "${CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED}) AND " +
+                "(${CalendarContract.Instances.STATUS} IS NULL OR " +
+                "${CalendarContract.Instances.STATUS} != ${CalendarContract.Events.STATUS_CANCELED})"
             val selectionArgs = arrayOf(now.toString())
             val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
 
