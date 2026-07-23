@@ -26,7 +26,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.collections.immutable.toImmutableList
 import net.wshmkr.launcher.model.CalendarEvent
+import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.util.ONE_SECOND
 import java.time.Instant
 import java.time.LocalDate
@@ -48,7 +50,7 @@ class CalendarRepository @Inject constructor(
         refreshTrigger.tryEmit(Unit)
     }
 
-    fun observeTodayEvents(maxEvents: Int = DEFAULT_MAX_EVENTS): Flow<List<CalendarEvent>> = callbackFlow {
+    fun observeTodayEvents(maxEvents: Int = DEFAULT_MAX_EVENTS): Flow<TodayEvents> = callbackFlow {
         val invalidations = Channel<Unit>(capacity = Channel.CONFLATED)
 
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
@@ -93,7 +95,7 @@ class CalendarRepository @Inject constructor(
             var events = queryTodayEvents(maxEvents)
             trySend(events)
             while (isActive) {
-                withTimeoutOrNull(nextInvalidationDelay(events)) { invalidations.receive() }
+                withTimeoutOrNull(nextInvalidationDelay(events.events)) { invalidations.receive() }
                 registerObserverIfPermitted()
                 events = queryTodayEvents(maxEvents)
                 trySend(events)
@@ -108,9 +110,9 @@ class CalendarRepository @Inject constructor(
         }
     }
 
-    private suspend fun queryTodayEvents(maxEvents: Int): List<CalendarEvent> =
+    private suspend fun queryTodayEvents(maxEvents: Int): TodayEvents =
         withContext(Dispatchers.IO) {
-            if (!hasReadCalendarPermission(context)) return@withContext emptyList()
+            if (!hasReadCalendarPermission(context)) return@withContext TodayEvents()
 
             val zone = ZoneId.systemDefault()
             val today = LocalDate.now(zone)
@@ -189,13 +191,16 @@ class CalendarRepository @Inject constructor(
                     }
             } catch (e: SecurityException) {
                 Log.w(TAG, "READ_CALENDAR revoked mid-query", e)
-                return@withContext emptyList()
+                return@withContext TodayEvents()
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to query calendar instances", e)
-                return@withContext emptyList()
+                return@withContext TodayEvents()
             }
             val (allDayEvents, timedEvents) = events.sortedBy { it.startMillis }.partition { it.allDay }
-            allDayEvents + timedEvents.take(maxEvents)
+            TodayEvents(
+                events = (allDayEvents + timedEvents.take(maxEvents)).toImmutableList(),
+                hiddenCount = (timedEvents.size - maxEvents).coerceAtLeast(0),
+            )
         }
 
     private fun allDayCoversToday(beginMillis: Long, endMillis: Long, today: LocalDate): Boolean {

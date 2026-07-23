@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,15 +17,14 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
-import net.wshmkr.launcher.model.CalendarEvent
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.NotificationInfo
+import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.model.keyFor
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
@@ -74,16 +72,12 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val todayEvents: StateFlow<ImmutableList<CalendarEvent>> =
+    val todayEvents: StateFlow<TodayEvents> =
         userSettingsDataSource.showCalendarEvents
             .flatMapLatest { enabled ->
-                if (enabled) {
-                    calendarRepository.observeTodayEvents().map { it.toImmutableList() }
-                } else {
-                    flowOf(persistentListOf())
-                }
+                if (enabled) calendarRepository.observeTodayEvents() else flowOf(TodayEvents())
             }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayEvents())
 
     fun refreshCalendarEvents() {
         calendarRepository.requestRefresh()

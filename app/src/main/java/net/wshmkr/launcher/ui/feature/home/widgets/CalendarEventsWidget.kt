@@ -38,18 +38,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import kotlinx.collections.immutable.ImmutableList
-import net.wshmkr.launcher.model.CalendarEvent
+import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.util.eventTimeLabel
+import net.wshmkr.launcher.util.launchCalendarApp
 import net.wshmkr.launcher.util.launchCalendarEvent
 import net.wshmkr.launcher.util.rememberCurrentDate
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
 fun CalendarEventsWidget(
-    events: ImmutableList<CalendarEvent>,
+    events: TodayEvents,
     use24Hour: Boolean,
     onPermissionGranted: () -> Unit,
     modifier: Modifier = Modifier,
@@ -82,7 +82,8 @@ fun CalendarEventsWidget(
         return
     }
 
-    if (events.isEmpty()) return
+    val (eventList, hiddenCount) = events
+    if (eventList.isEmpty()) return
 
     val typography = MaterialTheme.typography
     val eventTextStyle = remember(typography) {
@@ -100,8 +101,8 @@ fun CalendarEventsWidget(
         eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
     }
     // Keyed on the date so "Tmrw" labels roll over at midnight even if the list is unchanged.
-    val timeLabels = remember(events, use24Hour, today) {
-        events.map { event ->
+    val timeLabels = remember(eventList, use24Hour, today) {
+        eventList.map { event ->
             eventTimeLabel(event.startMillis, event.endMillis, event.allDay, use24Hour)
         }
     }
@@ -119,7 +120,7 @@ fun CalendarEventsWidget(
             .fillMaxWidth()
             .padding(start = EVENTS_INDENT, end = 8.dp),
     ) {
-        events.forEachIndexed { index, event ->
+        eventList.forEachIndexed { index, event ->
             val ongoing = !event.allDay &&
                 event.startMillis <= nowMillis && nowMillis < event.endMillis
             EventRow(
@@ -138,6 +139,16 @@ fun CalendarEventsWidget(
                         event.allDay,
                     )
                 },
+            )
+        }
+        if (hiddenCount > 0) {
+            Text(
+                text = "+$hiddenCount more",
+                style = timeStyle,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = { launchCalendarApp(context) })
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
     }
