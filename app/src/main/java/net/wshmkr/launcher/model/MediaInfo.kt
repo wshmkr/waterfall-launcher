@@ -20,7 +20,15 @@ data class MediaInfo(
             artist == other.artist &&
             isPlaying == other.isPlaying &&
             packageName == other.packageName &&
-            albumArt === other.albumArt &&
+            albumArt.hasSamePixelsAs(other.albumArt) &&
             artExpected == other.artExpected
     }
+}
+
+// Players re-publish metadata with a fresh Bitmap instance for the same art;
+// compare pixels so duplicates dedupe instead of re-triggering UI transitions.
+private fun Bitmap?.hasSamePixelsAs(other: Bitmap?): Boolean {
+    if (this === other) return true
+    if (this == null || other == null) return false
+    return sameAs(other)
 }
