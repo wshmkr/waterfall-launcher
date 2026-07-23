@@ -136,7 +136,7 @@ class CalendarRepository @Inject constructor(
                         val colorIdx =
                             cursor.getColumnIndexOrThrow(CalendarContract.Instances.CALENDAR_COLOR)
 
-                        while (cursor.moveToNext() && events.size < maxEvents) {
+                        while (cursor.moveToNext()) {
                             val title = cursor.getString(titleIdx)?.takeIf { it.isNotBlank() }
                                 ?: continue
                             val rawBegin = cursor.getLong(beginIdx)
@@ -161,6 +161,8 @@ class CalendarRepository @Inject constructor(
                 return@withContext emptyList()
             }
             events
+                .sortedWith(compareByDescending<CalendarEvent> { it.allDay }.thenBy { it.startMillis })
+                .take(maxEvents)
         }
 
     private fun nextInvalidationDelay(events: List<CalendarEvent>): Long {
