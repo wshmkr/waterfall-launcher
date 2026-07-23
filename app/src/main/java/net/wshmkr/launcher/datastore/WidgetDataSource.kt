@@ -2,6 +2,7 @@ package net.wshmkr.launcher.datastore
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -15,7 +16,10 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.widgetDataStore: DataStore<Preferences> by preferencesDataStore(name = "widget_settings")
+private val Context.widgetDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "widget_settings",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 @Singleton
 class WidgetDataSource @Inject constructor(

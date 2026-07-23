@@ -22,6 +22,7 @@ import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentSet
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -34,7 +35,6 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
@@ -268,7 +268,10 @@ class AppsRepository @Inject constructor(
         val snapshot = usageEntries.toMap()
         try {
             usageDataSource.flush(snapshot)
-        } catch (e: IOException) {
+        } catch (e: CancellationException) {
+            usageDirty = true
+            throw e
+        } catch (e: Exception) {
             Log.w(TAG, "Failed to flush usage", e)
             usageDirty = true
         }

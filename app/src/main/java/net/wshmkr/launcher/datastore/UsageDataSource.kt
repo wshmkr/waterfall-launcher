@@ -2,6 +2,7 @@ package net.wshmkr.launcher.datastore
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -16,7 +17,10 @@ import javax.inject.Singleton
 
 data class UsageEntry(val count: Long, val lastUsed: Long)
 
-private val Context.usageDataStore: DataStore<Preferences> by preferencesDataStore(name = "app_usage")
+private val Context.usageDataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "app_usage",
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 private const val COUNT_PREFIX = "count_"
 private const val LAST_PREFIX = "last_"
