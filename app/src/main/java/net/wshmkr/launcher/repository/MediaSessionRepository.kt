@@ -198,14 +198,23 @@ class MediaSessionRepository @Inject constructor(
             metadata: MediaMetadata?,
             playbackState: PlaybackState?,
         ): MediaInfo {
+            val albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
             return MediaInfo(
                 title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
                 artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
                 isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
                 packageName = controller.packageName,
-                albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                    ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                albumArt = albumArt,
+                artExpected = albumArt != null || metadata.referencesArtUri()
             )
+        }
+
+        private fun MediaMetadata?.referencesArtUri(): Boolean {
+            if (this == null) return false
+            return getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) != null ||
+                getString(MediaMetadata.METADATA_KEY_ART_URI) != null ||
+                getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI) != null
         }
     }
 }

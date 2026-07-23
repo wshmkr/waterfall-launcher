@@ -1,6 +1,7 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.graphics.Bitmap
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,7 +60,7 @@ fun MediaControls(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MediaAlbumArt(albumArt = mediaInfo.albumArt)
+        MediaAlbumArt(albumArt = mediaInfo.albumArt, artExpected = mediaInfo.artExpected)
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -82,27 +85,42 @@ fun MediaControls(
 }
 
 @Composable
-private fun MediaAlbumArt(albumArt: Bitmap?) {
+private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean) {
+    // Track changes emit metadata before the art bitmap loads; while art is
+    // expected but not yet loaded, keep the previous art instead of flashing
+    // the placeholder.
+    val lastArt = remember { mutableStateOf(albumArt) }
+    val displayedArt = if (albumArt == null && artExpected) lastArt.value else albumArt
+    lastArt.value = displayedArt
+
     Box(
         modifier = Modifier
             .size(96.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White.copy(alpha = 0.1f)),
-        contentAlignment = Alignment.Center
+            .background(Color.White.copy(alpha = 0.1f))
     ) {
-        albumArt?.let { bitmap ->
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Album art",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } ?: Icon(
-            painter = MusicNoteIcon(),
-            contentDescription = "No album art",
-            tint = Color.White.copy(alpha = 0.3f),
-            modifier = Modifier.size(40.dp)
-        )
+        Crossfade(targetState = displayedArt, label = "albumArt") { art ->
+            if (art != null) {
+                Image(
+                    bitmap = art.asImageBitmap(),
+                    contentDescription = "Album art",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = MusicNoteIcon(),
+                        contentDescription = "No album art",
+                        tint = Color.White.copy(alpha = 0.3f),
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+        }
     }
 }
 

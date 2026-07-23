@@ -9,7 +9,10 @@ data class MediaInfo(
     val artist: String?,
     val isPlaying: Boolean,
     val packageName: String?,
-    val albumArt: Bitmap?
+    val albumArt: Bitmap?,
+    // Metadata references art (bitmap or URI); a null albumArt with this set
+    // means the bitmap hasn't loaded yet rather than the track having no art.
+    val artExpected: Boolean,
 ) {
     fun hasSameDisplayContentAs(other: MediaInfo?): Boolean {
         return other != null &&
@@ -17,6 +20,7 @@ data class MediaInfo(
             artist == other.artist &&
             isPlaying == other.isPlaying &&
             packageName == other.packageName &&
-            albumArt === other.albumArt
+            albumArt === other.albumArt &&
+            artExpected == other.artExpected
     }
 }
