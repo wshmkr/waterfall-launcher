@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,6 +18,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
+import net.wshmkr.launcher.util.isPermissionPermanentlyDenied
+import net.wshmkr.launcher.util.openAppDetailsSettings
 
 @Composable
 fun PermissionSettings(
@@ -27,6 +28,7 @@ fun PermissionSettings(
     var isAccessibilityEnabled by remember { mutableStateOf(false) }
     var isNotificationAccessEnabled by remember { mutableStateOf(false) }
     var isLocationEnabled by remember { mutableStateOf(false) }
+    var isCalendarEnabled by remember { mutableStateOf(false) }
 
     fun checkPermissions() {
         val enabledServices = Settings.Secure.getString(
@@ -40,12 +42,25 @@ fun PermissionSettings(
 
         isLocationEnabled = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED
+
+        isCalendarEnabled = context.checkSelfPermission(Manifest.permission.READ_CALENDAR) ==
+                PackageManager.PERMISSION_GRANTED
     }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         isLocationEnabled = isGranted
+    }
+
+    var isCalendarPermanentlyDenied by remember { mutableStateOf(false) }
+
+    val calendarPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        isCalendarEnabled = isGranted
+        isCalendarPermanentlyDenied = !isGranted &&
+            isPermissionPermanentlyDenied(context, Manifest.permission.READ_CALENDAR)
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -61,12 +76,19 @@ fun PermissionSettings(
     val handleLocationClick = remember(context, locationPermissionLauncher) {
         { _: Boolean ->
             if (isLocationEnabled) {
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", context.packageName, null)
-                }
-                context.startActivity(intent)
+                openAppDetailsSettings(context)
             } else {
                 locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+        }
+    }
+
+    val handleCalendarClick = remember(context, calendarPermissionLauncher, isCalendarPermanentlyDenied) {
+        { _: Boolean ->
+            if (isCalendarEnabled || isCalendarPermanentlyDenied) {
+                openAppDetailsSettings(context)
+            } else {
+                calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
             }
         }
     }
@@ -96,6 +118,14 @@ fun PermissionSettings(
             color = Color.White,
             checked = isLocationEnabled,
             onCheckedChange = handleLocationClick,
+        )
+
+        ToggleMenuOption(
+            text = "Calendar access",
+            subtext = "Used for today's events",
+            color = Color.White,
+            checked = isCalendarEnabled,
+            onCheckedChange = handleCalendarClick,
         )
     }
 }

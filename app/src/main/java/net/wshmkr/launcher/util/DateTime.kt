@@ -5,8 +5,10 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -44,6 +46,16 @@ fun formatTime(time: LocalTime, use24Hour: Boolean): String {
 }
 
 fun formatDate(date: LocalDate): String = date.format(formattersForCurrentLocale().date)
+
+// 12-hour event times use a compact marker: "10:00a", "11:00p".
+fun formatEventTime(epochMillis: Long, use24Hour: Boolean): String {
+    val time = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalTime()
+    val localized = formattersForCurrentLocale()
+    if (use24Hour) return time.format(localized.time24Hour)
+    val marker = if (time.hour < 12) "a" else "p"
+    return "${time.format(localized.time12Hour)}$marker"
+}
+
 
 // Minute-precision clock — ticks at the next minute boundary so the reader
 // invalidates at most once per minute.

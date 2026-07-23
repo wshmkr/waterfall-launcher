@@ -10,10 +10,13 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
@@ -21,9 +24,11 @@ import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.NotificationInfo
+import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.model.keyFor
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
+import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import java.util.concurrent.ConcurrentHashMap
@@ -35,6 +40,7 @@ const val HOME_SCREEN_APPS = 6
 class HomeViewModel @Inject constructor(
     appsRepository: AppsRepository,
     private val notificationRepository: NotificationRepository,
+    private val calendarRepository: CalendarRepository,
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
@@ -64,6 +70,18 @@ class HomeViewModel @Inject constructor(
 
     val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val todayEvents: StateFlow<TodayEvents> =
+        userSettingsDataSource.showCalendarEvents
+            .flatMapLatest { enabled ->
+                if (enabled) calendarRepository.observeTodayEvents() else flowOf(TodayEvents())
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayEvents())
+
+    fun refreshCalendarEvents() {
+        calendarRepository.requestRefresh()
+    }
 
     var activeLetter by mutableStateOf<String?>(null)
         private set

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import net.wshmkr.launcher.util.formatDate
 import net.wshmkr.launcher.util.formatTime
+import net.wshmkr.launcher.util.launchCalendarToday
 import net.wshmkr.launcher.util.launchPackage
 import net.wshmkr.launcher.util.rememberCurrentDate
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
@@ -60,7 +61,7 @@ fun ClockWidget(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showCalendar) {
-                    ClockDateText(onClick = { launchCalendarApp(context) })
+                    ClockDateText(onClick = { launchCalendarToday(context) })
                 }
 
                 if (showCalendar && showWeather) {
@@ -132,18 +133,6 @@ private fun launchClockApp(context: Context) {
         launchPackage(context, resolveInfo.activityInfo.packageName)
     } catch (e: Exception) {
         Log.w("ClockWidget", "Failed to launch clock app", e)
-    }
-}
-
-private fun launchCalendarApp(context: Context) {
-    try {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_APP_CALENDAR)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        context.startActivity(intent)
-    } catch (e: Exception) {
-        Log.w("ClockWidget", "Failed to launch calendar app", e)
     }
 }
 

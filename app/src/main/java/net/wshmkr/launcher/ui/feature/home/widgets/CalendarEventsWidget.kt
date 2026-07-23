@@ -1,0 +1,239 @@
+package net.wshmkr.launcher.ui.feature.home.widgets
+
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import net.wshmkr.launcher.model.TodayEvents
+import net.wshmkr.launcher.repository.CalendarRepository
+import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
+import net.wshmkr.launcher.util.formatEventTime
+import net.wshmkr.launcher.util.isPermissionPermanentlyDenied
+import net.wshmkr.launcher.util.launchCalendarAt
+import net.wshmkr.launcher.util.launchCalendarToday
+import net.wshmkr.launcher.util.openAppDetailsSettings
+import net.wshmkr.launcher.util.rememberCurrentLocalTime
+
+@Composable
+fun CalendarEventsWidget(
+    events: TodayEvents,
+    use24Hour: Boolean,
+    onPermissionGranted: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(CalendarRepository.hasReadCalendarPermission(context))
+    }
+
+    var permanentlyDenied by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        hasPermission = granted
+        if (granted) {
+            onPermissionGranted()
+        } else {
+            permanentlyDenied = isPermissionPermanentlyDenied(context, Manifest.permission.READ_CALENDAR)
+        }
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        val now = CalendarRepository.hasReadCalendarPermission(context)
+        if (now != hasPermission) {
+            hasPermission = now
+            if (now) onPermissionGranted()
+        }
+    }
+
+    if (!hasPermission) {
+        EnableCalendarRow(
+            modifier = modifier,
+            onClick = {
+                if (permanentlyDenied) {
+                    openAppDetailsSettings(context)
+                } else {
+                    permissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+                }
+            },
+        )
+        return
+    }
+
+    val (eventList, hiddenCount) = events
+    if (eventList.isEmpty()) return
+
+    val typography = MaterialTheme.typography
+    val eventTextStyle = remember(typography) {
+        typography.bodyMedium.copy(color = Color.White, fontSize = 14.sp)
+    }
+    val ongoingTextStyle = remember(eventTextStyle) {
+        eventTextStyle.copy(fontWeight = FontWeight.Bold)
+    }
+
+    val currentTime by rememberCurrentLocalTime()
+    val nowMillis = remember(currentTime) { System.currentTimeMillis() }
+
+    val timeStyle = remember(eventTextStyle) {
+        eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
+    }
+    val ongoingTimeStyle = remember(timeStyle) {
+        timeStyle.copy(fontWeight = FontWeight.Bold)
+    }
+    val timeLabels = remember(eventList, use24Hour) {
+        eventList.map { event ->
+            if (event.allDay) null else formatEventTime(event.startMillis, use24Hour)
+        }
+    }
+
+    // Size the time column to the widest label so times never wrap to a second line.
+    // Measured bold so ongoing (bolded) labels fit too.
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val timeColumnWidth = remember(timeLabels, ongoingTimeStyle, density) {
+        val widest = timeLabels.filterNotNull()
+            .maxOfOrNull { textMeasurer.measure(it, ongoingTimeStyle).size.width } ?: 0
+        with(density) { widest.toDp() }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = EVENTS_INDENT, end = 8.dp),
+    ) {
+        eventList.forEachIndexed { index, event ->
+            val timeLabel = timeLabels[index]
+            val ongoing = !event.allDay &&
+                event.startMillis <= nowMillis && nowMillis < event.endMillis
+            EventRow(
+                title = event.title,
+                timeLabel = timeLabel,
+                dotColor = event.color?.let(::Color) ?: DEFAULT_DOT_COLOR,
+                timeStyle = if (ongoing) ongoingTimeStyle else timeStyle,
+                timeColumnWidth = timeColumnWidth,
+                textStyle = if (ongoing || timeLabel == null) ongoingTextStyle else eventTextStyle,
+                onClick = {
+                    // All-day starts are UTC-based and can resolve to the wrong local day.
+                    if (event.allDay) launchCalendarToday(context) else launchCalendarAt(context, event.startMillis)
+                },
+            )
+        }
+        if (hiddenCount > 0) {
+            Text(
+                text = "+$hiddenCount more",
+                style = timeStyle,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = { launchCalendarToday(context) })
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .padding(horizontal = 8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+    ) {
+        Icon(
+            painter = CalendarTodayIcon(),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = "Show today's events",
+            fontSize = 14.sp,
+            color = Color.White,
+        )
+    }
+}
+
+@Composable
+private fun EventRow(
+    title: String,
+    timeLabel: String?,
+    dotColor: Color,
+    timeStyle: TextStyle,
+    timeColumnWidth: Dp,
+    textStyle: TextStyle,
+    onClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(DOT_SIZE)
+                .background(dotColor, CircleShape),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        if (timeLabel != null) {
+            Text(
+                text = timeLabel,
+                style = timeStyle,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.width(timeColumnWidth),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Text(
+            text = title,
+            style = textStyle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private val EVENTS_INDENT = 16.dp
+private val DOT_SIZE = 6.dp
+private val DEFAULT_DOT_COLOR = Color.White.copy(alpha = 0.7f)

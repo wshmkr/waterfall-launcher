@@ -6,6 +6,7 @@ import androidx.compose.runtime.Immutable
 data class HomeWidgetSettings(
     val showClock: Boolean = true,
     val showCalendar: Boolean = true,
+    val showCalendarEvents: Boolean = true,
     val showWeather: Boolean = true,
     val showMediaControls: Boolean = true,
     val use24Hour: Boolean = false,

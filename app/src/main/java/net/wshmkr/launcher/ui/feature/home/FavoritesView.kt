@@ -29,6 +29,7 @@ import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
+import net.wshmkr.launcher.ui.feature.home.widgets.CalendarEventsWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
@@ -50,6 +51,8 @@ fun FavoritesView(
     val favoritesVisible by viewModel.favoritesVisible.collectAsState()
     val favoriteApps = viewModel.favoriteApps
     val widgetSettings = viewModel.homeWidgetSettings
+    val todayEvents by viewModel.todayEvents.collectAsState()
+    val onCalendarPermissionGranted = remember(viewModel) { viewModel::refreshCalendarEvents }
 
     LaunchedEffect(favoritesVisible) {
         if (favoritesVisible) {
@@ -116,6 +119,16 @@ fun FavoritesView(
                     weatherLocationLatitude = widgetSettings.weatherLocationLatitude,
                     weatherLocationLongitude = widgetSettings.weatherLocationLongitude,
                 )
+            }
+
+            if (widgetSettings.showCalendarEvents) {
+                item(key = "calendar_events") {
+                    CalendarEventsWidget(
+                        events = todayEvents,
+                        use24Hour = widgetSettings.use24Hour,
+                        onPermissionGranted = onCalendarPermissionGranted,
+                    )
+                }
             }
 
             item(key = "widget_stack") {
