@@ -63,7 +63,11 @@ fun MediaControls(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MediaAlbumArt(albumArt = mediaInfo.albumArt, artExpected = mediaInfo.artExpected)
+        MediaAlbumArt(
+            albumArt = mediaInfo.albumArt,
+            artExpected = mediaInfo.artExpected,
+            packageName = mediaInfo.packageName,
+        )
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -88,9 +92,10 @@ fun MediaControls(
 }
 
 @Composable
-private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean) {
+private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, packageName: String?) {
     // Keep the previous art while the new track's art loads, instead of flashing the placeholder.
-    val lastArt = remember { mutableStateOf(albumArt) }
+    // Keyed per app so one app's held art can never linger over another's.
+    val lastArt = remember(packageName) { ArtHolder(albumArt) }
     val displayedArt = if (albumArt == null && artExpected) lastArt.value else albumArt
     lastArt.value = displayedArt
 
@@ -214,8 +219,9 @@ private fun PlayPauseButton(
 
     IconButton(
         onClick = {
-            pendingPlaying = !shownPlaying
-            if (shownPlaying) onPause() else onPlay()
+            // Dispatch from the real state so repeated taps re-send the same command.
+            pendingPlaying = !isPlaying
+            if (isPlaying) onPause() else onPlay()
         },
         modifier = Modifier.size(56.dp)
     ) {
@@ -227,3 +233,6 @@ private fun PlayPauseButton(
         )
     }
 }
+
+// Plain remembered holder; nothing observes it, so snapshot state is unnecessary.
+private class ArtHolder(var value: Bitmap?)

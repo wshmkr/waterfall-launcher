@@ -20,6 +20,13 @@ data class MediaInfo(
             albumArt.hasSamePixelsAs(other.albumArt) &&
             artExpected == other.artExpected
     }
+
+    // Carry over the previous art instance when pixels match, so identity-keyed consumers see no change.
+    fun reusingArtFrom(other: MediaInfo?): MediaInfo {
+        val previousArt = other?.albumArt ?: return this
+        val pixelsUnchanged = albumArt !== previousArt && albumArt.hasSamePixelsAs(previousArt)
+        return if (pixelsUnchanged) copy(albumArt = previousArt) else this
+    }
 }
 
 // Players re-publish the same art as fresh Bitmap instances.

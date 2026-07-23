@@ -98,8 +98,9 @@ class MediaSessionRepository @Inject constructor(
         // so callers on any thread converge onto the same serialised access.
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
         private var lastMediaInfo: MediaInfo? = null
-        private var lastMetadata: MediaMetadata? = null
         private var lastControllerRef: MediaController? = null
+        // Playback-only events reuse lastMediaInfo; extraction reruns only when metadata may have changed.
+        private var metadataStale: Boolean = true
 
         private val sessionsChangedListener =
             MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
@@ -147,68 +148,76 @@ class MediaSessionRepository @Inject constructor(
             trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
             trackedControllers = controllers.map { controller ->
                 val callback = object : MediaController.Callback() {
-                    override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
+                    override fun onMetadataChanged(metadata: MediaMetadata?) {
+                        metadataStale = true
+                        publish()
+                    }
                     override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
                     override fun onSessionDestroyed() = refreshActiveSessions()
                 }
                 controller.registerCallback(callback, handler)
                 controller to callback
             }
+            // Metadata may have changed during the re-registration gap.
+            metadataStale = true
             publish()
         }
 
         private fun publish() {
-            val candidates = trackedControllers
-                .map { (controller, _) -> controller }
-                .filter { it.metadata != null && it.playbackState != null }
+            // Snapshot each controller's state once; the getters are binder calls.
+            val candidates = trackedControllers.mapNotNull { (controller, _) ->
+                val metadata = controller.metadata ?: return@mapNotNull null
+                val playbackState = controller.playbackState ?: return@mapNotNull null
+                SessionSnapshot(controller, metadata, playbackState)
+            }
 
             // Falling back to the last shown session keeps pausing from jumping to another app.
-            val controller = candidates.firstOrNull { it.playbackState?.isActive == true }
-                ?: candidates.firstOrNull { it.sameSessionAs(lastControllerRef) }
+            val selected = candidates.firstOrNull { it.playbackState.isActive }
+                ?: candidates.firstOrNull { it.controller.sameSessionAs(lastControllerRef) }
                 ?: candidates.firstOrNull()
 
-            if (controller == null) {
-                lastMetadata = null
+            if (selected == null) {
                 lastControllerRef = null
                 lastMediaInfo = null
+                metadataStale = true
                 emit(ActiveMediaSession(mediaInfo = null, controller = null))
                 return
             }
 
-            val metadata = controller.metadata
-
-            val snapshotUnchanged =
-                controller === lastControllerRef && metadata === lastMetadata
-            val mediaInfo = if (snapshotUnchanged && lastMediaInfo != null) {
+            val cacheValid = !metadataStale &&
+                selected.controller.sameSessionAs(lastControllerRef) &&
+                lastMediaInfo != null
+            val mediaInfo = if (cacheValid) {
                 lastMediaInfo
             } else {
-                val extracted = extractMediaInfo(controller, metadata)
-                if (extracted.hasSameDisplayContentAs(lastMediaInfo)) lastMediaInfo else extracted
+                metadataStale = false
+                val extracted = extractMediaInfo(selected.controller, selected.metadata)
+                if (extracted.hasSameDisplayContentAs(lastMediaInfo)) {
+                    lastMediaInfo
+                } else {
+                    extracted.reusingArtFrom(lastMediaInfo)
+                }
             }
 
-            lastControllerRef = controller
-            lastMetadata = metadata
+            lastControllerRef = selected.controller
             lastMediaInfo = mediaInfo
 
             emit(
                 ActiveMediaSession(
                     mediaInfo = mediaInfo,
                     // isActive includes transient states (buffering, connecting) so the button reflects intent immediately.
-                    isPlaying = controller.playbackState?.isActive == true,
-                    controller = controller,
+                    isPlaying = selected.playbackState.isActive,
+                    controller = selected.controller,
                 )
             )
         }
 
-        private fun extractMediaInfo(
-            controller: MediaController,
-            metadata: MediaMetadata?,
-        ): MediaInfo {
-            val albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+        private fun extractMediaInfo(controller: MediaController, metadata: MediaMetadata): MediaInfo {
+            val albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
             return MediaInfo(
-                title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
-                artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
+                title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE),
+                artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST),
                 packageName = controller.packageName,
                 albumArt = albumArt,
                 artExpected = albumArt != null || metadata.referencesArtUri()
@@ -220,11 +229,16 @@ class MediaSessionRepository @Inject constructor(
             return other != null && sessionToken == other.sessionToken
         }
 
-        private fun MediaMetadata?.referencesArtUri(): Boolean {
-            if (this == null) return false
+        private fun MediaMetadata.referencesArtUri(): Boolean {
             return getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI) != null ||
                 getString(MediaMetadata.METADATA_KEY_ART_URI) != null ||
                 getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI) != null
         }
+
+        private data class SessionSnapshot(
+            val controller: MediaController,
+            val metadata: MediaMetadata,
+            val playbackState: PlaybackState,
+        )
     }
 }
