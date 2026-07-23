@@ -95,12 +95,8 @@ fun MediaControls(
 @Composable
 private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage: String?) {
     // Keep the previous art while the new track's art loads, instead of flashing the placeholder.
-    val lastArt = remember { ArtHolder(albumArt, ownerPackage) }
-    // Held art must not survive a switch to a different app.
-    if (lastArt.owner != ownerPackage) {
-        lastArt.art = null
-        lastArt.owner = ownerPackage
-    }
+    // Keyed on the app so held art never survives a switch to a different one.
+    val lastArt = remember(ownerPackage) { ArtHolder(null) }
     val displayedArt = if (albumArt == null && artExpected) lastArt.art else albumArt
     lastArt.art = displayedArt
 
@@ -247,6 +243,6 @@ private fun PlayPauseButton(
 }
 
 // Nothing observes this, so snapshot state is unnecessary.
-private class ArtHolder(var art: Bitmap?, var owner: String?)
+private class ArtHolder(var art: Bitmap?)
 
 private const val PENDING_PLAYING_TIMEOUT_MS = 2_000L
