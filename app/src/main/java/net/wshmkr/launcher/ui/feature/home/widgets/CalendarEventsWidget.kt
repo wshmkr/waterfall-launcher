@@ -41,9 +41,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
-import net.wshmkr.launcher.util.eventTimeLabel
+import net.wshmkr.launcher.util.formatEventTime
 import net.wshmkr.launcher.util.launchCalendarAt
-import net.wshmkr.launcher.util.rememberCurrentDate
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
@@ -94,23 +93,26 @@ fun CalendarEventsWidget(
 
     val currentTime by rememberCurrentLocalTime()
     val nowMillis = remember(currentTime) { System.currentTimeMillis() }
-    val today by rememberCurrentDate()
 
     val timeStyle = remember(eventTextStyle) {
         eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
     }
-    // Keyed on the date so "Tmrw" labels roll over at midnight even if the list is unchanged.
-    val timeLabels = remember(eventList, use24Hour, today) {
+    val ongoingTimeStyle = remember(timeStyle) {
+        timeStyle.copy(fontWeight = FontWeight.Bold)
+    }
+    val timeLabels = remember(eventList, use24Hour) {
         eventList.map { event ->
-            eventTimeLabel(event.startMillis, event.endMillis, event.allDay, use24Hour)
+            if (event.allDay) null else formatEventTime(event.startMillis, use24Hour)
         }
     }
 
     // Size the time column to the widest label so times never wrap to a second line.
+    // Measured bold so ongoing (bolded) labels fit too.
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val timeColumnWidth = remember(timeLabels, timeStyle, density) {
-        val widest = timeLabels.maxOf { textMeasurer.measure(it, timeStyle).size.width }
+    val timeColumnWidth = remember(timeLabels, ongoingTimeStyle, density) {
+        val widest = timeLabels.filterNotNull()
+            .maxOfOrNull { textMeasurer.measure(it, ongoingTimeStyle).size.width } ?: 0
         with(density) { widest.toDp() }
     }
 
@@ -120,15 +122,16 @@ fun CalendarEventsWidget(
             .padding(start = EVENTS_INDENT, end = 8.dp),
     ) {
         eventList.forEachIndexed { index, event ->
+            val timeLabel = timeLabels[index]
             val ongoing = !event.allDay &&
                 event.startMillis <= nowMillis && nowMillis < event.endMillis
             EventRow(
                 title = event.title,
-                timeLabel = timeLabels[index],
+                timeLabel = timeLabel,
                 dotColor = event.color?.let(::Color) ?: DEFAULT_DOT_COLOR,
-                timeStyle = timeStyle,
+                timeStyle = if (ongoing) ongoingTimeStyle else timeStyle,
                 timeColumnWidth = timeColumnWidth,
-                textStyle = if (ongoing) ongoingTextStyle else eventTextStyle,
+                textStyle = if (ongoing || timeLabel == null) ongoingTextStyle else eventTextStyle,
                 onClick = { launchCalendarAt(context, event.startMillis) },
             )
         }
@@ -173,7 +176,7 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
 @Composable
 private fun EventRow(
     title: String,
-    timeLabel: String,
+    timeLabel: String?,
     dotColor: Color,
     timeStyle: TextStyle,
     timeColumnWidth: Dp,
@@ -194,14 +197,16 @@ private fun EventRow(
                 .background(dotColor, CircleShape),
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = timeLabel,
-            style = timeStyle,
-            maxLines = 1,
-            softWrap = false,
-            modifier = Modifier.width(timeColumnWidth),
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+        if (timeLabel != null) {
+            Text(
+                text = timeLabel,
+                style = timeStyle,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.width(timeColumnWidth),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         Text(
             text = title,
             style = textStyle,
