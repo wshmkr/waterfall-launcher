@@ -4,11 +4,14 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,12 +30,17 @@ class WidgetDataSource @Inject constructor(
     }
 
     suspend fun getLastPageWidgetId(): Int? {
-        return dataStore.data.first()[KEY_STACK_LAST_WIDGET]
+        return readPreferences()[KEY_STACK_LAST_WIDGET]
     }
 
     suspend fun getWidgetIds(): List<Int> {
-        return decode(dataStore.data.first()[WIDGETS_KEY])
+        return decode(readPreferences()[WIDGETS_KEY])
     }
+
+    private suspend fun readPreferences(): Preferences =
+        dataStore.data
+            .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+            .first()
 
     suspend fun addWidget(widgetId: Int) = updateWidgets { ids ->
         if (ids.size < MAX_WIDGETS) ids + widgetId else ids
