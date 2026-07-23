@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -43,6 +44,7 @@ import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.util.formatEventStartTime
 import net.wshmkr.launcher.util.launchCalendarApp
+import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
 fun CalendarEventsWidget(
@@ -85,6 +87,12 @@ fun CalendarEventsWidget(
     val eventTextStyle = remember(typography) {
         typography.bodyMedium.copy(color = Color.White, fontSize = 14.sp)
     }
+    val ongoingTextStyle = remember(eventTextStyle) {
+        eventTextStyle.copy(fontWeight = FontWeight.Bold)
+    }
+
+    val currentTime by rememberCurrentLocalTime()
+    val nowMillis = remember(currentTime) { System.currentTimeMillis() }
 
     val timeStyle = remember(eventTextStyle) {
         eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
@@ -109,13 +117,15 @@ fun CalendarEventsWidget(
             .padding(start = EVENTS_INDENT, end = 8.dp),
     ) {
         events.forEachIndexed { index, event ->
+            val ongoing = !event.allDay &&
+                event.startMillis <= nowMillis && nowMillis < event.endMillis
             EventRow(
                 title = event.title,
                 timeLabel = timeLabels[index],
                 dotColor = event.calendarColor?.let(::Color) ?: DEFAULT_DOT_COLOR,
                 timeStyle = timeStyle,
                 timeColumnWidth = timeColumnWidth,
-                textStyle = eventTextStyle,
+                textStyle = if (ongoing) ongoingTextStyle else eventTextStyle,
                 onClick = { launchCalendarApp(context) },
             )
         }
