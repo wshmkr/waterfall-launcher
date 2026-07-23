@@ -13,9 +13,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
 @Composable
@@ -29,7 +31,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = dimensions.settingsPageHorizontalPadding)
+            .padding(horizontal = dimensions.pagePadding)
     ) {
         Column(
             modifier = Modifier
@@ -43,7 +45,7 @@ fun SettingsScreen(
                 viewModel = viewModel
             )
 
-            Spacer(modifier = Modifier.height(dimensions.settingsSectionGap))
+            Spacer(modifier = Modifier.height(Spacing.xLarge))
 
             PermissionSettings(context = context)
         }

@@ -104,7 +104,7 @@ fun AlphabetSlider(
         }
     }
 
-    val bottomLift = LocalDimensions.current.alphabetBottomLift()
+    val bottomLift = alphabetBottomLift()
 
     Row(
         modifier = modifier
@@ -144,7 +144,7 @@ private fun InvisibleLettersColumn(letters: List<String>) {
     val dimensions = LocalDimensions.current
     Column(
         modifier = Modifier
-            .width(dimensions.alphabetColumnWidth)
+            .width(dimensions.iconLarge)
             .graphicsLayer { alpha = 0f },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy((-6).dp),
@@ -153,7 +153,7 @@ private fun InvisibleLettersColumn(letters: List<String>) {
             Text(
                 text = letter,
                 modifier = Modifier.fillMaxWidth(),
-                fontSize = dimensions.alphabetLetterFont,
+                fontSize = dimensions.fontMedium,
                 textAlign = TextAlign.Center,
             )
         }
@@ -179,7 +179,7 @@ private fun AnimatedLettersList(
 
     Column(
         modifier = Modifier
-            .width(dimensions.alphabetColumnWidth)
+            .width(dimensions.iconLarge)
             .offset { IntOffset(0, animatedVerticalOffset.roundToInt()) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy((-6).dp),
@@ -207,7 +207,7 @@ private fun AnimatedLettersList(
                         val bounds = coordinates.boundsInParent()
                         viewModel.updateLetterBounds(index, bounds.top, bounds.bottom)
                     },
-                fontSize = dimensions.alphabetLetterFont,
+                fontSize = dimensions.fontMedium,
                 color = if (letter == activeLetter) Color.Red else Color.White,
                 textAlign = TextAlign.Center
             )

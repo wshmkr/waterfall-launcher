@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 enum class MenuOptionTextSize {
     Small, Medium, Large
@@ -46,15 +47,15 @@ fun MenuOption(
 ) {
     val dimensions = LocalDimensions.current
     val fontSize = when (textSize) {
-        MenuOptionTextSize.Small -> dimensions.menuOptionFontSmall
-        MenuOptionTextSize.Medium -> dimensions.menuOptionFontMedium
-        MenuOptionTextSize.Large -> dimensions.menuOptionFontLarge
+        MenuOptionTextSize.Small -> dimensions.fontMedium
+        MenuOptionTextSize.Medium -> dimensions.fontLarge
+        MenuOptionTextSize.Large -> dimensions.fontXLarge
     }
 
     val subtextSize = when (textSize) {
-        MenuOptionTextSize.Small -> dimensions.menuOptionSubFontSmall
-        MenuOptionTextSize.Medium -> dimensions.menuOptionSubFontMedium
-        MenuOptionTextSize.Large -> dimensions.menuOptionSubFontLarge
+        MenuOptionTextSize.Small -> dimensions.fontSmall
+        MenuOptionTextSize.Medium -> dimensions.fontMedium
+        MenuOptionTextSize.Large -> dimensions.fontLarge
     }
 
     Row(
@@ -63,10 +64,10 @@ fun MenuOption(
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(
-                start = dimensions.menuOptionHorizontalPadding * (indent + 1),
-                end = dimensions.menuOptionHorizontalPadding,
-                top = 8.dp,
-                bottom = 8.dp,
+                start = Spacing.medium * (indent + 1),
+                end = Spacing.medium,
+                top = Spacing.small,
+                bottom = Spacing.small,
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -74,10 +75,10 @@ fun MenuOption(
             Icon(
                 painter = icon,
                 contentDescription = text,
-                modifier = Modifier.size(dimensions.menuOptionIconSize),
+                modifier = Modifier.size(dimensions.iconSmall),
                 tint = color,
             )
-            Spacer(modifier = Modifier.width(dimensions.menuOptionIconGap))
+            Spacer(modifier = Modifier.width(dimensions.iconGap))
         }
         Column(
             modifier = Modifier.weight(1f)

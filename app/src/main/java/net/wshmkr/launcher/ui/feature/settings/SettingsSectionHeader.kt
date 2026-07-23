@@ -15,7 +15,7 @@ fun SettingsSectionHeader(title: String) {
     Text(
         text = title,
         color = Color.White,
-        fontSize = LocalDimensions.current.settingsSectionHeaderFont,
+        fontSize = LocalDimensions.current.fontXLarge,
         fontWeight = FontWeight.SemiBold
     )
 

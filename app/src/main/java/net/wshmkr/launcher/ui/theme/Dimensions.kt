@@ -8,286 +8,100 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// Spacing steps that don't scale with screen width; use instead of raw dp for padding and gaps.
+object Spacing {
+    val small = 8.dp
+    val medium = 16.dp
+    val large = 24.dp
+    val xLarge = 32.dp
+}
+
 data class Dimensions(
-    val listHorizontalGutter: Dp,
-    val searchListHorizontalGutter: Dp,
-    val homeOptionsMenuHorizontalPadding: Dp,
+    val gutterSmall: Dp,
+    val gutterLarge: Dp,
+    val pagePadding: Dp,
+    val iconGap: Dp,
 
-    val appRowOuterStartPadding: Dp,
-    val appRowOuterEndPadding: Dp,
-    val appRowInnerPadding: Dp,
-    val appRowIconSize: Dp,
-    val appRowIconGap: Dp,
-    val appRowFont: TextUnit,
-    val notificationPreviewFont: TextUnit,
+    val iconSmall: Dp,
+    val iconMedium: Dp,
+    val iconLarge: Dp,
+    val playButtonSize: Dp,
+    val albumArtSize: Dp,
+    val searchButtonEndInset: Dp,
 
-    val sectionHeaderFont: TextUnit,
-    val sectionHeaderStartPadding: Dp,
-    val sectionHeaderEndPadding: Dp,
-    val sectionHeaderTopPadding: Dp,
-    val sectionHeaderBottomPadding: Dp,
-
-    val clockFont: TextUnit,
-    val clockChipFont: TextUnit,
-
-    val weatherFont: TextUnit,
-
-    val mediaPromptIconSize: Dp,
-    val mediaPromptFont: TextUnit,
-    val mediaAlbumArtSize: Dp,
-    val mediaAlbumFallbackIconSize: Dp,
-    val mediaTitleFont: TextUnit,
-    val mediaArtistFont: TextUnit,
-    val mediaArtTextGap: Dp,
-    val mediaSideButtonSize: Dp,
-    val mediaSideGlyphSize: Dp,
-    val mediaPlayButtonSize: Dp,
-    val mediaPlayGlyphSize: Dp,
-
-    val alphabetColumnWidth: Dp,
-    val alphabetLetterFont: TextUnit,
-    val alphabetBottomLiftFraction: Float,
-
-    val allAppsFabBottomFraction: Float,
-    val allAppsFabEndOffset: Dp,
-
-    val homeWidgetGapFraction: Float,
-
-    val menuOptionIconSize: Dp,
-    val menuOptionIconGap: Dp,
-    val menuOptionHorizontalPadding: Dp,
-    val menuOptionFontSmall: TextUnit,
-    val menuOptionFontMedium: TextUnit,
-    val menuOptionFontLarge: TextUnit,
-    val menuOptionSubFontSmall: TextUnit,
-    val menuOptionSubFontMedium: TextUnit,
-    val menuOptionSubFontLarge: TextUnit,
-
-    val appOptionsHorizontalPadding: Dp,
-    val appOptionsIconSize: Dp,
-    val appOptionsIconGap: Dp,
-    val appOptionsLabelFont: TextUnit,
-    val appOptionsNoteFont: TextUnit,
-
-    val settingsPageHorizontalPadding: Dp,
-    val settingsSectionGap: Dp,
-    val settingsSectionHeaderFont: TextUnit,
-
-    val manageWidgetsPagePadding: Dp,
-    val manageWidgetsTitleFont: TextUnit,
-    val manageWidgetsTitleGap: Dp,
-    val managedWidgetIconSize: Dp,
-    val managedWidgetNameFont: TextUnit,
-    val managedWidgetSubtitleFont: TextUnit,
-    val addWidgetIconSize: Dp,
-    val addWidgetLabelFont: TextUnit,
-
-    val widgetProviderIndent: Dp,
-    val widgetProviderEndPadding: Dp,
-    val widgetProviderIconSize: Dp,
-    val widgetProviderLabelFont: TextUnit,
-    val widgetProviderSubtitleFont: TextUnit,
-    val widgetProviderChevronSize: Dp,
-
-    val widgetListItemFallbackHeight: Dp,
-    val widgetListItemPreviewFont: TextUnit,
-    val widgetListItemLabelFont: TextUnit,
-
-    val widgetAppListEmptyFont: TextUnit,
-
-    val verticalSwipeThreshold: Dp,
-    val verticalDragFeedbackScale: Float,
-
-    val centeredContentTopFraction: Float,
+    val fontCaption: TextUnit,
+    val fontSmall: TextUnit,
+    val fontMedium: TextUnit,
+    val fontLarge: TextUnit,
+    val fontXLarge: TextUnit,
+    val fontTitle: TextUnit,
+    val fontClock: TextUnit,
 )
 
 val standardDimensions = Dimensions(
-    listHorizontalGutter = 32.dp,
-    searchListHorizontalGutter = 16.dp,
-    homeOptionsMenuHorizontalPadding = 16.dp,
+    gutterSmall = 16.dp,
+    gutterLarge = 32.dp,
+    pagePadding = 24.dp,
+    iconGap = 20.dp,
 
-    appRowOuterStartPadding = 8.dp,
-    appRowOuterEndPadding = 32.dp,
-    appRowInnerPadding = 8.dp,
-    appRowIconSize = 40.dp,
-    appRowIconGap = 20.dp,
-    appRowFont = 16.sp,
-    notificationPreviewFont = 12.sp,
+    iconSmall = 24.dp,
+    iconMedium = 36.dp,
+    iconLarge = 40.dp,
+    playButtonSize = 56.dp,
+    albumArtSize = 96.dp,
+    searchButtonEndInset = 64.dp,
 
-    sectionHeaderFont = 20.sp,
-    sectionHeaderStartPadding = 16.dp,
-    sectionHeaderEndPadding = 16.dp,
-    sectionHeaderTopPadding = 12.dp,
-    sectionHeaderBottomPadding = 8.dp,
-
-    clockFont = 48.sp,
-    clockChipFont = 16.sp,
-
-    weatherFont = 16.sp,
-
-    mediaPromptIconSize = 32.dp,
-    mediaPromptFont = 14.sp,
-    mediaAlbumArtSize = 96.dp,
-    mediaAlbumFallbackIconSize = 40.dp,
-    mediaTitleFont = 16.sp,
-    mediaArtistFont = 14.sp,
-    mediaArtTextGap = 16.dp,
-    mediaSideButtonSize = 36.dp,
-    mediaSideGlyphSize = 24.dp,
-    mediaPlayButtonSize = 56.dp,
-    mediaPlayGlyphSize = 40.dp,
-
-    alphabetColumnWidth = 40.dp,
-    alphabetLetterFont = 16.sp,
-    alphabetBottomLiftFraction = 0.11f,
-
-    allAppsFabBottomFraction = 0.055f,
-    allAppsFabEndOffset = 64.dp,
-
-    homeWidgetGapFraction = 0.018f,
-
-    menuOptionIconSize = 24.dp,
-    menuOptionIconGap = 24.dp,
-    menuOptionHorizontalPadding = 16.dp,
-    menuOptionFontSmall = 16.sp,
-    menuOptionFontMedium = 18.sp,
-    menuOptionFontLarge = 20.sp,
-    menuOptionSubFontSmall = 14.sp,
-    menuOptionSubFontMedium = 16.sp,
-    menuOptionSubFontLarge = 18.sp,
-
-    appOptionsHorizontalPadding = 16.dp,
-    appOptionsIconSize = 40.dp,
-    appOptionsIconGap = 16.dp,
-    appOptionsLabelFont = 20.sp,
-    appOptionsNoteFont = 14.sp,
-
-    settingsPageHorizontalPadding = 24.dp,
-    settingsSectionGap = 32.dp,
-    settingsSectionHeaderFont = 20.sp,
-
-    manageWidgetsPagePadding = 24.dp,
-    manageWidgetsTitleFont = 24.sp,
-    manageWidgetsTitleGap = 16.dp,
-    managedWidgetIconSize = 36.dp,
-    managedWidgetNameFont = 16.sp,
-    managedWidgetSubtitleFont = 13.sp,
-    addWidgetIconSize = 24.dp,
-    addWidgetLabelFont = 16.sp,
-
-    widgetProviderIndent = 24.dp,
-    widgetProviderEndPadding = 32.dp,
-    widgetProviderIconSize = 40.dp,
-    widgetProviderLabelFont = 18.sp,
-    widgetProviderSubtitleFont = 12.sp,
-    widgetProviderChevronSize = 24.dp,
-
-    widgetListItemFallbackHeight = 120.dp,
-    widgetListItemPreviewFont = 12.sp,
-    widgetListItemLabelFont = 16.sp,
-
-    widgetAppListEmptyFont = 18.sp,
-
-    verticalSwipeThreshold = 100.dp,
-    verticalDragFeedbackScale = 5f,
-
-    centeredContentTopFraction = 0.25f,
+    fontCaption = 12.sp,
+    fontSmall = 14.sp,
+    fontMedium = 16.sp,
+    fontLarge = 18.sp,
+    fontXLarge = 20.sp,
+    fontTitle = 24.sp,
+    fontClock = 48.sp,
 )
 
-val compactDimensions = standardDimensions.copy(
-    listHorizontalGutter = 24.dp,
-    searchListHorizontalGutter = 12.dp,
+val compactDimensions = Dimensions(
+    gutterSmall = 12.dp,
+    gutterLarge = 24.dp,
+    pagePadding = 20.dp,
+    iconGap = 16.dp,
 
-    appRowOuterEndPadding = 24.dp,
-    appRowIconSize = 36.dp,
-    appRowIconGap = 16.dp,
-    appRowFont = 15.sp,
-    notificationPreviewFont = 11.sp,
+    iconSmall = 22.dp,
+    iconMedium = 32.dp,
+    iconLarge = 36.dp,
+    playButtonSize = 48.dp,
+    albumArtSize = 80.dp,
+    searchButtonEndInset = 56.dp,
 
-    sectionHeaderFont = 18.sp,
-
-    clockFont = 40.sp,
-    clockChipFont = 14.sp,
-
-    weatherFont = 14.sp,
-
-    mediaPromptIconSize = 28.dp,
-    mediaAlbumArtSize = 80.dp,
-    mediaAlbumFallbackIconSize = 32.dp,
-    mediaTitleFont = 15.sp,
-    mediaArtistFont = 13.sp,
-    mediaArtTextGap = 12.dp,
-    mediaSideButtonSize = 32.dp,
-    mediaSideGlyphSize = 22.dp,
-    mediaPlayButtonSize = 48.dp,
-    mediaPlayGlyphSize = 32.dp,
-
-    alphabetColumnWidth = 36.dp,
-
-    allAppsFabEndOffset = 56.dp,
-
-    menuOptionIconSize = 22.dp,
-    menuOptionIconGap = 20.dp,
-    menuOptionFontSmall = 15.sp,
-    menuOptionFontMedium = 17.sp,
-    menuOptionFontLarge = 19.sp,
-    menuOptionSubFontSmall = 13.sp,
-    menuOptionSubFontMedium = 15.sp,
-    menuOptionSubFontLarge = 17.sp,
-
-    appOptionsIconSize = 36.dp,
-    appOptionsLabelFont = 18.sp,
-
-    settingsPageHorizontalPadding = 20.dp,
-
-    manageWidgetsPagePadding = 20.dp,
-    manageWidgetsTitleFont = 22.sp,
-    managedWidgetIconSize = 32.dp,
-    managedWidgetNameFont = 15.sp,
-
-    widgetProviderIconSize = 36.dp,
-    widgetProviderLabelFont = 17.sp,
+    fontCaption = 11.sp,
+    fontSmall = 13.sp,
+    fontMedium = 15.sp,
+    fontLarge = 17.sp,
+    fontXLarge = 18.sp,
+    fontTitle = 22.sp,
+    fontClock = 40.sp,
 )
 
-val largeDimensions = standardDimensions.copy(
-    listHorizontalGutter = 36.dp,
-    searchListHorizontalGutter = 20.dp,
+val largeDimensions = Dimensions(
+    gutterSmall = 20.dp,
+    gutterLarge = 36.dp,
+    pagePadding = 24.dp,
+    iconGap = 24.dp,
 
-    appRowIconSize = 44.dp,
-    appRowIconGap = 24.dp,
-    appRowFont = 17.sp,
-    notificationPreviewFont = 13.sp,
+    iconSmall = 26.dp,
+    iconMedium = 40.dp,
+    iconLarge = 44.dp,
+    playButtonSize = 64.dp,
+    albumArtSize = 112.dp,
+    searchButtonEndInset = 72.dp,
 
-    sectionHeaderFont = 22.sp,
-
-    clockFont = 56.sp,
-    clockChipFont = 18.sp,
-
-    weatherFont = 18.sp,
-
-    mediaAlbumArtSize = 112.dp,
-    mediaAlbumFallbackIconSize = 44.dp,
-    mediaTitleFont = 17.sp,
-    mediaArtistFont = 15.sp,
-    mediaSideButtonSize = 40.dp,
-    mediaSideGlyphSize = 26.dp,
-    mediaPlayButtonSize = 64.dp,
-    mediaPlayGlyphSize = 44.dp,
-
-    alphabetColumnWidth = 44.dp,
-    alphabetLetterFont = 17.sp,
-
-    allAppsFabEndOffset = 72.dp,
-
-    menuOptionIconSize = 26.dp,
-    appOptionsIconSize = 44.dp,
-    appOptionsLabelFont = 22.sp,
-
-    manageWidgetsTitleFont = 26.sp,
-    managedWidgetIconSize = 40.dp,
-
-    widgetProviderIconSize = 44.dp,
-    widgetProviderLabelFont = 19.sp,
+    fontCaption = 13.sp,
+    fontSmall = 15.sp,
+    fontMedium = 17.sp,
+    fontLarge = 19.sp,
+    fontXLarge = 22.sp,
+    fontTitle = 26.sp,
+    fontClock = 56.sp,
 )
 
 val LocalDimensions = staticCompositionLocalOf { standardDimensions }
@@ -302,17 +116,17 @@ private const val COMPACT_WIDTH_THRESHOLD_DP = 380
 private const val LARGE_WIDTH_THRESHOLD_DP = 430
 
 @Composable
-fun Dimensions.alphabetBottomLift(): Dp =
-    LocalConfiguration.current.screenHeightDp.dp * alphabetBottomLiftFraction
+fun alphabetBottomLift(): Dp =
+    LocalConfiguration.current.screenHeightDp.dp * ALPHABET_BOTTOM_LIFT_FRACTION
 
 @Composable
-fun Dimensions.allAppsFabBottom(): Dp =
-    LocalConfiguration.current.screenHeightDp.dp * allAppsFabBottomFraction
+fun searchButtonBottomInset(): Dp =
+    LocalConfiguration.current.screenHeightDp.dp * SEARCH_BUTTON_BOTTOM_FRACTION
 
 @Composable
-fun Dimensions.homeWidgetGap(): Dp =
-    LocalConfiguration.current.screenHeightDp.dp * homeWidgetGapFraction
+fun homeWidgetGap(): Dp =
+    LocalConfiguration.current.screenHeightDp.dp * HOME_WIDGET_GAP_FRACTION
 
-@Composable
-fun Dimensions.centeredContentTopPadding(): Dp =
-    LocalConfiguration.current.screenHeightDp.dp * centeredContentTopFraction
+private const val ALPHABET_BOTTOM_LIFT_FRACTION = 0.11f
+private const val SEARCH_BUTTON_BOTTOM_FRACTION = 0.055f
+private const val HOME_WIDGET_GAP_FRACTION = 0.018f

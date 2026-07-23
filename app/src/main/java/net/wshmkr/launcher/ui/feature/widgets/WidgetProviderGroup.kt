@@ -32,6 +32,7 @@ import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
 import net.wshmkr.launcher.ui.common.icons.ArrowDropUpIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
@@ -59,9 +60,9 @@ fun WidgetProviderGroup(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        start = dimensions.widgetProviderIndent,
-                        end = dimensions.widgetProviderEndPadding,
-                        top = 8.dp,
+                        start = Spacing.large,
+                        end = dimensions.gutterLarge,
+                        top = Spacing.small,
                     )
             ) {
                 provider.widgets.forEachIndexed { index, widgetOption ->
@@ -104,7 +105,7 @@ private fun WidgetProviderRow(
 
     Row(
         modifier = modifier
-            .padding(start = 8.dp, end = dimensions.widgetProviderEndPadding)
+            .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White.copy(alpha = 0.08f))
@@ -117,7 +118,7 @@ private fun WidgetProviderRow(
             painter = rememberDrawablePainter(drawable = provider.icon),
             contentDescription = provider.label,
             modifier = Modifier
-                .size(dimensions.widgetProviderIconSize)
+                .size(dimensions.iconLarge)
                 .clip(RoundedCornerShape(8.dp))
         )
         Spacer(modifier = Modifier.width(16.dp))
@@ -127,7 +128,7 @@ private fun WidgetProviderRow(
             Text(
                 text = provider.label,
                 color = Color.White,
-                fontSize = dimensions.widgetProviderLabelFont,
+                fontSize = dimensions.fontLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -136,13 +137,13 @@ private fun WidgetProviderRow(
             Text(
                 text = widgetCountLabel(provider.widgetCount),
                 color = Color.White.copy(alpha = 0.7f),
-                fontSize = dimensions.widgetProviderSubtitleFont,
+                fontSize = dimensions.fontCaption,
             )
         }
         Icon(
             painter = if (isExpanded) ArrowDropUpIcon() else ArrowDropDownIcon(),
             contentDescription = if (isExpanded) "Collapse Widgets" else "Expand Widgets",
-            modifier = Modifier.size(dimensions.widgetProviderChevronSize),
+            modifier = Modifier.size(dimensions.iconSmall),
             tint = Color.White
         )
     }

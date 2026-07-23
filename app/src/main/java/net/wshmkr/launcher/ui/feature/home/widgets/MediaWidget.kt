@@ -41,7 +41,7 @@ import net.wshmkr.launcher.viewmodel.MediaViewModel
 @Composable
 fun MediaWidget(enabled: Boolean = true) {
     if (!enabled) {
-        return Spacer(modifier = Modifier.height(LocalDimensions.current.homeWidgetGap()))
+        return Spacer(modifier = Modifier.height(homeWidgetGap()))
     }
 
     val context = LocalContext.current
@@ -87,7 +87,7 @@ private fun ActiveMediaControls(viewModel: MediaViewModel = hiltViewModel()) {
 
     val info = mediaInfo
     if (info == null) {
-        Spacer(modifier = Modifier.height(LocalDimensions.current.homeWidgetGap()))
+        Spacer(modifier = Modifier.height(homeWidgetGap()))
     } else {
         val packageName = info.packageName
         val onMediaAppClick = remember(packageName, context) {
@@ -135,12 +135,12 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             painter = MusicNoteIcon(),
             contentDescription = "Media",
             tint = Color.White.copy(alpha = 0.5f),
-            modifier = Modifier.size(dimensions.mediaPromptIconSize)
+            modifier = Modifier.size(dimensions.iconMedium)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Enable notification access\nfor media controls",
-            fontSize = dimensions.mediaPromptFont,
+            fontSize = dimensions.fontSmall,
             color = Color.White.copy(alpha = 0.5f),
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()

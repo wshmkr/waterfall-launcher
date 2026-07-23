@@ -37,6 +37,7 @@ import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.icons.AddIcon
 import net.wshmkr.launcher.ui.common.icons.DeleteIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.ManagedWidget
 
 @Composable
@@ -54,20 +55,20 @@ fun ManageWidgetsView(
             .fillMaxSize()
             .statusBarsPadding()
             .padding(
-                start = dimensions.manageWidgetsPagePadding,
-                end = dimensions.manageWidgetsPagePadding,
+                start = dimensions.pagePadding,
+                end = dimensions.pagePadding,
                 top = topPadding,
-                bottom = 16.dp,
+                bottom = Spacing.medium,
             )
     ) {
         Text(
             text = "Manage Widgets",
-            fontSize = dimensions.manageWidgetsTitleFont,
+            fontSize = dimensions.fontTitle,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
 
-        Spacer(modifier = Modifier.height(dimensions.manageWidgetsTitleGap))
+        Spacer(modifier = Modifier.height(Spacing.medium))
 
         Box(
             modifier = Modifier
@@ -118,7 +119,7 @@ private fun ManagedWidgetRow(
             painter = rememberDrawablePainter(drawable = item.appIcon),
             contentDescription = item.appName,
             modifier = Modifier
-                .size(dimensions.managedWidgetIconSize)
+                .size(dimensions.iconMedium)
                 .clip(RoundedCornerShape(12.dp))
         )
 
@@ -130,7 +131,7 @@ private fun ManagedWidgetRow(
             Text(
                 text = item.widgetName,
                 color = Color.White,
-                fontSize = dimensions.managedWidgetNameFont,
+                fontSize = dimensions.fontMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -139,7 +140,7 @@ private fun ManagedWidgetRow(
             Text(
                 text = item.appName,
                 color = Color.White.copy(alpha = 0.7f),
-                fontSize = dimensions.managedWidgetSubtitleFont,
+                fontSize = dimensions.fontCaption,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -172,7 +173,7 @@ private fun AddWidgetRow(
             painter = AddIcon(),
             contentDescription = "Add widget",
             tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(dimensions.addWidgetIconSize)
+            modifier = Modifier.size(dimensions.iconSmall)
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -180,7 +181,7 @@ private fun AddWidgetRow(
         Text(
             text = "Add Widget",
             color = Color.White.copy(alpha = 0.7f),
-            fontSize = dimensions.addWidgetLabelFont,
+            fontSize = dimensions.fontMedium,
             fontWeight = FontWeight.Medium
         )
     }

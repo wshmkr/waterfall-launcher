@@ -33,6 +33,7 @@ import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -70,10 +71,7 @@ fun AppListItem(
 
     Row(
         modifier = Modifier
-            .padding(
-                start = dimensions.appRowOuterStartPadding,
-                end = dimensions.appRowOuterEndPadding,
-            )
+            .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
@@ -83,17 +81,17 @@ fun AppListItem(
                     showBottomSheet = true
                 }
             )
-            .padding(dimensions.appRowInnerPadding)
+            .padding(Spacing.small)
             .alpha(animatedAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
             painter = appInfo.icon,
             contentDescription = appInfo.label,
-            modifier = Modifier.size(dimensions.appRowIconSize),
+            modifier = Modifier.size(dimensions.iconLarge),
             colorFilter = inactiveFilter
         )
-        Spacer(modifier = Modifier.width(dimensions.appRowIconGap))
+        Spacer(modifier = Modifier.width(dimensions.iconGap))
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -120,7 +118,7 @@ fun AppListItem(
 fun AppTitle(title: String, isHidden: Boolean) {
     Text(
         text = title,
-        fontSize = LocalDimensions.current.appRowFont,
+        fontSize = LocalDimensions.current.fontMedium,
         color = Color.White,
         maxLines = 1,
         fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,

@@ -103,7 +103,7 @@ fun FavoritesView(
                         onLongPress = { onLongPress() }
                     )
                 },
-            contentPadding = PaddingValues(horizontal = LocalDimensions.current.listHorizontalGutter),
+            contentPadding = PaddingValues(horizontal = LocalDimensions.current.gutterLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
             userScrollEnabled = false,
         ) {

@@ -12,20 +12,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import net.wshmkr.launcher.ui.theme.LocalDimensions
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlin.math.sqrt
+
+val VERTICAL_SWIPE_THRESHOLD = 100.dp
+
+fun verticalDragFeedback(dy: Float) = sqrt(abs(dy)) * sign(dy) * 5
 
 @Composable
 fun Modifier.verticalSwipeDetection(
     onSwipeUp: (() -> Unit)? = null,
     onSwipeDown: (() -> Unit)? = null,
 ): Modifier {
-    val dimensions = LocalDimensions.current
-    val thresholdPx = with(LocalDensity.current) { dimensions.verticalSwipeThreshold.toPx() }
-    val feedbackScale = dimensions.verticalDragFeedbackScale
+    val thresholdPx = with(LocalDensity.current) { VERTICAL_SWIPE_THRESHOLD.toPx() }
 
     val offsetY = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
@@ -34,9 +36,9 @@ fun Modifier.verticalSwipeDetection(
 
     return this
         .graphicsLayer {
-            translationY = sqrt(abs(offsetY.value)) * sign(offsetY.value) * feedbackScale
+            translationY = verticalDragFeedback(offsetY.value)
         }
-        .pointerInput(thresholdPx) {
+        .pointerInput(Unit) {
             var totalDragY = 0f
             detectVerticalDragGestures(
                 onDragStart = {

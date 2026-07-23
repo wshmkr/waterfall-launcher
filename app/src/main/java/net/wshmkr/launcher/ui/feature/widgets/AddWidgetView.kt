@@ -43,7 +43,7 @@ fun AddWidgetView(
     )
 
     val topPadding = calculateCenteredContentTopPadding()
-    val listGutter = LocalDimensions.current.listHorizontalGutter
+    val listGutter = LocalDimensions.current.gutterLarge
     val contentPadding = remember(topPadding, listGutter) {
         PaddingValues(vertical = topPadding, horizontal = listGutter)
     }

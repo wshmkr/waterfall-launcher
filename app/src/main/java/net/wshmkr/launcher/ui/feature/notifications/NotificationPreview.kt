@@ -35,7 +35,7 @@ fun NotificationPreview(
         notificationTimestamp = notification?.timestamp,
     )
 
-    val previewFont = LocalDimensions.current.notificationPreviewFont
+    val previewFont = LocalDimensions.current.fontCaption
 
     notification?.title?.let {
         if (it.isNotBlank()) {

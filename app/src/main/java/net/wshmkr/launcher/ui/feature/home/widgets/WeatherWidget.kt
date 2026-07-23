@@ -132,7 +132,7 @@ private fun WeatherContent(
 ) {
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
         color = Color.White,
-        fontSize = LocalDimensions.current.weatherFont
+        fontSize = LocalDimensions.current.fontMedium
     )
 
     when {

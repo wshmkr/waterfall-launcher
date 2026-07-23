@@ -68,7 +68,7 @@ fun ClockWidget(
                 if (showCalendar && showWeather) {
                     Text(
                         text = "•",
-                        fontSize = dimensions.clockChipFont,
+                        fontSize = dimensions.fontMedium,
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
@@ -99,7 +99,7 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
     val display = remember(now, use24Hour) { formatTime(now, use24Hour) }
     Text(
         text = display,
-        fontSize = LocalDimensions.current.clockFont,
+        fontSize = LocalDimensions.current.fontClock,
         color = Color.White,
         modifier = Modifier
             .padding(horizontal = 4.dp)
@@ -116,7 +116,7 @@ private fun ClockDateText(onClick: () -> Unit) {
     val display = remember(today) { formatDate(today) }
     Text(
         text = display,
-        fontSize = LocalDimensions.current.clockChipFont,
+        fontSize = LocalDimensions.current.fontMedium,
         color = Color.White,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))

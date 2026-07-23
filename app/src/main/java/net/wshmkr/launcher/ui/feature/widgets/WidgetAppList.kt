@@ -27,7 +27,7 @@ fun WidgetAppList(
     viewModel: WidgetViewModel,
     listState: LazyListState,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(horizontal = LocalDimensions.current.listHorizontalGutter),
+    contentPadding: PaddingValues = PaddingValues(horizontal = LocalDimensions.current.gutterLarge),
     onWidgetSelected: () -> Unit = {},
 ) {
     val widgetListItems = viewModel.widgetAppListItems
@@ -42,7 +42,7 @@ fun WidgetAppList(
             Text(
                 text = "No widget-enabled apps found",
                 color = Color.White,
-                fontSize = LocalDimensions.current.widgetAppListEmptyFont,
+                fontSize = LocalDimensions.current.fontLarge,
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {

@@ -41,9 +41,6 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.theme.LocalDimensions
-import kotlin.math.abs
-import kotlin.math.sign
-import kotlin.math.sqrt
 
 private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
 
@@ -64,8 +61,7 @@ fun SearchOverlayScaffold(
     }
 
     val dimensions = LocalDimensions.current
-    val thresholdPx = with(LocalDensity.current) { dimensions.verticalSwipeThreshold.toPx() }
-    val feedbackScale = dimensions.verticalDragFeedbackScale
+    val thresholdPx = with(LocalDensity.current) { VERTICAL_SWIPE_THRESHOLD.toPx() }
 
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -138,7 +134,7 @@ fun SearchOverlayScaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationY = sqrt(abs(offsetY.value)) * sign(offsetY.value) * feedbackScale
+                    translationY = verticalDragFeedback(offsetY.value)
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -174,7 +170,7 @@ fun SearchOverlayScaffold(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = dimensions.searchListHorizontalGutter)
+                    .padding(horizontal = dimensions.gutterSmall)
                     .nestedScroll(nestedScrollConnection)
             ) {
                 content()

@@ -6,7 +6,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import net.wshmkr.launcher.ui.theme.LocalDimensions
 
 @Composable
 fun calculateCenteredContentTopPadding(): Dp {
@@ -19,5 +18,7 @@ fun calculateCenteredContentTopPadding(): Dp {
     } else {
         LocalConfiguration.current.screenHeightDp.dp
     }
-    return screenHeight * LocalDimensions.current.centeredContentTopFraction
+    return screenHeight * CENTERED_CONTENT_TOP_FRACTION
 }
+
+private const val CENTERED_CONTENT_TOP_FRACTION = 0.25f

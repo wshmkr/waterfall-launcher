@@ -77,7 +77,7 @@ fun WidgetListItem(
         ) {
             val density = LocalDensity.current
             val maxWidthPx = with(density) { maxWidth.toPx() }
-            val fallbackHeightPx = with(density) { dimensions.widgetListItemFallbackHeight.toPx() }
+            val fallbackHeightPx = with(density) { 120.dp.toPx() }
 
             val intrinsicWidthPx = previewDrawable?.intrinsicWidth?.takeIf { it > 0 }?.toFloat()
             val intrinsicHeightPx = previewDrawable?.intrinsicHeight?.takeIf { it > 0 }?.toFloat()
@@ -109,7 +109,7 @@ fun WidgetListItem(
                     Text(
                         text = "Preview unavailable",
                         color = Color.White.copy(alpha = 0.7f),
-                        fontSize = dimensions.widgetListItemPreviewFont
+                        fontSize = dimensions.fontCaption
                     )
                 }
             }
@@ -120,7 +120,7 @@ fun WidgetListItem(
         Text(
             text = widgetOption.label,
             color = Color.White,
-            fontSize = dimensions.widgetListItemLabelFont,
+            fontSize = dimensions.fontMedium,
             fontWeight = FontWeight.Medium
         )
     }

@@ -41,7 +41,8 @@ import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
 import net.wshmkr.launcher.ui.common.icons.SearchIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
-import net.wshmkr.launcher.ui.theme.allAppsFabBottom
+import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.searchButtonBottomInset
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 @Composable
@@ -65,7 +66,7 @@ fun AllAppsView(
 
     val topPadding = calculateCenteredContentTopPadding()
     val dimensions = LocalDimensions.current
-    val fabBottomOffset = dimensions.allAppsFabBottom()
+    val searchButtonBottom = searchButtonBottomInset()
 
     val listState = rememberLetterIndexedListState(
         activeLetter = activeLetter,
@@ -97,7 +98,7 @@ fun AllAppsView(
         ) {
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(vertical = topPadding, horizontal = dimensions.listHorizontalGutter)
+                contentPadding = PaddingValues(vertical = topPadding, horizontal = dimensions.gutterLarge)
             ) {
                 items(
                     items = listItems,
@@ -144,7 +145,7 @@ fun AllAppsView(
                 exit = fadeOut(animationSpec = tween(durationMillis = 200)),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(bottom = fabBottomOffset, end = dimensions.allAppsFabEndOffset)
+                    .padding(bottom = searchButtonBottom, end = dimensions.searchButtonEndInset)
             ) {
                 FloatingActionButton(
                     onClick = onOpenSearch,
@@ -170,14 +171,9 @@ fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolea
         text = letter,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                start = dimensions.sectionHeaderStartPadding,
-                end = dimensions.sectionHeaderEndPadding,
-                top = dimensions.sectionHeaderTopPadding,
-                bottom = dimensions.sectionHeaderBottomPadding,
-            )
+            .padding(start = Spacing.medium, end = Spacing.medium, top = 12.dp, bottom = Spacing.small)
             .alpha(animatedAlpha),
-        fontSize = dimensions.sectionHeaderFont,
+        fontSize = dimensions.fontXLarge,
         fontWeight = FontWeight.Bold,
         color = Color.White
     )

@@ -34,6 +34,7 @@ import net.wshmkr.launcher.ui.common.icons.StarIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +57,7 @@ fun AppOptionsMenu(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = dimensions.appOptionsHorizontalPadding)
+                .padding(horizontal = Spacing.medium)
                 .padding(top = 18.dp)
         ) {
             Row(
@@ -68,12 +69,12 @@ fun AppOptionsMenu(
                 Image(
                     painter = appInfo.icon,
                     contentDescription = appInfo.label,
-                    modifier = Modifier.size(dimensions.appOptionsIconSize)
+                    modifier = Modifier.size(dimensions.iconLarge)
                 )
-                Spacer(modifier = Modifier.width(dimensions.appOptionsIconGap))
+                Spacer(modifier = Modifier.width(dimensions.iconGap))
                 Text(
                     text = appInfo.label,
-                    fontSize = dimensions.appOptionsLabelFont,
+                    fontSize = dimensions.fontXLarge,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
@@ -162,7 +163,7 @@ fun AppOptionsMenu(
             if (appInfo.isSystemApp) {
                 Text(
                     text = "This is a system app and can't be uninstalled.",
-                    fontSize = dimensions.appOptionsNoteFont,
+                    fontSize = dimensions.fontSmall,
                     color = Color.Gray,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)
                 )

@@ -75,7 +75,7 @@ fun MediaControls(
             ownerPackage = mediaInfo.packageName,
         )
 
-        Spacer(modifier = Modifier.width(dimensions.mediaArtTextGap))
+        Spacer(modifier = Modifier.width(dimensions.gutterSmall))
 
         Column(
             modifier = Modifier.weight(1f),
@@ -115,7 +115,7 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
     val dimensions = LocalDimensions.current
     Box(
         modifier = Modifier
-            .size(dimensions.mediaAlbumArtSize)
+            .size(dimensions.albumArtSize)
             .clip(RoundedCornerShape(6.dp))
             .background(Color.White.copy(alpha = 0.1f))
     ) {
@@ -136,14 +136,14 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
                         Image(
                             painter = rememberDrawablePainter(appIcon),
                             contentDescription = "App icon",
-                            modifier = Modifier.size(56.dp)
+                            modifier = Modifier.size(dimensions.playButtonSize)
                         )
                     } else {
                         Icon(
                             painter = MusicNoteIcon(),
                             contentDescription = "No album art",
                             tint = Color.White.copy(alpha = 0.3f),
-                            modifier = Modifier.size(dimensions.mediaAlbumFallbackIconSize)
+                            modifier = Modifier.size(dimensions.iconLarge)
                         )
                     }
                 }
@@ -157,7 +157,7 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
     val dimensions = LocalDimensions.current
     Text(
         text = title ?: "No title",
-        fontSize = dimensions.mediaTitleFont,
+        fontSize = dimensions.fontMedium,
         fontWeight = FontWeight.Medium,
         color = Color.White,
         maxLines = 1,
@@ -170,7 +170,7 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
 
     Text(
         text = artist ?: "Unknown artist",
-        fontSize = dimensions.mediaArtistFont,
+        fontSize = dimensions.fontSmall,
         color = Color.White,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -198,13 +198,13 @@ private fun MediaControlButtons(
         IconButton(
             onClick = onPrevious,
             enabled = canSkipPrevious,
-            modifier = Modifier.size(dimensions.mediaSideButtonSize)
+            modifier = Modifier.size(dimensions.iconMedium)
         ) {
             Icon(
                 painter = SkipPreviousIcon(),
                 contentDescription = "Previous",
                 tint = Color.White.copy(alpha = if (canSkipPrevious) 1f else 0.3f),
-                modifier = Modifier.size(dimensions.mediaSideGlyphSize)
+                modifier = Modifier.size(dimensions.iconSmall)
             )
         }
 
@@ -217,13 +217,13 @@ private fun MediaControlButtons(
         IconButton(
             onClick = onNext,
             enabled = canSkipNext,
-            modifier = Modifier.size(dimensions.mediaSideButtonSize)
+            modifier = Modifier.size(dimensions.iconMedium)
         ) {
             Icon(
                 painter = SkipNextIcon(),
                 contentDescription = "Next",
                 tint = Color.White.copy(alpha = if (canSkipNext) 1f else 0.3f),
-                modifier = Modifier.size(dimensions.mediaSideGlyphSize)
+                modifier = Modifier.size(dimensions.iconSmall)
             )
         }
     }
@@ -255,13 +255,13 @@ private fun PlayPauseButton(
             pendingPlaying = startPlaying
             if (startPlaying) onPlay() else onPause()
         },
-        modifier = Modifier.size(dimensions.mediaPlayButtonSize)
+        modifier = Modifier.size(dimensions.playButtonSize)
     ) {
         Icon(
             painter = if (shownPlaying) PauseIcon() else PlayArrowIcon(),
             contentDescription = if (shownPlaying) "Pause" else "Play",
             tint = Color.White,
-            modifier = Modifier.size(dimensions.mediaPlayGlyphSize)
+            modifier = Modifier.size(dimensions.iconLarge)
         )
     }
 }
