@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.database.ContentObserver
+import android.database.Cursor
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -130,16 +131,6 @@ class CalendarRepository @Inject constructor(
                 }
                 .build()
 
-            val projection = arrayOf(
-                CalendarContract.Instances._ID,
-                CalendarContract.Instances.EVENT_ID,
-                CalendarContract.Instances.TITLE,
-                CalendarContract.Instances.BEGIN,
-                CalendarContract.Instances.END,
-                CalendarContract.Instances.ALL_DAY,
-                CalendarContract.Instances.DISPLAY_COLOR,
-            )
-
             val selection = "${CalendarContract.Instances.VISIBLE} = 1 AND " +
                 "(${CalendarContract.Instances.ALL_DAY} = 1 OR " +
                 "${CalendarContract.Instances.END} >= ?) AND " +
@@ -151,44 +142,10 @@ class CalendarRepository @Inject constructor(
             val selectionArgs = arrayOf(now.toString())
             val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
 
-            val events = mutableListOf<CalendarEvent>()
-            try {
-                context.contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)
-                    ?.use { cursor ->
-                        val idIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances._ID)
-                        val eventIdIdx =
-                            cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID)
-                        val titleIdx =
-                            cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE)
-                        val beginIdx =
-                            cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN)
-                        val endIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.END)
-                        val allDayIdx =
-                            cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)
-                        val colorIdx =
-                            cursor.getColumnIndexOrThrow(CalendarContract.Instances.DISPLAY_COLOR)
-
-                        while (cursor.moveToNext()) {
-                            val title = cursor.getString(titleIdx)?.takeIf { it.isNotBlank() }
-                                ?: continue
-                            val allDay = cursor.getInt(allDayIdx) != 0
-                            val begin = cursor.getLong(beginIdx)
-                            val end = cursor.getLong(endIdx)
-                            // All-day instances are UTC-based; keep only ones covering today.
-                            if (allDay && !allDayCoversToday(begin, end, today)) continue
-                            events.add(
-                                CalendarEvent(
-                                    instanceId = cursor.getLong(idIdx),
-                                    eventId = cursor.getLong(eventIdIdx),
-                                    title = title,
-                                    startMillis = begin,
-                                    endMillis = end,
-                                    allDay = allDay,
-                                    color = cursor.getInt(colorIdx).takeIf { it != 0 },
-                                )
-                            )
-                        }
-                    }
+            val events = try {
+                context.contentResolver.query(uri, PROJECTION, selection, selectionArgs, sortOrder)
+                    ?.use { cursor -> readEvents(cursor, today) }
+                    .orEmpty()
             } catch (e: SecurityException) {
                 Log.w(TAG, "READ_CALENDAR revoked mid-query", e)
                 return@withContext TodayEvents()
@@ -202,6 +159,38 @@ class CalendarRepository @Inject constructor(
                 hiddenCount = (timedEvents.size - maxEvents).coerceAtLeast(0),
             )
         }
+
+    private fun readEvents(cursor: Cursor, today: LocalDate): List<CalendarEvent> {
+        val idIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances._ID)
+        val eventIdIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID)
+        val titleIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE)
+        val beginIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN)
+        val endIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.END)
+        val allDayIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)
+        val colorIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.DISPLAY_COLOR)
+
+        val events = mutableListOf<CalendarEvent>()
+        while (cursor.moveToNext()) {
+            val title = cursor.getString(titleIdx)?.takeIf { it.isNotBlank() }
+            val allDay = cursor.getInt(allDayIdx) != 0
+            val begin = cursor.getLong(beginIdx)
+            val end = cursor.getLong(endIdx)
+            // All-day instances are UTC-based; keep only ones covering today.
+            if (title == null || (allDay && !allDayCoversToday(begin, end, today))) continue
+            events.add(
+                CalendarEvent(
+                    instanceId = cursor.getLong(idIdx),
+                    eventId = cursor.getLong(eventIdIdx),
+                    title = title,
+                    startMillis = begin,
+                    endMillis = end,
+                    allDay = allDay,
+                    color = cursor.getInt(colorIdx).takeIf { it != 0 },
+                )
+            )
+        }
+        return events
+    }
 
     private fun allDayCoversToday(beginMillis: Long, endMillis: Long, today: LocalDate): Boolean {
         val firstDay = Instant.ofEpochMilli(beginMillis).atZone(ZoneOffset.UTC).toLocalDate()
@@ -224,6 +213,16 @@ class CalendarRepository @Inject constructor(
         const val DEFAULT_MAX_EVENTS = 3
         private const val EARLY_MORNING_CUTOFF_HOURS = 8L
         private const val TAG = "CalendarRepository"
+
+        private val PROJECTION = arrayOf(
+            CalendarContract.Instances._ID,
+            CalendarContract.Instances.EVENT_ID,
+            CalendarContract.Instances.TITLE,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.END,
+            CalendarContract.Instances.ALL_DAY,
+            CalendarContract.Instances.DISPLAY_COLOR,
+        )
 
         fun hasReadCalendarPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) ==
