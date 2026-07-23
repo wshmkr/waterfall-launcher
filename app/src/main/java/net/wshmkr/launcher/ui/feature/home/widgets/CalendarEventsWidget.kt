@@ -43,6 +43,7 @@ import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.util.formatEventTime
 import net.wshmkr.launcher.util.launchCalendarAt
+import net.wshmkr.launcher.util.launchCalendarToday
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
@@ -132,7 +133,10 @@ fun CalendarEventsWidget(
                 timeStyle = if (ongoing) ongoingTimeStyle else timeStyle,
                 timeColumnWidth = timeColumnWidth,
                 textStyle = if (ongoing || timeLabel == null) ongoingTextStyle else eventTextStyle,
-                onClick = { launchCalendarAt(context, event.startMillis) },
+                onClick = {
+                    // All-day starts are UTC-based and can resolve to the wrong local day.
+                    if (event.allDay) launchCalendarToday(context) else launchCalendarAt(context, event.startMillis)
+                },
             )
         }
         if (hiddenCount > 0) {
@@ -141,7 +145,7 @@ fun CalendarEventsWidget(
                 style = timeStyle,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClick = { launchCalendarAt(context, System.currentTimeMillis()) })
+                    .clickable(onClick = { launchCalendarToday(context) })
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }

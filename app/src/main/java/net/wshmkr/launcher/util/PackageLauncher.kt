@@ -25,12 +25,16 @@ private fun calendarAppIntent() = Intent(Intent.ACTION_MAIN).apply {
     flags = Intent.FLAG_ACTIVITY_NEW_TASK
 }
 
-fun launchCalendarApp(context: Context) {
+private fun launchCalendarApp(context: Context) {
     try {
         context.startActivity(calendarAppIntent())
     } catch (e: Exception) {
         Log.w(TAG, "Failed to launch calendar app", e)
     }
+}
+
+fun launchCalendarToday(context: Context) {
+    launchCalendarAt(context, System.currentTimeMillis())
 }
 
 fun launchCalendarAt(context: Context, timeMillis: Long) {

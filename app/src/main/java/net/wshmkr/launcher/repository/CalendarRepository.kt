@@ -154,9 +154,10 @@ class CalendarRepository @Inject constructor(
                 return@withContext TodayEvents()
             }
             val (allDayEvents, timedEvents) = events.sortedBy { it.startMillis }.partition { it.allDay }
+            val visible = allDayEvents.take(maxEvents) + timedEvents.take(maxEvents)
             TodayEvents(
-                events = (allDayEvents + timedEvents.take(maxEvents)).toImmutableList(),
-                hiddenCount = (timedEvents.size - maxEvents).coerceAtLeast(0),
+                events = visible.toImmutableList(),
+                hiddenCount = events.size - visible.size,
             )
         }
 
