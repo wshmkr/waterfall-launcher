@@ -21,7 +21,7 @@ data class MediaInfo(
             artExpected == other.artExpected
     }
 
-    // Carry over the previous art instance when pixels match, so identity-keyed consumers see no change.
+    // Identity-keyed consumers should see no change when only the Bitmap instance differs.
     fun reusingArtFrom(other: MediaInfo?): MediaInfo {
         val previousArt = other?.albumArt ?: return this
         val pixelsUnchanged = albumArt !== previousArt && albumArt.hasSamePixelsAs(previousArt)

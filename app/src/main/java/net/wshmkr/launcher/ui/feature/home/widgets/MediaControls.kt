@@ -229,5 +229,5 @@ private fun PlayPauseButton(
     }
 }
 
-// Plain remembered holder; nothing observes it, so snapshot state is unnecessary.
+// Nothing observes this, so snapshot state is unnecessary.
 private class ArtHolder(var value: Bitmap?)

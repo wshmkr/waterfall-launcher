@@ -109,11 +109,9 @@ class MediaSessionRepository @Inject constructor(
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
         private var lastMediaInfo: MediaInfo? = null
         private var lastControllerRef: MediaController? = null
-        // Playback-only events reuse lastMediaInfo; extraction reruns only when metadata may have changed.
         private var metadataStale: Boolean = true
         // A session that has supplied bitmap art is expected to supply it for later tracks too.
         private var selectedSessionSuppliesArt: Boolean = false
-        // In-flight art URI load; a failed URI is remembered so the track settles as artless.
         private var artLoadUri: String? = null
         private var artLoadDisposable: Disposable? = null
         private var failedArtUri: String? = null
@@ -181,7 +179,7 @@ class MediaSessionRepository @Inject constructor(
         }
 
         private fun publish() {
-            // Snapshot each controller's state once; the getters are binder calls.
+            // The metadata/playbackState getters are binder calls.
             val candidates = trackedControllers.mapNotNull { (controller, _) ->
                 val metadata = controller.metadata ?: return@mapNotNull null
                 val playbackState = controller.playbackState ?: return@mapNotNull null
@@ -194,8 +192,7 @@ class MediaSessionRepository @Inject constructor(
                 ?: candidates.firstOrNull()
 
             if (selected == null) {
-                // Sessions can transiently report no metadata mid-track-change; keep the last
-                // session on screen and clear only once the sessions themselves are gone.
+                // Metadata can vanish transiently mid-track-change; clear only once the sessions are gone.
                 if (trackedControllers.isEmpty() || lastMediaInfo == null) {
                     lastControllerRef = null
                     lastMediaInfo = null
@@ -291,15 +288,14 @@ class MediaSessionRepository @Inject constructor(
             val albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
             val artUri = metadata.artUri()
-            // A failed URI load settles the track as artless; history must not re-hold it.
-            val artUnavailable = artUri != null && artUri == failedArtUri
+            val artUriFailed = artUri != null && artUri == failedArtUri
             return MediaInfo(
                 title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE),
                 artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST),
                 packageName = controller.packageName,
                 albumArt = albumArt,
                 artExpected = albumArt != null ||
-                    (!artUnavailable && (artUri != null || selectedSessionSuppliesArt))
+                    (!artUriFailed && (artUri != null || selectedSessionSuppliesArt))
             )
         }
 
