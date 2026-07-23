@@ -80,6 +80,8 @@ private fun ActiveMediaControls(viewModel: MediaViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val mediaInfo by viewModel.mediaInfo.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
+    val canSkipNext by viewModel.canSkipNext.collectAsStateWithLifecycle()
+    val canSkipPrevious by viewModel.canSkipPrevious.collectAsStateWithLifecycle()
     val controllerRef by viewModel.controllerRef.collectAsStateWithLifecycle()
 
     val info = mediaInfo
@@ -99,6 +101,8 @@ private fun ActiveMediaControls(viewModel: MediaViewModel = hiltViewModel()) {
         MediaControls(
             mediaInfo = info,
             isPlaying = isPlaying,
+            canSkipNext = canSkipNext,
+            canSkipPrevious = canSkipPrevious,
             onMediaAppClick = onMediaAppClick,
             onPlay = onPlay,
             onPause = onPause,

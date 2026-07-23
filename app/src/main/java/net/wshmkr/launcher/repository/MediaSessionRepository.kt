@@ -2,12 +2,18 @@ package net.wshmkr.launcher.repository
 
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.HandlerThread
+import androidx.core.graphics.drawable.toBitmap
+import coil.ImageLoader
+import coil.imageLoader
+import coil.request.Disposable
+import coil.request.ImageRequest
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,19 +29,26 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val ART_SETTLE_TIMEOUT_MS = 2_000L
+
 data class ActiveMediaSession(
     val mediaInfo: MediaInfo? = null,
+    val isPlaying: Boolean = false,
+    val canSkipNext: Boolean = false,
+    val canSkipPrevious: Boolean = false,
     val controller: MediaController? = null,
 )
 
 @Singleton
 class MediaSessionRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val mediaRankingRepository: MediaRankingRepository,
 ) {
     private val notificationListenerComponent =
         ComponentName(context, LauncherNotificationListenerService::class.java)
@@ -54,7 +67,13 @@ class MediaSessionRepository @Inject constructor(
         activeSession.map { it.mediaInfo }.distinctUntilChanged()
 
     val isPlaying: Flow<Boolean> =
-        activeSession.map { it.mediaInfo?.isPlaying == true }.distinctUntilChanged()
+        activeSession.map { it.isPlaying }.distinctUntilChanged()
+
+    val canSkipNext: Flow<Boolean> =
+        activeSession.map { it.canSkipNext }.distinctUntilChanged()
+
+    val canSkipPrevious: Flow<Boolean> =
+        activeSession.map { it.canSkipPrevious }.distinctUntilChanged()
 
     val controller: Flow<MediaController?> =
         activeSession
@@ -77,9 +96,16 @@ class MediaSessionRepository @Inject constructor(
             manager = mediaSessionManager,
             listenerComponent = notificationListenerComponent,
             handler = handler,
+            context = context,
+            mediaRankingRepository = mediaRankingRepository,
             emit = { trySend(it) },
         )
         tracker.start()
+        launch {
+            mediaRankingRepository.ranking.collect { ranking ->
+                handler.post { tracker.onRankingChanged(ranking) }
+            }
+        }
         awaitClose {
             tracker.stop {
                 listenerThread.quitSafely()
@@ -91,15 +117,29 @@ class MediaSessionRepository @Inject constructor(
         private val manager: MediaSessionManager,
         private val listenerComponent: ComponentName,
         private val handler: Handler,
+        private val context: Context,
+        private val mediaRankingRepository: MediaRankingRepository,
         private val emit: (ActiveMediaSession) -> Unit,
     ) {
+        private val imageLoader: ImageLoader = context.imageLoader
         // All fields are read/written only on the handler thread; start/stop post to the handler
         // so callers on any thread converge onto the same serialised access.
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
+        private var mediaRanking: MediaRanking = mediaRankingRepository.ranking.value
+        private var playingPackages: Set<String> = emptySet()
         private var lastMediaInfo: MediaInfo? = null
-        private var lastMetadata: MediaMetadata? = null
-        private var lastPlaybackState: PlaybackState? = null
         private var lastControllerRef: MediaController? = null
+        // The art URI extracted together with lastMediaInfo; keeps art loads paired with their track.
+        private var lastArtUri: String? = null
+        private var metadataStale: Boolean = true
+        // A session that has supplied bitmap art is expected to supply it for later tracks too.
+        private var selectedSessionSuppliesArt: Boolean = false
+        private var artLoadUri: String? = null
+        private var artLoadGeneration = 0
+        private var artLoadDisposable: Disposable? = null
+        private var failedArtUri: String? = null
+        private var loadedArtUri: String? = null
+        private val artSettleRunnable = Runnable { settleMissingArt() }
 
         private val sessionsChangedListener =
             MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
@@ -130,8 +170,16 @@ class MediaSessionRepository @Inject constructor(
                 }
                 trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
                 trackedControllers = emptyList()
+                cancelArtLoad()
+                handler.removeCallbacks(artSettleRunnable)
                 onStopped()
             }
+        }
+
+        fun onRankingChanged(ranking: MediaRanking) {
+            if (ranking == mediaRanking) return
+            mediaRanking = ranking
+            publish()
         }
 
         private fun refreshActiveSessions() {
@@ -147,65 +195,230 @@ class MediaSessionRepository @Inject constructor(
             trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
             trackedControllers = controllers.map { controller ->
                 val callback = object : MediaController.Callback() {
-                    override fun onMetadataChanged(metadata: MediaMetadata?) = publish()
+                    override fun onMetadataChanged(metadata: MediaMetadata?) {
+                        // Only the shown session's cached extraction depends on its metadata.
+                        if (controller.sameSessionAs(lastControllerRef)) metadataStale = true
+                        publish()
+                    }
                     override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
                     override fun onSessionDestroyed() = refreshActiveSessions()
                 }
                 controller.registerCallback(callback, handler)
                 controller to callback
             }
+            // Metadata may have changed during the re-registration gap.
+            metadataStale = true
             publish()
         }
 
         private fun publish() {
-            val controller = trackedControllers
-                .map { (controller, _) -> controller }
-                .firstOrNull { it.metadata != null && it.playbackState != null }
+            // The metadata/playbackState getters are binder calls.
+            val candidates = trackedControllers.mapNotNull { (controller, _) ->
+                val metadata = controller.metadata ?: return@mapNotNull null
+                val playbackState = controller.playbackState ?: return@mapNotNull null
+                SessionSnapshot(controller, metadata, playbackState)
+            }
+                // Mirror the shade: ignore sessions with no media notification (e.g. YouTube Shorts).
+                .filter { it.controller.packageName in mediaRanking.notificationPostTimes }
 
-            if (controller == null) {
-                lastMetadata = null
-                lastPlaybackState = null
-                lastControllerRef = null
-                lastMediaInfo = null
-                emit(ActiveMediaSession(mediaInfo = null, controller = null))
+            val holdLastShown = lastMediaInfo != null && trackedControllers.any { (controller, _) ->
+                controller.sameSessionAs(lastControllerRef)
+            }
+            val lastShownPresent = candidates.any { it.controller.sameSessionAs(lastControllerRef) }
+
+            observePlayTransitions(candidates)
+
+            val selected = selectSession(candidates, holdLastShown, lastShownPresent)
+            if (selected == null) {
+                // Hold through transient metadata gaps; clear once the shown session itself is gone.
+                if (!holdLastShown) clearShownSession()
                 return
             }
 
-            val metadata = controller.metadata
-            val playbackState = controller.playbackState
+            if (!selected.controller.sameSessionAs(lastControllerRef)) {
+                selectedSessionSuppliesArt = false
+                failedArtUri = null
+                loadedArtUri = null
+            }
 
-            val snapshotUnchanged =
-                controller === lastControllerRef &&
-                metadata === lastMetadata &&
-                playbackState === lastPlaybackState
-            val mediaInfo = if (snapshotUnchanged && lastMediaInfo != null) {
+            val cacheValid = !metadataStale &&
+                selected.controller.sameSessionAs(lastControllerRef) &&
+                lastMediaInfo != null
+            val mediaInfo = if (cacheValid) {
                 lastMediaInfo
             } else {
-                val extracted = extractMediaInfo(controller, metadata, playbackState)
+                metadataStale = false
+                lastArtUri = selected.metadata.artUri()
+                val extracted = extractMediaInfo(selected.controller, selected.metadata, lastArtUri)
+                    .reusingArtFrom(lastMediaInfo)
                 if (extracted.hasSameDisplayContentAs(lastMediaInfo)) lastMediaInfo else extracted
             }
 
-            lastControllerRef = controller
-            lastMetadata = metadata
-            lastPlaybackState = playbackState
+            if (mediaInfo?.albumArt != null) {
+                selectedSessionSuppliesArt = true
+            }
+            lastControllerRef = selected.controller
             lastMediaInfo = mediaInfo
 
-            emit(ActiveMediaSession(mediaInfo, controller))
+            val actions = selected.playbackState.actions
+            emit(
+                ActiveMediaSession(
+                    mediaInfo = mediaInfo,
+                    // isActive includes transient states (buffering, connecting) so the button reflects intent immediately.
+                    isPlaying = selected.playbackState.isActive,
+                    canSkipNext = actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L,
+                    canSkipPrevious = actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L,
+                    controller = selected.controller,
+                )
+            )
+
+            syncArtLoad(mediaInfo, lastArtUri)
+            scheduleArtSettle(mediaInfo)
+        }
+
+        private fun observePlayTransitions(candidates: List<SessionSnapshot>) {
+            val nowPlaying = candidates
+                .filter { it.playbackState.state == PlaybackState.STATE_PLAYING }
+                .map { it.controller.packageName }
+                .toSet()
+            (nowPlaying - playingPackages).forEach {
+                mediaRankingRepository.onObservedPlaying(it, System.currentTimeMillis())
+            }
+            playingPackages = nowPlaying
+        }
+
+        // Rank like the system controls: playing first, then most recently played. A paused app
+        // reposting its notification must not win, so notification time is a fallback only.
+        private fun selectSession(
+            candidates: List<SessionSnapshot>,
+            holdLastShown: Boolean,
+            lastShownPresent: Boolean,
+        ): SessionSnapshot? {
+            val selectionOrder = compareBy<SessionSnapshot>(
+                { it.playbackState.state == PlaybackState.STATE_PLAYING },
+                { mediaRanking.lastPlayingTimes[it.controller.packageName] ?: Long.MIN_VALUE },
+                { mediaRanking.notificationPostTimes[it.controller.packageName] ?: Long.MIN_VALUE },
+                { it.controller.sameSessionAs(lastControllerRef) },
+            )
+            val top = candidates.maxWithOrNull(selectionOrder) ?: return null
+            return when {
+                top.playbackState.state == PlaybackState.STATE_PLAYING -> top
+                // Only real playback steals the widget from a shown session in a transient metadata gap.
+                holdLastShown && !lastShownPresent -> null
+                else -> top
+            }
+        }
+
+        private fun clearShownSession() {
+            lastControllerRef = null
+            lastMediaInfo = null
+            lastArtUri = null
+            loadedArtUri = null
+            metadataStale = true
+            selectedSessionSuppliesArt = false
+            failedArtUri = null
+            cancelArtLoad()
+            handler.removeCallbacks(artSettleRunnable)
+            emit(ActiveMediaSession(mediaInfo = null, controller = null))
+        }
+
+        // Resolves URI-only art: success supplies the bitmap, failure settles the track as artless.
+        private fun syncArtLoad(mediaInfo: MediaInfo?, artUri: String?) {
+            val wantedUri = artUri?.takeIf {
+                mediaInfo?.albumArt == null && mediaInfo?.artExpected == true && it != failedArtUri
+            }
+            if (wantedUri == artLoadUri) return
+            cancelArtLoad()
+            artLoadUri = wantedUri ?: return
+            val generation = artLoadGeneration
+            artLoadDisposable = imageLoader.enqueue(
+                ImageRequest.Builder(context)
+                    .data(wantedUri)
+                    // Software bitmaps keep pixel comparison in reusingArtFrom safe.
+                    .allowHardware(false)
+                    .target(
+                        onSuccess = { art -> handler.post { onArtLoadFinished(generation, wantedUri, art.toBitmap()) } },
+                        onError = { handler.post { onArtLoadFinished(generation, wantedUri, null) } },
+                    )
+                    .build()
+            )
+        }
+
+        private fun onArtLoadFinished(generation: Int, uri: String, art: Bitmap?) {
+            // A cancelled load's queued callback must not be taken for the live one.
+            if (generation != artLoadGeneration) return
+            artLoadUri = null
+            artLoadDisposable = null
+            val current = lastMediaInfo ?: return
+            lastMediaInfo = if (art != null) {
+                loadedArtUri = uri
+                current.copy(albumArt = art)
+            } else {
+                failedArtUri = uri
+                current.copy(artExpected = false)
+            }
+            publish()
+        }
+
+        private fun cancelArtLoad() {
+            artLoadGeneration++
+            artLoadDisposable?.dispose()
+            artLoadDisposable = null
+            artLoadUri = null
+        }
+
+        // Art promised by the session heuristic may never arrive; settle as artless after a grace period.
+        private fun scheduleArtSettle(mediaInfo: MediaInfo?) {
+            handler.removeCallbacks(artSettleRunnable)
+            val awaitingHeuristicArt = mediaInfo != null && mediaInfo.albumArt == null &&
+                mediaInfo.artExpected && artLoadUri == null
+            if (awaitingHeuristicArt) handler.postDelayed(artSettleRunnable, ART_SETTLE_TIMEOUT_MS)
+        }
+
+        private fun settleMissingArt() {
+            val current = lastMediaInfo ?: return
+            if (current.albumArt != null || !current.artExpected || artLoadUri != null) return
+            // Disarm the heuristic too, or the next metadata republish would re-expect art.
+            selectedSessionSuppliesArt = false
+            lastMediaInfo = current.copy(artExpected = false)
+            publish()
         }
 
         private fun extractMediaInfo(
             controller: MediaController,
-            metadata: MediaMetadata?,
-            playbackState: PlaybackState?,
+            metadata: MediaMetadata,
+            artUri: String?,
         ): MediaInfo {
+            val albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+                ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                // Metadata republishes carry no bitmap for URI-art players; reattach instead of reloading.
+                ?: lastMediaInfo?.albumArt?.takeIf { artUri != null && artUri == loadedArtUri }
+            val artUriFailed = artUri != null && artUri == failedArtUri
             return MediaInfo(
-                title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE),
-                artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST),
-                isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING,
+                title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE),
+                artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST),
                 packageName = controller.packageName,
-                albumArt = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                    ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+                albumArt = albumArt,
+                artExpected = albumArt != null ||
+                    (!artUriFailed && (artUri != null || selectedSessionSuppliesArt))
             )
         }
+
+        // Tokens identify a session across the controller instances recreated on session-list changes.
+        private fun MediaController.sameSessionAs(other: MediaController?): Boolean {
+            return other != null && sessionToken == other.sessionToken
+        }
+
+        private fun MediaMetadata.artUri(): String? {
+            return getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+                ?: getString(MediaMetadata.METADATA_KEY_ART_URI)
+                ?: getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+        }
+
+        private data class SessionSnapshot(
+            val controller: MediaController,
+            val metadata: MediaMetadata,
+            val playbackState: PlaybackState,
+        )
     }
 }
