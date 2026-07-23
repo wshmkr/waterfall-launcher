@@ -12,6 +12,7 @@ import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.graphics.asImageBitmap
@@ -21,6 +22,7 @@ import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentSet
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -52,6 +54,7 @@ class AppsRepository @Inject constructor(
     val mostUsedApps = mutableStateListOf<String>()
 
     private val usageEntries = mutableMapOf<String, UsageEntry>()
+    private var usageLoaded = false
     private var usageDirty = false
     private var pendingPublish = true
 
@@ -85,7 +88,8 @@ class AppsRepository @Inject constructor(
         }
 
         override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
-            packageNames.forEach { removePackage(it, user) }
+            // Temporary unavailability (quiet mode, ejected storage): keep usage history.
+            packageNames.forEach { removeFromAllApps(it, user) }
         }
     }
 
@@ -146,21 +150,25 @@ class AppsRepository @Inject constructor(
             allApps.addAll(apps)
         }
 
-        val installedKeys = apps.mapTo(HashSet(apps.size)) { it.key }
-        for ((key, diskEntry) in usageDataSource.loadAll()) {
-            if (key !in installedKeys) {
-                usageDirty = true
-                continue
+        // Merge disk usage only once per process; in-memory entries stay authoritative afterwards.
+        if (!usageLoaded) {
+            val installedKeys = apps.mapTo(HashSet(apps.size)) { it.key }
+            for ((key, diskEntry) in usageDataSource.loadAll()) {
+                if (key !in installedKeys) {
+                    usageDirty = true
+                    continue
+                }
+                val existing = usageEntries[key]
+                usageEntries[key] = if (existing == null) {
+                    diskEntry
+                } else {
+                    UsageEntry(
+                        count = existing.count + diskEntry.count,
+                        lastUsed = maxOf(existing.lastUsed, diskEntry.lastUsed),
+                    )
+                }
             }
-            val existing = usageEntries[key]
-            usageEntries[key] = if (existing == null) {
-                diskEntry
-            } else {
-                UsageEntry(
-                    count = existing.count + diskEntry.count,
-                    lastUsed = maxOf(existing.lastUsed, diskEntry.lastUsed),
-                )
-            }
+            usageLoaded = true
         }
     }
 
@@ -228,8 +236,12 @@ class AppsRepository @Inject constructor(
         }
     }
 
-    private fun removePackage(packageName: String, userHandle: UserHandle) {
+    private fun removeFromAllApps(packageName: String, userHandle: UserHandle) {
         allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
+    }
+
+    private fun removePackage(packageName: String, userHandle: UserHandle) {
+        removeFromAllApps(packageName, userHandle)
         if (usageEntries.remove(keyFor(packageName, userHandle)) != null) {
             usageDirty = true
         }
@@ -250,10 +262,19 @@ class AppsRepository @Inject constructor(
     }
 
     suspend fun flushUsage() {
-        if (!usageDirty) return
+        // Never flush before the disk merge: a partial snapshot would wipe persisted history.
+        if (!usageLoaded || !usageDirty) return
         usageDirty = false
         val snapshot = usageEntries.toMap()
-        usageDataSource.flush(snapshot)
+        try {
+            usageDataSource.flush(snapshot)
+        } catch (e: CancellationException) {
+            usageDirty = true
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to flush usage", e)
+            usageDirty = true
+        }
     }
 
     fun releaseMostUsedPublish() {
@@ -285,7 +306,7 @@ class AppsRepository @Inject constructor(
     }
 
     fun updateMostUsedApps() {
-        if (!pendingPublish) return
+        if (!usageLoaded || !pendingPublish) return
         pendingPublish = false
 
         val now = System.currentTimeMillis()
@@ -349,6 +370,7 @@ class AppsRepository @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "AppsRepository"
         private const val SESSION_DEDUP_WINDOW_MS = 60_000L
         private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
         private const val DECAY_LAMBDA_PER_DAY = 0.05
