@@ -40,6 +40,8 @@ private const val ART_SETTLE_TIMEOUT_MS = 2_000L
 data class ActiveMediaSession(
     val mediaInfo: MediaInfo? = null,
     val isPlaying: Boolean = false,
+    val canSkipNext: Boolean = false,
+    val canSkipPrevious: Boolean = false,
     val controller: MediaController? = null,
 )
 
@@ -66,6 +68,12 @@ class MediaSessionRepository @Inject constructor(
 
     val isPlaying: Flow<Boolean> =
         activeSession.map { it.isPlaying }.distinctUntilChanged()
+
+    val canSkipNext: Flow<Boolean> =
+        activeSession.map { it.canSkipNext }.distinctUntilChanged()
+
+    val canSkipPrevious: Flow<Boolean> =
+        activeSession.map { it.canSkipPrevious }.distinctUntilChanged()
 
     val controller: Flow<MediaController?> =
         activeSession
@@ -289,11 +297,14 @@ class MediaSessionRepository @Inject constructor(
             lastControllerRef = selected.controller
             lastMediaInfo = mediaInfo
 
+            val actions = selected.playbackState.actions
             emit(
                 ActiveMediaSession(
                     mediaInfo = mediaInfo,
                     // isActive includes transient states (buffering, connecting) so the button reflects intent immediately.
                     isPlaying = selected.playbackState.isActive,
+                    canSkipNext = actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L,
+                    canSkipPrevious = actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L,
                     controller = selected.controller,
                 )
             )

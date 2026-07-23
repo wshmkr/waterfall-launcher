@@ -28,6 +28,12 @@ class MediaViewModel @Inject constructor(
     val isPlaying: StateFlow<Boolean> = mediaSessionRepository.isPlaying
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val canSkipNext: StateFlow<Boolean> = mediaSessionRepository.canSkipNext
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val canSkipPrevious: StateFlow<Boolean> = mediaSessionRepository.canSkipPrevious
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     val controllerRef: StateFlow<MediaControllerRef> = mediaSessionRepository.controller
         .map { MediaControllerRef(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MediaControllerRef(null))

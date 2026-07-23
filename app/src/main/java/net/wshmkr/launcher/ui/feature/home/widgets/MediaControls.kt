@@ -51,6 +51,8 @@ import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
 fun MediaControls(
     mediaInfo: MediaInfo,
     isPlaying: Boolean,
+    canSkipNext: Boolean,
+    canSkipPrevious: Boolean,
     onMediaAppClick: () -> Unit,
     onPlay: () -> Unit,
     onPause: () -> Unit,
@@ -85,6 +87,8 @@ fun MediaControls(
 
             MediaControlButtons(
                 isPlaying = isPlaying,
+                canSkipNext = canSkipNext,
+                canSkipPrevious = canSkipPrevious,
                 onPlay = onPlay,
                 onPause = onPause,
                 onNext = onNext,
@@ -175,6 +179,8 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
 @Composable
 private fun MediaControlButtons(
     isPlaying: Boolean,
+    canSkipNext: Boolean,
+    canSkipPrevious: Boolean,
     onPlay: () -> Unit,
     onPause: () -> Unit,
     onNext: () -> Unit,
@@ -187,12 +193,13 @@ private fun MediaControlButtons(
     ) {
         IconButton(
             onClick = onPrevious,
+            enabled = canSkipPrevious,
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
                 painter = SkipPreviousIcon(),
                 contentDescription = "Previous",
-                tint = Color.White,
+                tint = Color.White.copy(alpha = if (canSkipPrevious) 1f else 0.3f),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -209,12 +216,13 @@ private fun MediaControlButtons(
 
         IconButton(
             onClick = onNext,
+            enabled = canSkipNext,
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
                 painter = SkipNextIcon(),
                 contentDescription = "Next",
-                tint = Color.White,
+                tint = Color.White.copy(alpha = if (canSkipNext) 1f else 0.3f),
                 modifier = Modifier.size(24.dp)
             )
         }
