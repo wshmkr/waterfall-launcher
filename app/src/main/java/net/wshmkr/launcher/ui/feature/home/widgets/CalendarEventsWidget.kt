@@ -42,8 +42,10 @@ import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.util.formatEventTime
+import net.wshmkr.launcher.util.isPermissionPermanentlyDenied
 import net.wshmkr.launcher.util.launchCalendarAt
 import net.wshmkr.launcher.util.launchCalendarToday
+import net.wshmkr.launcher.util.openAppDetailsSettings
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
@@ -58,11 +60,17 @@ fun CalendarEventsWidget(
         mutableStateOf(CalendarRepository.hasReadCalendarPermission(context))
     }
 
+    var permanentlyDenied by remember { mutableStateOf(false) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         hasPermission = granted
-        if (granted) onPermissionGranted()
+        if (granted) {
+            onPermissionGranted()
+        } else {
+            permanentlyDenied = isPermissionPermanentlyDenied(context, Manifest.permission.READ_CALENDAR)
+        }
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -76,7 +84,13 @@ fun CalendarEventsWidget(
     if (!hasPermission) {
         EnableCalendarRow(
             modifier = modifier,
-            onClick = { permissionLauncher.launch(Manifest.permission.READ_CALENDAR) },
+            onClick = {
+                if (permanentlyDenied) {
+                    openAppDetailsSettings(context)
+                } else {
+                    permissionLauncher.launch(Manifest.permission.READ_CALENDAR)
+                }
+            },
         )
         return
     }
