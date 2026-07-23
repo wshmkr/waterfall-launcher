@@ -42,7 +42,7 @@ import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.model.CalendarEvent
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
-import net.wshmkr.launcher.util.formatEventStartTime
+import net.wshmkr.launcher.util.eventTimeLabel
 import net.wshmkr.launcher.util.launchCalendarApp
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
@@ -99,7 +99,7 @@ fun CalendarEventsWidget(
     }
     val timeLabels = remember(events, use24Hour) {
         events.map { event ->
-            if (event.allDay) ALL_DAY_LABEL else formatEventStartTime(event.startMillis, use24Hour)
+            eventTimeLabel(event.startMillis, event.endMillis, event.allDay, use24Hour)
         }
     }
 
@@ -198,7 +198,6 @@ private fun EventRow(
     }
 }
 
-private const val ALL_DAY_LABEL = "All day"
 private val EVENTS_INDENT = 16.dp
 private val DOT_SIZE = 6.dp
 private val DEFAULT_DOT_COLOR = Color.White.copy(alpha = 0.7f)

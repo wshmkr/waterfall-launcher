@@ -55,6 +55,30 @@ fun formatEventStartTime(epochMillis: Long, use24Hour: Boolean): String {
     return time.format(formatter)
 }
 
+fun eventTimeLabel(startMillis: Long, endMillis: Long, allDay: Boolean, use24Hour: Boolean): String {
+    if (allDay) return "All day"
+    val zone = ZoneId.systemDefault()
+    val startOfToday = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
+    val startOfTomorrow = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+    return when {
+        startMillis < startOfToday && endMillis >= startOfTomorrow -> "All day"
+        startMillis < startOfToday -> "Until ${formatEventStartTime(endMillis, use24Hour)}"
+        else -> formatTimeRange(startMillis, endMillis, use24Hour)
+    }
+}
+
+// 12-hour ranges within the same half-day show the am/pm marker once: "2:00 – 3:30 PM".
+private fun formatTimeRange(startMillis: Long, endMillis: Long, use24Hour: Boolean): String {
+    val zone = ZoneId.systemDefault()
+    val start = Instant.ofEpochMilli(startMillis).atZone(zone).toLocalTime()
+    val end = Instant.ofEpochMilli(endMillis).atZone(zone).toLocalTime()
+    val localized = formattersForCurrentLocale()
+    if (use24Hour) return "${start.format(localized.time24Hour)} – ${end.format(localized.time24Hour)}"
+    val sameMarker = (start.hour < 12) == (end.hour < 12) && endMillis - startMillis < ONE_DAY
+    val startFormatter = if (sameMarker) localized.time12Hour else localized.time12HourWithMarker
+    return "${start.format(startFormatter)} – ${end.format(localized.time12HourWithMarker)}"
+}
+
 // Minute-precision clock — ticks at the next minute boundary so the reader
 // invalidates at most once per minute.
 @Composable

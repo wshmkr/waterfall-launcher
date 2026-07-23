@@ -139,13 +139,12 @@ class CalendarRepository @Inject constructor(
                         while (cursor.moveToNext()) {
                             val title = cursor.getString(titleIdx)?.takeIf { it.isNotBlank() }
                                 ?: continue
-                            val rawBegin = cursor.getLong(beginIdx)
                             events.add(
                                 CalendarEvent(
                                     instanceId = cursor.getLong(idIdx),
                                     eventId = cursor.getLong(eventIdIdx),
                                     title = title,
-                                    startMillis = maxOf(rawBegin, startOfDay),
+                                    startMillis = cursor.getLong(beginIdx),
                                     endMillis = cursor.getLong(endIdx),
                                     allDay = cursor.getInt(allDayIdx) != 0,
                                     calendarColor = cursor.getInt(colorIdx).takeIf { it != 0 },
