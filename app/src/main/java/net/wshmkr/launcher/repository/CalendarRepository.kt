@@ -194,9 +194,8 @@ class CalendarRepository @Inject constructor(
                 Log.w(TAG, "Failed to query calendar instances", e)
                 return@withContext emptyList()
             }
-            events
-                .sortedWith(compareByDescending<CalendarEvent> { it.allDay }.thenBy { it.startMillis })
-                .take(maxEvents)
+            val (allDayEvents, timedEvents) = events.sortedBy { it.startMillis }.partition { it.allDay }
+            allDayEvents + timedEvents.take(maxEvents)
         }
 
     private fun allDayCoversToday(beginMillis: Long, endMillis: Long, today: LocalDate): Boolean {
