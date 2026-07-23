@@ -44,6 +44,7 @@ import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.util.eventTimeLabel
 import net.wshmkr.launcher.util.launchCalendarApp
+import net.wshmkr.launcher.util.rememberCurrentDate
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
@@ -93,11 +94,13 @@ fun CalendarEventsWidget(
 
     val currentTime by rememberCurrentLocalTime()
     val nowMillis = remember(currentTime) { System.currentTimeMillis() }
+    val today by rememberCurrentDate()
 
     val timeStyle = remember(eventTextStyle) {
         eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
     }
-    val timeLabels = remember(events, use24Hour) {
+    // Keyed on the date so "Tmrw" labels roll over at midnight even if the list is unchanged.
+    val timeLabels = remember(events, use24Hour, today) {
         events.map { event ->
             eventTimeLabel(event.startMillis, event.endMillis, event.allDay, use24Hour)
         }

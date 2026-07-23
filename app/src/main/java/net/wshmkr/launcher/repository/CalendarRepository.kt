@@ -25,8 +25,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import net.wshmkr.launcher.model.CalendarEvent
 import net.wshmkr.launcher.util.ONE_SECOND
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -93,14 +95,16 @@ class CalendarRepository @Inject constructor(
             val zone = ZoneId.systemDefault()
             val today = LocalDate.now(zone)
             val startOfDay = today.atStartOfDay(zone).toInstant().toEpochMilli()
-            val startOfTomorrow = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val windowEnd = today.plusDays(1).atStartOfDay(zone)
+                .plusHours(EARLY_MORNING_CUTOFF_HOURS)
+                .toInstant()
+                .toEpochMilli()
             val now = System.currentTimeMillis()
-            val begin = maxOf(now, startOfDay)
 
             val uri = CalendarContract.Instances.CONTENT_URI.buildUpon()
                 .also {
-                    ContentUris.appendId(it, begin)
-                    ContentUris.appendId(it, startOfTomorrow)
+                    ContentUris.appendId(it, startOfDay)
+                    ContentUris.appendId(it, windowEnd)
                 }
                 .build()
 
@@ -115,7 +119,8 @@ class CalendarRepository @Inject constructor(
             )
 
             val selection = "${CalendarContract.Instances.VISIBLE} = 1 AND " +
-                "${CalendarContract.Instances.END} >= ?"
+                "(${CalendarContract.Instances.ALL_DAY} = 1 OR " +
+                "${CalendarContract.Instances.END} >= ?)"
             val selectionArgs = arrayOf(now.toString())
             val sortOrder = "${CalendarContract.Instances.BEGIN} ASC"
 
@@ -139,14 +144,19 @@ class CalendarRepository @Inject constructor(
                         while (cursor.moveToNext()) {
                             val title = cursor.getString(titleIdx)?.takeIf { it.isNotBlank() }
                                 ?: continue
+                            val allDay = cursor.getInt(allDayIdx) != 0
+                            val begin = cursor.getLong(beginIdx)
+                            val end = cursor.getLong(endIdx)
+                            // All-day instances are UTC-based; keep only ones covering today.
+                            if (allDay && !allDayCoversToday(begin, end, today)) continue
                             events.add(
                                 CalendarEvent(
                                     instanceId = cursor.getLong(idIdx),
                                     eventId = cursor.getLong(eventIdIdx),
                                     title = title,
-                                    startMillis = cursor.getLong(beginIdx),
-                                    endMillis = cursor.getLong(endIdx),
-                                    allDay = cursor.getInt(allDayIdx) != 0,
+                                    startMillis = begin,
+                                    endMillis = end,
+                                    allDay = allDay,
                                     calendarColor = cursor.getInt(colorIdx).takeIf { it != 0 },
                                 )
                             )
@@ -164,6 +174,12 @@ class CalendarRepository @Inject constructor(
                 .take(maxEvents)
         }
 
+    private fun allDayCoversToday(beginMillis: Long, endMillis: Long, today: LocalDate): Boolean {
+        val firstDay = Instant.ofEpochMilli(beginMillis).atZone(ZoneOffset.UTC).toLocalDate()
+        val endDay = Instant.ofEpochMilli(endMillis).atZone(ZoneOffset.UTC).toLocalDate()
+        return !today.isBefore(firstDay) && today.isBefore(endDay)
+    }
+
     private fun nextInvalidationDelay(events: List<CalendarEvent>): Long {
         val now = System.currentTimeMillis()
         val zone = ZoneId.systemDefault()
@@ -177,6 +193,7 @@ class CalendarRepository @Inject constructor(
 
     companion object {
         const val DEFAULT_MAX_EVENTS = 3
+        private const val EARLY_MORNING_CUTOFF_HOURS = 8L
         private const val TAG = "CalendarRepository"
 
         fun hasReadCalendarPermission(context: Context): Boolean =

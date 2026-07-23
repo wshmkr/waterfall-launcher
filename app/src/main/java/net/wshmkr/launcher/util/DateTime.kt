@@ -63,6 +63,7 @@ fun eventTimeLabel(startMillis: Long, endMillis: Long, allDay: Boolean, use24Hou
     return when {
         startMillis < startOfToday && endMillis >= startOfTomorrow -> "All day"
         startMillis < startOfToday -> "Until ${formatEventStartTime(endMillis, use24Hour)}"
+        startMillis >= startOfTomorrow -> "Tmrw ${formatEventStartTime(startMillis, use24Hour)}"
         else -> formatTimeRange(startMillis, endMillis, use24Hour)
     }
 }
