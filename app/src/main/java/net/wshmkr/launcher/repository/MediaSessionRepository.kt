@@ -97,11 +97,7 @@ class MediaSessionRepository @Inject constructor(
             listenerComponent = notificationListenerComponent,
             handler = handler,
             context = context,
-            imageLoader = context.imageLoader,
-            initialRanking = mediaRankingRepository.ranking.value,
-            onObservedPlaying = { packageName ->
-                mediaRankingRepository.onObservedPlaying(packageName, System.currentTimeMillis())
-            },
+            mediaRankingRepository = mediaRankingRepository,
             emit = { trySend(it) },
         )
         tracker.start()
@@ -122,15 +118,14 @@ class MediaSessionRepository @Inject constructor(
         private val listenerComponent: ComponentName,
         private val handler: Handler,
         private val context: Context,
-        private val imageLoader: ImageLoader,
-        initialRanking: MediaRanking,
-        private val onObservedPlaying: (String) -> Unit,
+        private val mediaRankingRepository: MediaRankingRepository,
         private val emit: (ActiveMediaSession) -> Unit,
     ) {
+        private val imageLoader: ImageLoader = context.imageLoader
         // All fields are read/written only on the handler thread; start/stop post to the handler
         // so callers on any thread converge onto the same serialised access.
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
-        private var mediaRanking: MediaRanking = initialRanking
+        private var mediaRanking: MediaRanking = mediaRankingRepository.ranking.value
         private var playingPackages: Set<String> = emptySet()
         private var lastMediaInfo: MediaInfo? = null
         private var lastControllerRef: MediaController? = null
@@ -231,44 +226,12 @@ class MediaSessionRepository @Inject constructor(
             }
             val lastShownPresent = candidates.any { it.controller.sameSessionAs(lastControllerRef) }
 
-            val nowPlaying = candidates
-                .filter { it.playbackState.state == PlaybackState.STATE_PLAYING }
-                .map { it.controller.packageName }
-                .toSet()
-            (nowPlaying - playingPackages).forEach(onObservedPlaying)
-            playingPackages = nowPlaying
+            observePlayTransitions(candidates)
 
-            // Rank like the system controls: playing first, then most recently played. A paused
-            // app reposting its notification must not win, so notification time is a fallback only.
-            val selectionOrder = compareBy<SessionSnapshot>(
-                { it.playbackState.state == PlaybackState.STATE_PLAYING },
-                { mediaRanking.lastPlayingTimes[it.controller.packageName] ?: Long.MIN_VALUE },
-                { mediaRanking.notificationPostTimes[it.controller.packageName] ?: Long.MIN_VALUE },
-                { it.controller.sameSessionAs(lastControllerRef) },
-            )
-            val top = candidates.maxWithOrNull(selectionOrder)
-            val selected = when {
-                top == null -> null
-                top.playbackState.state == PlaybackState.STATE_PLAYING -> top
-                // Only real playback steals the widget from a shown session in a transient metadata gap.
-                holdLastShown && !lastShownPresent -> null
-                else -> top
-            }
-
+            val selected = selectSession(candidates, holdLastShown, lastShownPresent)
             if (selected == null) {
                 // Hold through transient metadata gaps; clear once the shown session itself is gone.
-                if (!holdLastShown) {
-                    lastControllerRef = null
-                    lastMediaInfo = null
-                    lastArtUri = null
-                    loadedArtUri = null
-                    metadataStale = true
-                    selectedSessionSuppliesArt = false
-                    failedArtUri = null
-                    cancelArtLoad()
-                    handler.removeCallbacks(artSettleRunnable)
-                    emit(ActiveMediaSession(mediaInfo = null, controller = null))
-                }
+                if (!holdLastShown) clearShownSession()
                 return
             }
 
@@ -311,6 +274,52 @@ class MediaSessionRepository @Inject constructor(
 
             syncArtLoad(mediaInfo, lastArtUri)
             scheduleArtSettle(mediaInfo)
+        }
+
+        private fun observePlayTransitions(candidates: List<SessionSnapshot>) {
+            val nowPlaying = candidates
+                .filter { it.playbackState.state == PlaybackState.STATE_PLAYING }
+                .map { it.controller.packageName }
+                .toSet()
+            (nowPlaying - playingPackages).forEach {
+                mediaRankingRepository.onObservedPlaying(it, System.currentTimeMillis())
+            }
+            playingPackages = nowPlaying
+        }
+
+        // Rank like the system controls: playing first, then most recently played. A paused app
+        // reposting its notification must not win, so notification time is a fallback only.
+        private fun selectSession(
+            candidates: List<SessionSnapshot>,
+            holdLastShown: Boolean,
+            lastShownPresent: Boolean,
+        ): SessionSnapshot? {
+            val selectionOrder = compareBy<SessionSnapshot>(
+                { it.playbackState.state == PlaybackState.STATE_PLAYING },
+                { mediaRanking.lastPlayingTimes[it.controller.packageName] ?: Long.MIN_VALUE },
+                { mediaRanking.notificationPostTimes[it.controller.packageName] ?: Long.MIN_VALUE },
+                { it.controller.sameSessionAs(lastControllerRef) },
+            )
+            val top = candidates.maxWithOrNull(selectionOrder) ?: return null
+            return when {
+                top.playbackState.state == PlaybackState.STATE_PLAYING -> top
+                // Only real playback steals the widget from a shown session in a transient metadata gap.
+                holdLastShown && !lastShownPresent -> null
+                else -> top
+            }
+        }
+
+        private fun clearShownSession() {
+            lastControllerRef = null
+            lastMediaInfo = null
+            lastArtUri = null
+            loadedArtUri = null
+            metadataStale = true
+            selectedSessionSuppliesArt = false
+            failedArtUri = null
+            cancelArtLoad()
+            handler.removeCallbacks(artSettleRunnable)
+            emit(ActiveMediaSession(mediaInfo = null, controller = null))
         }
 
         // Resolves URI-only art: success supplies the bitmap, failure settles the track as artless.
