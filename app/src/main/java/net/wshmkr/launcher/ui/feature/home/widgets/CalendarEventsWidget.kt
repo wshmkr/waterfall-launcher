@@ -42,8 +42,7 @@ import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.util.eventTimeLabel
-import net.wshmkr.launcher.util.launchCalendarApp
-import net.wshmkr.launcher.util.launchCalendarEvent
+import net.wshmkr.launcher.util.launchCalendarAt
 import net.wshmkr.launcher.util.rememberCurrentDate
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
@@ -130,15 +129,7 @@ fun CalendarEventsWidget(
                 timeStyle = timeStyle,
                 timeColumnWidth = timeColumnWidth,
                 textStyle = if (ongoing) ongoingTextStyle else eventTextStyle,
-                onClick = {
-                    launchCalendarEvent(
-                        context,
-                        event.eventId,
-                        event.startMillis,
-                        event.endMillis,
-                        event.allDay,
-                    )
-                },
+                onClick = { launchCalendarAt(context, event.startMillis) },
             )
         }
         if (hiddenCount > 0) {
@@ -147,7 +138,7 @@ fun CalendarEventsWidget(
                 style = timeStyle,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClick = { launchCalendarApp(context) })
+                    .clickable(onClick = { launchCalendarAt(context, System.currentTimeMillis()) })
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }

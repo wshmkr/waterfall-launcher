@@ -20,38 +20,31 @@ fun launchPackage(context: Context, packageName: String): Boolean {
     }
 }
 
+private fun calendarAppIntent() = Intent(Intent.ACTION_MAIN).apply {
+    addCategory(Intent.CATEGORY_APP_CALENDAR)
+    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+}
+
 fun launchCalendarApp(context: Context) {
     try {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_APP_CALENDAR)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        context.startActivity(intent)
+        context.startActivity(calendarAppIntent())
     } catch (e: Exception) {
         Log.w(TAG, "Failed to launch calendar app", e)
     }
 }
 
-fun launchCalendarEvent(
-    context: Context,
-    eventId: Long,
-    startMillis: Long,
-    endMillis: Long,
-    allDay: Boolean,
-) {
+fun launchCalendarAt(context: Context, timeMillis: Long) {
+    val uri = CalendarContract.CONTENT_URI.buildUpon()
+        .appendPath("time")
+        .also { ContentUris.appendId(it, timeMillis) }
+        .build()
     try {
-        val intent = Intent(
-            Intent.ACTION_VIEW,
-            ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, eventId),
-        ).apply {
-            putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, startMillis)
-            putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endMillis)
-            putExtra(CalendarContract.EXTRA_EVENT_ALL_DAY, allDay)
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(intent)
     } catch (e: Exception) {
-        Log.w(TAG, "Failed to open event $eventId", e)
+        Log.w(TAG, "Failed to open calendar at $timeMillis", e)
         launchCalendarApp(context)
     }
 }

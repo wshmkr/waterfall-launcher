@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import net.wshmkr.launcher.util.formatDate
 import net.wshmkr.launcher.util.formatTime
-import net.wshmkr.launcher.util.launchCalendarApp
+import net.wshmkr.launcher.util.launchCalendarAt
 import net.wshmkr.launcher.util.launchPackage
 import net.wshmkr.launcher.util.rememberCurrentDate
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
@@ -61,7 +61,7 @@ fun ClockWidget(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showCalendar) {
-                    ClockDateText(onClick = { launchCalendarApp(context) })
+                    ClockDateText(onClick = { launchCalendarAt(context, System.currentTimeMillis()) })
                 }
 
                 if (showCalendar && showWeather) {
