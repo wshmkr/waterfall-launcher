@@ -115,7 +115,7 @@ class CalendarRepository @Inject constructor(
                 CalendarContract.Instances.BEGIN,
                 CalendarContract.Instances.END,
                 CalendarContract.Instances.ALL_DAY,
-                CalendarContract.Instances.CALENDAR_COLOR,
+                CalendarContract.Instances.DISPLAY_COLOR,
             )
 
             val selection = "${CalendarContract.Instances.VISIBLE} = 1 AND " +
@@ -144,7 +144,7 @@ class CalendarRepository @Inject constructor(
                         val allDayIdx =
                             cursor.getColumnIndexOrThrow(CalendarContract.Instances.ALL_DAY)
                         val colorIdx =
-                            cursor.getColumnIndexOrThrow(CalendarContract.Instances.CALENDAR_COLOR)
+                            cursor.getColumnIndexOrThrow(CalendarContract.Instances.DISPLAY_COLOR)
 
                         while (cursor.moveToNext()) {
                             val title = cursor.getString(titleIdx)?.takeIf { it.isNotBlank() }
@@ -162,7 +162,7 @@ class CalendarRepository @Inject constructor(
                                     startMillis = begin,
                                     endMillis = end,
                                     allDay = allDay,
-                                    calendarColor = cursor.getInt(colorIdx).takeIf { it != 0 },
+                                    color = cursor.getInt(colorIdx).takeIf { it != 0 },
                                 )
                             )
                         }

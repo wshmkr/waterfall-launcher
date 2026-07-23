@@ -10,5 +10,5 @@ data class CalendarEvent(
     val startMillis: Long,
     val endMillis: Long,
     val allDay: Boolean,
-    val calendarColor: Int?,
+    val color: Int?,
 )

@@ -125,7 +125,7 @@ fun CalendarEventsWidget(
             EventRow(
                 title = event.title,
                 timeLabel = timeLabels[index],
-                dotColor = event.calendarColor?.let(::Color) ?: DEFAULT_DOT_COLOR,
+                dotColor = event.color?.let(::Color) ?: DEFAULT_DOT_COLOR,
                 timeStyle = timeStyle,
                 timeColumnWidth = timeColumnWidth,
                 textStyle = if (ongoing) ongoingTextStyle else eventTextStyle,
