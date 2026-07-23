@@ -158,9 +158,15 @@ class MediaSessionRepository @Inject constructor(
         }
 
         private fun publish() {
-            val controller = trackedControllers
+            val candidates = trackedControllers
                 .map { (controller, _) -> controller }
-                .firstOrNull { it.metadata != null && it.playbackState != null }
+                .filter { it.metadata != null && it.playbackState != null }
+
+            // Prefer the session that is actively playing; otherwise stay on the last
+            // shown one so pausing doesn't jump to another app's paused session.
+            val controller = candidates.firstOrNull { it.playbackState?.isActive == true }
+                ?: candidates.firstOrNull { it.sameSessionAs(lastControllerRef) }
+                ?: candidates.firstOrNull()
 
             if (controller == null) {
                 lastMetadata = null
@@ -211,6 +217,12 @@ class MediaSessionRepository @Inject constructor(
                 albumArt = albumArt,
                 artExpected = albumArt != null || metadata.referencesArtUri()
             )
+        }
+
+        // Controller instances are recreated on session-list changes; the token
+        // identifies the underlying session across them.
+        private fun MediaController.sameSessionAs(other: MediaController?): Boolean {
+            return other != null && sessionToken == other.sessionToken
         }
 
         private fun MediaMetadata?.referencesArtUri(): Boolean {
