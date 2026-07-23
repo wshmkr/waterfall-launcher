@@ -215,6 +215,8 @@ class MediaSessionRepository @Inject constructor(
                 val playbackState = controller.playbackState ?: return@mapNotNull null
                 SessionSnapshot(controller, metadata, playbackState)
             }
+                // Mirror the shade: ignore sessions with no media notification (e.g. YouTube Shorts).
+                .filter { it.controller.packageName in mediaRanking.notificationPostTimes }
 
             val holdLastShown = lastMediaInfo != null && trackedControllers.any { (controller, _) ->
                 controller.sameSessionAs(lastControllerRef)
