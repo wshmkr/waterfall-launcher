@@ -25,8 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -73,14 +76,28 @@ fun CalendarEventsWidget(
         return
     }
 
+    if (events.isEmpty()) return
+
     val typography = MaterialTheme.typography
     val eventTextStyle = remember(typography) {
         typography.bodyMedium.copy(color = Color.White, fontSize = 14.sp)
     }
 
-    if (events.isEmpty()) {
-        NoEventsRow(modifier = modifier, textStyle = eventTextStyle)
-        return
+    val timeStyle = remember(eventTextStyle) {
+        eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
+    }
+    val timeLabels = remember(events, use24Hour) {
+        events.map { event ->
+            if (event.allDay) ALL_DAY_LABEL else formatEventStartTime(event.startMillis, use24Hour)
+        }
+    }
+
+    // Size the time column to the widest label so times never wrap to a second line.
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val timeColumnWidth = remember(timeLabels, timeStyle, density) {
+        val widest = timeLabels.maxOf { textMeasurer.measure(it, timeStyle).size.width }
+        with(density) { widest.toDp() }
     }
 
     Column(
@@ -88,34 +105,16 @@ fun CalendarEventsWidget(
             .fillMaxWidth()
             .padding(horizontal = 8.dp),
     ) {
-        events.forEach { event ->
+        events.forEachIndexed { index, event ->
             EventRow(
-                event = event,
-                use24Hour = use24Hour,
+                title = event.title,
+                timeLabel = timeLabels[index],
+                timeStyle = timeStyle,
+                timeColumnWidth = timeColumnWidth,
                 textStyle = eventTextStyle,
                 onClick = { launchCalendarApp(context) },
             )
         }
-    }
-}
-
-@Composable
-private fun NoEventsRow(modifier: Modifier, textStyle: TextStyle) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-    ) {
-        Icon(
-            painter = CalendarTodayIcon(),
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = NO_EVENTS_LABEL,
-            style = textStyle.copy(color = Color.White.copy(alpha = 0.7f)),
-        )
     }
 }
 
@@ -146,16 +145,13 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
 
 @Composable
 private fun EventRow(
-    event: CalendarEvent,
-    use24Hour: Boolean,
+    title: String,
+    timeLabel: String,
+    timeStyle: TextStyle,
+    timeColumnWidth: Dp,
     textStyle: TextStyle,
     onClick: () -> Unit,
 ) {
-    val timeLabel = remember(event.startMillis, event.allDay, use24Hour) {
-        if (event.allDay) ALL_DAY_LABEL else formatEventStartTime(event.startMillis, use24Hour)
-    }
-    val timeStyle = remember(textStyle) { textStyle.copy(color = Color.White.copy(alpha = 0.7f)) }
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -167,11 +163,13 @@ private fun EventRow(
         Text(
             text = timeLabel,
             style = timeStyle,
-            modifier = Modifier.width(TIME_COLUMN_WIDTH),
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.width(timeColumnWidth),
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = event.title,
+            text = title,
             style = textStyle,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -180,5 +178,3 @@ private fun EventRow(
 }
 
 private const val ALL_DAY_LABEL = "All day"
-private const val NO_EVENTS_LABEL = "No events today"
-private val TIME_COLUMN_WIDTH = 52.dp
