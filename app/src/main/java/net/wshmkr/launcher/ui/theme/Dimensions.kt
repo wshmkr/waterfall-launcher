@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.theme
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
@@ -14,6 +15,13 @@ object Spacing {
     val medium = 16.dp
     val large = 24.dp
     val xLarge = 32.dp
+}
+
+// Standard corner roundings; use instead of raw RoundedCornerShape. Fully-round stays CircleShape.
+object Corners {
+    val small = RoundedCornerShape(8.dp)
+    val medium = RoundedCornerShape(12.dp)
+    val large = RoundedCornerShape(16.dp)
 }
 
 data class Dimensions(

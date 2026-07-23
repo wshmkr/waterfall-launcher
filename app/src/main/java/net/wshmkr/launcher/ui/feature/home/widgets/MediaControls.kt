@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -45,6 +44,7 @@ import net.wshmkr.launcher.ui.common.icons.PauseIcon
 import net.wshmkr.launcher.ui.common.icons.PlayArrowIcon
 import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
 import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 
 @Composable
@@ -64,7 +64,7 @@ fun MediaControls(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onMediaAppClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -116,7 +116,7 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
     Box(
         modifier = Modifier
             .size(dimensions.albumArtSize)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(Corners.small)
             .background(Color.White.copy(alpha = 0.1f))
     ) {
         Crossfade(targetState = displayedArt, label = "albumArt") { art ->

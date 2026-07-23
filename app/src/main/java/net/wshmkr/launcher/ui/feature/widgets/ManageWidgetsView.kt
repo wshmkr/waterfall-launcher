@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -36,6 +35,7 @@ import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.icons.AddIcon
 import net.wshmkr.launcher.ui.common.icons.DeleteIcon
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.ManagedWidget
@@ -120,7 +120,7 @@ private fun ManagedWidgetRow(
             contentDescription = item.appName,
             modifier = Modifier
                 .size(dimensions.iconMedium)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(Corners.medium)
         )
 
         Spacer(modifier = Modifier.width(16.dp))
@@ -164,7 +164,7 @@ private fun AddWidgetRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(Corners.large)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically

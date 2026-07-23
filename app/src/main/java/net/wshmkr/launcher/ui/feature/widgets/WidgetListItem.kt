@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +30,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
@@ -65,7 +65,7 @@ fun WidgetListItem(
     Column(
         modifier = modifier
             .alpha(animatedAlpha)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .background(Color.White.copy(alpha = 0.05f))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -92,7 +92,7 @@ fun WidgetListItem(
             val previewModifier = Modifier
                 .width(with(density) { targetWidthPx.toDp() })
                 .height(with(density) { targetHeightPx.toDp() })
-                .clip(RoundedCornerShape(8.dp))
+                .clip(Corners.small)
 
             if (previewDrawable != null) {
                 Image(

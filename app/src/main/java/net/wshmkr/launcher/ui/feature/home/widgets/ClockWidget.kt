@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.util.formatDate
 import net.wshmkr.launcher.util.formatTime
@@ -77,7 +77,7 @@ fun ClockWidget(
                 if (showWeather) {
                     WeatherWidget(
                         Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(Corners.small)
                             .clickable {
                                 launchWeatherApp(context)
                             }
@@ -103,7 +103,7 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
         color = Color.White,
         modifier = Modifier
             .padding(horizontal = 4.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp)
     )
@@ -119,7 +119,7 @@ private fun ClockDateText(onClick: () -> Unit) {
         fontSize = LocalDimensions.current.fontMedium,
         color = Color.White,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp, vertical = 4.dp)
     )

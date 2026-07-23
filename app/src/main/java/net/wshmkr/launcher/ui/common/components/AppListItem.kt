@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +31,7 @@ import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 
@@ -73,7 +73,7 @@ fun AppListItem(
         modifier = Modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .combinedClickable(
                 onClick = { onClick(appInfo) },
                 onLongClick = {

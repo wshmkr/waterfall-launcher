@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +30,7 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
 import net.wshmkr.launcher.ui.common.icons.ArrowDropUpIcon
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
@@ -107,7 +107,7 @@ private fun WidgetProviderRow(
         modifier = modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(Corners.medium)
             .background(Color.White.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
@@ -119,7 +119,7 @@ private fun WidgetProviderRow(
             contentDescription = provider.label,
             modifier = Modifier
                 .size(dimensions.iconLarge)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(Corners.small)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Column(

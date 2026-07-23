@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +39,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.formatEventTime
@@ -160,7 +160,7 @@ fun CalendarEventsWidget(
                 text = "+$hiddenCount more",
                 style = timeStyle,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(Corners.small)
                     .clickable(onClick = { launchCalendarToday(context) })
                     .padding(horizontal = Spacing.small, vertical = 2.dp),
             )
@@ -174,7 +174,7 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .padding(horizontal = Spacing.small)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.small, vertical = 4.dp),
     ) {
@@ -207,7 +207,7 @@ private fun EventRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.small, vertical = 2.dp),
     ) {

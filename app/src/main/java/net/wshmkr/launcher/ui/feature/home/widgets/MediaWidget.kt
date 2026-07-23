@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +31,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.homeWidgetGap
 import net.wshmkr.launcher.util.NotificationPanelHelper
@@ -124,7 +124,7 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
     Row(
         modifier = Modifier
             .padding(horizontal = 12.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(Corners.medium)
             .clickable { onRequestPermission() }
             .background(Color.Black.copy(alpha = 0.5f))
             .fillMaxWidth()
