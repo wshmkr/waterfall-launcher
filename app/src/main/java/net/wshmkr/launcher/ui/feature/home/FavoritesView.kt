@@ -32,7 +32,7 @@ import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
 import net.wshmkr.launcher.ui.feature.home.widgets.CalendarEventsWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
-import net.wshmkr.launcher.ui.feature.widgets.WidgetHost
+import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -131,8 +131,8 @@ fun FavoritesView(
                 }
             }
 
-            item(key = "widget_host") {
-                WidgetHost()
+            item(key = "widget_stack") {
+                WidgetStack()
             }
 
             item(key = "media_widget") {

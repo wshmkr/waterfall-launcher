@@ -31,7 +31,8 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:stateNotNeeded="true">
+            android:stateNotNeeded="true"
+            android:windowSoftInputMode="adjustResize">
             <!-- Intent filter to make this the default launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
