@@ -35,12 +35,13 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import net.wshmkr.launcher.model.TodayEvents
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.formatEventTime
 import net.wshmkr.launcher.util.isPermissionPermanentlyDenied
 import net.wshmkr.launcher.util.launchCalendarAt
@@ -99,8 +100,9 @@ fun CalendarEventsWidget(
     if (eventList.isEmpty()) return
 
     val typography = MaterialTheme.typography
-    val eventTextStyle = remember(typography) {
-        typography.bodyMedium.copy(color = Color.White, fontSize = 14.sp)
+    val eventFont = LocalDimensions.current.fontSmall
+    val eventTextStyle = remember(typography, eventFont) {
+        typography.bodyMedium.copy(color = Color.White, fontSize = eventFont)
     }
     val ongoingTextStyle = remember(eventTextStyle) {
         eventTextStyle.copy(fontWeight = FontWeight.Bold)
@@ -134,7 +136,7 @@ fun CalendarEventsWidget(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = EVENTS_INDENT, end = 8.dp),
+            .padding(start = Spacing.medium, end = Spacing.small),
     ) {
         eventList.forEachIndexed { index, event ->
             val timeLabel = timeLabels[index]
@@ -160,7 +162,7 @@ fun CalendarEventsWidget(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .clickable(onClick = { launchCalendarToday(context) })
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                    .padding(horizontal = Spacing.small, vertical = 2.dp),
             )
         }
     }
@@ -171,10 +173,10 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = Spacing.small)
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = Spacing.small, vertical = 4.dp),
     ) {
         Icon(
             painter = CalendarTodayIcon(),
@@ -185,7 +187,7 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = "Show today's events",
-            fontSize = 14.sp,
+            fontSize = LocalDimensions.current.fontSmall,
             color = Color.White,
         )
     }
@@ -207,14 +209,14 @@ private fun EventRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .padding(horizontal = Spacing.small, vertical = 2.dp),
     ) {
         Box(
             modifier = Modifier
                 .size(DOT_SIZE)
                 .background(dotColor, CircleShape),
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(Spacing.small))
         if (timeLabel != null) {
             Text(
                 text = timeLabel,
@@ -223,7 +225,7 @@ private fun EventRow(
                 softWrap = false,
                 modifier = Modifier.width(timeColumnWidth),
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(Spacing.small))
         }
         Text(
             text = title,
@@ -234,6 +236,5 @@ private fun EventRow(
     }
 }
 
-private val EVENTS_INDENT = 16.dp
 private val DOT_SIZE = 6.dp
 private val DEFAULT_DOT_COLOR = Color.White.copy(alpha = 0.7f)
