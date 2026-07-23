@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
 import net.wshmkr.launcher.ui.common.icons.PauseIcon
@@ -63,7 +64,11 @@ fun MediaControls(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MediaAlbumArt(albumArt = mediaInfo.albumArt, artExpected = mediaInfo.artExpected)
+        MediaAlbumArt(
+            albumArt = mediaInfo.albumArt,
+            artExpected = mediaInfo.artExpected,
+            ownerPackage = mediaInfo.packageName,
+        )
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -88,11 +93,16 @@ fun MediaControls(
 }
 
 @Composable
-private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean) {
+private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage: String?) {
     // Keep the previous art while the new track's art loads, instead of flashing the placeholder.
-    val lastArt = remember { ArtHolder(albumArt) }
-    val displayedArt = if (albumArt == null && artExpected) lastArt.value else albumArt
-    lastArt.value = displayedArt
+    val lastArt = remember { ArtHolder(albumArt, ownerPackage) }
+    // Held art must not survive a switch to a different app.
+    if (lastArt.owner != ownerPackage) {
+        lastArt.art = null
+        lastArt.owner = ownerPackage
+    }
+    val displayedArt = if (albumArt == null && artExpected) lastArt.art else albumArt
+    lastArt.art = displayedArt
 
     Box(
         modifier = Modifier
@@ -207,16 +217,23 @@ private fun PlayPauseButton(
     onPlay: () -> Unit,
     onPause: () -> Unit,
 ) {
-    // Flip the icon optimistically on tap; the next real state change confirms or corrects it.
+    // Flip the icon optimistically on tap; the real state change (or a timeout) settles it.
     var pendingPlaying by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(isPlaying) { pendingPlaying = null }
+    LaunchedEffect(pendingPlaying) {
+        if (pendingPlaying != null) {
+            delay(PENDING_PLAYING_TIMEOUT_MS)
+            pendingPlaying = null
+        }
+    }
     val shownPlaying = pendingPlaying ?: isPlaying
 
     IconButton(
         onClick = {
-            // Dispatch from the real state so repeated taps re-send the same command.
-            pendingPlaying = !isPlaying
-            if (isPlaying) onPause() else onPlay()
+            // Dispatch from the shown state so a tap always means the icon the user saw.
+            val startPlaying = !shownPlaying
+            pendingPlaying = startPlaying
+            if (startPlaying) onPlay() else onPause()
         },
         modifier = Modifier.size(56.dp)
     ) {
@@ -230,4 +247,6 @@ private fun PlayPauseButton(
 }
 
 // Nothing observes this, so snapshot state is unnecessary.
-private class ArtHolder(var value: Bitmap?)
+private class ArtHolder(var art: Bitmap?, var owner: String?)
+
+private const val PENDING_PLAYING_TIMEOUT_MS = 2_000L

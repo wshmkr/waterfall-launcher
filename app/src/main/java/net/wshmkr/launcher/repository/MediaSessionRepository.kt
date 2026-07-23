@@ -34,6 +34,8 @@ import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val ART_SETTLE_TIMEOUT_MS = 2_000L
+
 data class ActiveMediaSession(
     val mediaInfo: MediaInfo? = null,
     val isPlaying: Boolean = false,
@@ -109,12 +111,17 @@ class MediaSessionRepository @Inject constructor(
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
         private var lastMediaInfo: MediaInfo? = null
         private var lastControllerRef: MediaController? = null
+        // The art URI extracted together with lastMediaInfo; keeps art loads paired with their track.
+        private var lastArtUri: String? = null
         private var metadataStale: Boolean = true
         // A session that has supplied bitmap art is expected to supply it for later tracks too.
         private var selectedSessionSuppliesArt: Boolean = false
         private var artLoadUri: String? = null
+        private var artLoadGeneration = 0
         private var artLoadDisposable: Disposable? = null
         private var failedArtUri: String? = null
+        private var loadedArtUri: String? = null
+        private val artSettleRunnable = Runnable { settleMissingArt() }
 
         private val sessionsChangedListener =
             MediaSessionManager.OnActiveSessionsChangedListener { controllers ->
@@ -146,6 +153,7 @@ class MediaSessionRepository @Inject constructor(
                 trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
                 trackedControllers = emptyList()
                 cancelArtLoad()
+                handler.removeCallbacks(artSettleRunnable)
                 onStopped()
             }
         }
@@ -164,7 +172,8 @@ class MediaSessionRepository @Inject constructor(
             trackedControllers = controllers.map { controller ->
                 val callback = object : MediaController.Callback() {
                     override fun onMetadataChanged(metadata: MediaMetadata?) {
-                        metadataStale = true
+                        // Only the shown session's cached extraction depends on its metadata.
+                        if (controller.sameSessionAs(lastControllerRef)) metadataStale = true
                         publish()
                     }
                     override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
@@ -186,20 +195,26 @@ class MediaSessionRepository @Inject constructor(
                 SessionSnapshot(controller, metadata, playbackState)
             }
 
-            // Falling back to the last shown session keeps pausing from jumping to another app.
-            val selected = candidates.firstOrNull { it.playbackState.isActive }
+            val holdLastShown = lastMediaInfo != null && trackedControllers.any { (controller, _) ->
+                controller.sameSessionAs(lastControllerRef)
+            }
+            // Only real playback steals the widget; buffering apps and metadata gaps hold the shown session.
+            val selected = candidates.firstOrNull { it.playbackState.state == PlaybackState.STATE_PLAYING }
                 ?: candidates.firstOrNull { it.controller.sameSessionAs(lastControllerRef) }
-                ?: candidates.firstOrNull()
+                ?: (if (holdLastShown) null else candidates.firstOrNull())
 
             if (selected == null) {
-                // Metadata can vanish transiently mid-track-change; clear only once the sessions are gone.
-                if (trackedControllers.isEmpty() || lastMediaInfo == null) {
+                // Hold through transient metadata gaps; clear once the shown session itself is gone.
+                if (!holdLastShown) {
                     lastControllerRef = null
                     lastMediaInfo = null
+                    lastArtUri = null
+                    loadedArtUri = null
                     metadataStale = true
                     selectedSessionSuppliesArt = false
                     failedArtUri = null
                     cancelArtLoad()
+                    handler.removeCallbacks(artSettleRunnable)
                     emit(ActiveMediaSession(mediaInfo = null, controller = null))
                 }
                 return
@@ -208,6 +223,7 @@ class MediaSessionRepository @Inject constructor(
             if (!selected.controller.sameSessionAs(lastControllerRef)) {
                 selectedSessionSuppliesArt = false
                 failedArtUri = null
+                loadedArtUri = null
             }
 
             val cacheValid = !metadataStale &&
@@ -217,12 +233,10 @@ class MediaSessionRepository @Inject constructor(
                 lastMediaInfo
             } else {
                 metadataStale = false
-                val extracted = extractMediaInfo(selected.controller, selected.metadata)
-                if (extracted.hasSameDisplayContentAs(lastMediaInfo)) {
-                    lastMediaInfo
-                } else {
-                    extracted.reusingArtFrom(lastMediaInfo)
-                }
+                lastArtUri = selected.metadata.artUri()
+                val extracted = extractMediaInfo(selected.controller, selected.metadata, lastArtUri)
+                    .reusingArtFrom(lastMediaInfo)
+                if (extracted.hasSameDisplayContentAs(lastMediaInfo)) lastMediaInfo else extracted
             }
 
             if (mediaInfo?.albumArt != null) {
@@ -240,36 +254,40 @@ class MediaSessionRepository @Inject constructor(
                 )
             )
 
-            syncArtLoad(mediaInfo, selected.metadata)
+            syncArtLoad(mediaInfo, lastArtUri)
+            scheduleArtSettle(mediaInfo)
         }
 
         // Resolves URI-only art: success supplies the bitmap, failure settles the track as artless.
-        private fun syncArtLoad(mediaInfo: MediaInfo?, metadata: MediaMetadata) {
-            val wantedUri = metadata.artUri()?.takeIf {
+        private fun syncArtLoad(mediaInfo: MediaInfo?, artUri: String?) {
+            val wantedUri = artUri?.takeIf {
                 mediaInfo?.albumArt == null && mediaInfo?.artExpected == true && it != failedArtUri
             }
             if (wantedUri == artLoadUri) return
             cancelArtLoad()
             artLoadUri = wantedUri ?: return
+            val generation = artLoadGeneration
             artLoadDisposable = imageLoader.enqueue(
                 ImageRequest.Builder(context)
                     .data(wantedUri)
-                    // Software bitmaps keep pixel comparison in hasSameDisplayContentAs safe.
+                    // Software bitmaps keep pixel comparison in reusingArtFrom safe.
                     .allowHardware(false)
                     .target(
-                        onSuccess = { art -> handler.post { onArtLoadFinished(wantedUri, art.toBitmap()) } },
-                        onError = { handler.post { onArtLoadFinished(wantedUri, null) } },
+                        onSuccess = { art -> handler.post { onArtLoadFinished(generation, wantedUri, art.toBitmap()) } },
+                        onError = { handler.post { onArtLoadFinished(generation, wantedUri, null) } },
                     )
                     .build()
             )
         }
 
-        private fun onArtLoadFinished(uri: String, art: Bitmap?) {
-            if (uri != artLoadUri) return
+        private fun onArtLoadFinished(generation: Int, uri: String, art: Bitmap?) {
+            // A cancelled load's queued callback must not be taken for the live one.
+            if (generation != artLoadGeneration) return
             artLoadUri = null
             artLoadDisposable = null
             val current = lastMediaInfo ?: return
             lastMediaInfo = if (art != null) {
+                loadedArtUri = uri
                 current.copy(albumArt = art)
             } else {
                 failedArtUri = uri
@@ -279,15 +297,38 @@ class MediaSessionRepository @Inject constructor(
         }
 
         private fun cancelArtLoad() {
+            artLoadGeneration++
             artLoadDisposable?.dispose()
             artLoadDisposable = null
             artLoadUri = null
         }
 
-        private fun extractMediaInfo(controller: MediaController, metadata: MediaMetadata): MediaInfo {
+        // Art promised by the session heuristic may never arrive; settle as artless after a grace period.
+        private fun scheduleArtSettle(mediaInfo: MediaInfo?) {
+            handler.removeCallbacks(artSettleRunnable)
+            val awaitingHeuristicArt = mediaInfo != null && mediaInfo.albumArt == null &&
+                mediaInfo.artExpected && artLoadUri == null
+            if (awaitingHeuristicArt) handler.postDelayed(artSettleRunnable, ART_SETTLE_TIMEOUT_MS)
+        }
+
+        private fun settleMissingArt() {
+            val current = lastMediaInfo ?: return
+            if (current.albumArt != null || !current.artExpected || artLoadUri != null) return
+            // Disarm the heuristic too, or the next metadata republish would re-expect art.
+            selectedSessionSuppliesArt = false
+            lastMediaInfo = current.copy(artExpected = false)
+            publish()
+        }
+
+        private fun extractMediaInfo(
+            controller: MediaController,
+            metadata: MediaMetadata,
+            artUri: String?,
+        ): MediaInfo {
             val albumArt = metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
-            val artUri = metadata.artUri()
+                // Metadata republishes carry no bitmap for URI-art players; reattach instead of reloading.
+                ?: lastMediaInfo?.albumArt?.takeIf { artUri != null && artUri == loadedArtUri }
             val artUriFailed = artUri != null && artUri == failedArtUri
             return MediaInfo(
                 title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE),
