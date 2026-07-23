@@ -9,8 +9,7 @@ data class MediaInfo(
     val artist: String?,
     val packageName: String?,
     val albumArt: Bitmap?,
-    // Metadata references art (bitmap or URI); a null albumArt with this set
-    // means the bitmap hasn't loaded yet rather than the track having no art.
+    // A null albumArt with this set means the art is still loading, not absent.
     val artExpected: Boolean,
 ) {
     fun hasSameDisplayContentAs(other: MediaInfo?): Boolean {
@@ -23,8 +22,7 @@ data class MediaInfo(
     }
 }
 
-// Players re-publish metadata with a fresh Bitmap instance for the same art;
-// compare pixels so duplicates dedupe instead of re-triggering UI transitions.
+// Players re-publish the same art as fresh Bitmap instances.
 private fun Bitmap?.hasSamePixelsAs(other: Bitmap?): Boolean {
     if (this === other) return true
     if (this == null || other == null) return false

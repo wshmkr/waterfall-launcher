@@ -162,8 +162,7 @@ class MediaSessionRepository @Inject constructor(
                 .map { (controller, _) -> controller }
                 .filter { it.metadata != null && it.playbackState != null }
 
-            // Prefer the session that is actively playing; otherwise stay on the last
-            // shown one so pausing doesn't jump to another app's paused session.
+            // Falling back to the last shown session keeps pausing from jumping to another app.
             val controller = candidates.firstOrNull { it.playbackState?.isActive == true }
                 ?: candidates.firstOrNull { it.sameSessionAs(lastControllerRef) }
                 ?: candidates.firstOrNull()
@@ -178,8 +177,6 @@ class MediaSessionRepository @Inject constructor(
 
             val metadata = controller.metadata
 
-            // MediaInfo is metadata-derived; playback state changes reuse the cached instance
-            // so play/pause doesn't invalidate metadata-driven UI.
             val snapshotUnchanged =
                 controller === lastControllerRef && metadata === lastMetadata
             val mediaInfo = if (snapshotUnchanged && lastMediaInfo != null) {
@@ -196,8 +193,7 @@ class MediaSessionRepository @Inject constructor(
             emit(
                 ActiveMediaSession(
                     mediaInfo = mediaInfo,
-                    // isActive covers transient states (buffering, connecting, skipping) so the
-                    // button reflects intent as soon as the player reacts, not once audio starts.
+                    // isActive includes transient states (buffering, connecting) so the button reflects intent immediately.
                     isPlaying = controller.playbackState?.isActive == true,
                     controller = controller,
                 )
@@ -219,8 +215,7 @@ class MediaSessionRepository @Inject constructor(
             )
         }
 
-        // Controller instances are recreated on session-list changes; the token
-        // identifies the underlying session across them.
+        // Tokens identify a session across the controller instances recreated on session-list changes.
         private fun MediaController.sameSessionAs(other: MediaController?): Boolean {
             return other != null && sessionToken == other.sessionToken
         }

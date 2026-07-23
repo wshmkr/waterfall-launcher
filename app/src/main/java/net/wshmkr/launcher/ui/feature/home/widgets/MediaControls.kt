@@ -89,9 +89,7 @@ fun MediaControls(
 
 @Composable
 private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean) {
-    // Track changes emit metadata before the art bitmap loads; while art is
-    // expected but not yet loaded, keep the previous art instead of flashing
-    // the placeholder.
+    // Keep the previous art while the new track's art loads, instead of flashing the placeholder.
     val lastArt = remember { mutableStateOf(albumArt) }
     val displayedArt = if (albumArt == null && artExpected) lastArt.value else albumArt
     lastArt.value = displayedArt
@@ -209,8 +207,7 @@ private fun PlayPauseButton(
     onPlay: () -> Unit,
     onPause: () -> Unit,
 ) {
-    // Flip the icon on tap without waiting for the player to re-publish state;
-    // the session's next state change confirms or corrects it.
+    // Flip the icon optimistically on tap; the next real state change confirms or corrects it.
     var pendingPlaying by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(isPlaying) { pendingPlaying = null }
     val shownPlaying = pendingPlaying ?: isPlaying
