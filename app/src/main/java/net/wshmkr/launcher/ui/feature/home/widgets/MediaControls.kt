@@ -21,8 +21,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -206,13 +209,22 @@ private fun PlayPauseButton(
     onPlay: () -> Unit,
     onPause: () -> Unit,
 ) {
+    // Flip the icon on tap without waiting for the player to re-publish state;
+    // the session's next state change confirms or corrects it.
+    var pendingPlaying by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(isPlaying) { pendingPlaying = null }
+    val shownPlaying = pendingPlaying ?: isPlaying
+
     IconButton(
-        onClick = if (isPlaying) onPause else onPlay,
+        onClick = {
+            pendingPlaying = !shownPlaying
+            if (shownPlaying) onPause() else onPlay()
+        },
         modifier = Modifier.size(56.dp)
     ) {
         Icon(
-            painter = if (isPlaying) PauseIcon() else PlayArrowIcon(),
-            contentDescription = if (isPlaying) "Pause" else "Play",
+            painter = if (shownPlaying) PauseIcon() else PlayArrowIcon(),
+            contentDescription = if (shownPlaying) "Pause" else "Play",
             tint = Color.White,
             modifier = Modifier.size(40.dp)
         )

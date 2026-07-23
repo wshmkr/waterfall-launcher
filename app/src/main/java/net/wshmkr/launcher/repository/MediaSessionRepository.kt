@@ -190,7 +190,9 @@ class MediaSessionRepository @Inject constructor(
             emit(
                 ActiveMediaSession(
                     mediaInfo = mediaInfo,
-                    isPlaying = controller.playbackState?.state == PlaybackState.STATE_PLAYING,
+                    // isActive covers transient states (buffering, connecting, skipping) so the
+                    // button reflects intent as soon as the player reacts, not once audio starts.
+                    isPlaying = controller.playbackState?.isActive == true,
                     controller = controller,
                 )
             )
