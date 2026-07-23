@@ -32,11 +32,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.delay
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
@@ -100,6 +102,11 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
     val displayedArt = if (albumArt == null && artExpected) lastArt.art else albumArt
     lastArt.art = displayedArt
 
+    val context = LocalContext.current
+    val appIcon = remember(ownerPackage) {
+        ownerPackage?.let { runCatching { context.packageManager.getApplicationIcon(it) }.getOrNull() }
+    }
+
     Box(
         modifier = Modifier
             .size(96.dp)
@@ -119,12 +126,20 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        painter = MusicNoteIcon(),
-                        contentDescription = "No album art",
-                        tint = Color.White.copy(alpha = 0.3f),
-                        modifier = Modifier.size(40.dp)
-                    )
+                    if (appIcon != null) {
+                        Image(
+                            painter = rememberDrawablePainter(appIcon),
+                            contentDescription = "App icon",
+                            modifier = Modifier.size(56.dp)
+                        )
+                    } else {
+                        Icon(
+                            painter = MusicNoteIcon(),
+                            contentDescription = "No album art",
+                            tint = Color.White.copy(alpha = 0.3f),
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
                 }
             }
         }
