@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.ui.feature.home.SectionHeaderItem
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
 import net.wshmkr.launcher.viewmodel.WidgetOption
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
@@ -61,7 +62,7 @@ fun WidgetAppList(
                 ) { index, listItem ->
                     when (listItem) {
                         is WidgetAppListItem.SectionHeader -> {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.small))
                             SectionHeaderItem(
                                 letter = listItem.letter,
                                 targetAlpha = viewModel.getAlpha(listItem.letter),

@@ -78,7 +78,7 @@ fun WidgetProviderGroup(
                             onClick = onClick
                         )
                         if (index != provider.widgets.lastIndex) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.small))
                         }
                     }
                 }
@@ -110,7 +110,7 @@ private fun WidgetProviderRow(
             .clip(Corners.medium)
             .background(Color.White.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.medium, vertical = 12.dp)
             .alpha(animatedAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -121,7 +121,7 @@ private fun WidgetProviderRow(
                 .size(dimensions.iconLarge)
                 .clip(Corners.small)
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(Spacing.medium))
         Column(
             modifier = Modifier.weight(1f),
         ) {

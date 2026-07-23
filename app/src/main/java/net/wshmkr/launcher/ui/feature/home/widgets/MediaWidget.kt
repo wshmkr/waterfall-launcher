@@ -33,6 +33,7 @@ import net.wshmkr.launcher.ui.common.dialog.NotificationAccessDialog
 import net.wshmkr.launcher.ui.common.icons.MusicNoteIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.homeWidgetGap
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.util.launchPackage
@@ -128,7 +129,7 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             .clickable { onRequestPermission() }
             .background(Color.Black.copy(alpha = 0.5f))
             .fillMaxWidth()
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = Spacing.large),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -137,7 +138,7 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             tint = Color.White.copy(alpha = 0.5f),
             modifier = Modifier.size(dimensions.iconMedium)
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(Spacing.small))
         Text(
             text = "Enable notification access\nfor media controls",
             fontSize = dimensions.fontSmall,

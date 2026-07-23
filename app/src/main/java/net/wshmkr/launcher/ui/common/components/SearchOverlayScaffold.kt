@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
 
@@ -163,7 +164,7 @@ fun SearchOverlayScaffold(
                     },
                     expanded = false,
                     onExpandedChange = { },
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = Spacing.small)
                 ) { }
             }
             LazyColumn(

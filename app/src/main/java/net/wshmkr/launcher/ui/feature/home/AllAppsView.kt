@@ -112,7 +112,7 @@ fun AllAppsView(
                 ) { item ->
                     when (item) {
                         is AppListItem.SectionHeader -> {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.small))
                             SectionHeaderItem(
                                 letter = item.letter,
                                 targetAlpha = alphaByLetter[item.letter] ?: 1f,

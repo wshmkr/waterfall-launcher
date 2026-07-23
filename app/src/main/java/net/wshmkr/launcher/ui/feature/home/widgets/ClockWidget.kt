@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.formatDate
 import net.wshmkr.launcher.util.formatTime
 import net.wshmkr.launcher.util.launchCalendarToday
@@ -57,7 +58,7 @@ fun ClockWidget(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = Spacing.small)
                     .heightIn(min = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -81,7 +82,7 @@ fun ClockWidget(
                             .clickable {
                                 launchWeatherApp(context)
                             }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = Spacing.small, vertical = 4.dp),
                         useFahrenheit,
                         weatherLocationLatitude,
                         weatherLocationLongitude,
@@ -105,7 +106,7 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 4.dp)
             .clip(Corners.small)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = Spacing.small)
     )
 }
 
@@ -121,7 +122,7 @@ private fun ClockDateText(onClick: () -> Unit) {
         modifier = Modifier
             .clip(Corners.small)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = Spacing.small, vertical = 4.dp)
     )
 }
 

@@ -63,7 +63,7 @@ fun AppOptionsMenu(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(Spacing.small),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
@@ -81,7 +81,7 @@ fun AppOptionsMenu(
             }
 
             HorizontalDivider(
-                modifier = Modifier.padding(vertical = 8.dp),
+                modifier = Modifier.padding(vertical = Spacing.small),
             )
 
             if (appInfo.isSuggested) {
@@ -165,7 +165,7 @@ fun AppOptionsMenu(
                     text = "This is a system app and can't be uninstalled.",
                     fontSize = dimensions.fontSmall,
                     color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = Spacing.medium)
                 )
             } else {
                 MenuOption(
@@ -182,7 +182,7 @@ fun AppOptionsMenu(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.small))
         }
     }
 }

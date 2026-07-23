@@ -77,7 +77,7 @@ fun ManageWidgetsView(
         ) {
             LazyColumn(
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.small),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(
@@ -112,7 +112,7 @@ private fun ManagedWidgetRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.medium, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
@@ -123,7 +123,7 @@ private fun ManagedWidgetRow(
                 .clip(Corners.medium)
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(Spacing.medium))
 
         Column(
             modifier = Modifier.weight(1f)
@@ -166,7 +166,7 @@ private fun AddWidgetRow(
             .fillMaxWidth()
             .clip(Corners.large)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.medium, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -176,7 +176,7 @@ private fun AddWidgetRow(
             modifier = Modifier.size(dimensions.iconSmall)
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(Spacing.medium))
 
         Text(
             text = "Add Widget",

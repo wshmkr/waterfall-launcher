@@ -32,6 +32,7 @@ import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
 @Composable
@@ -68,7 +69,7 @@ fun WidgetListItem(
             .clip(Corners.small)
             .background(Color.White.copy(alpha = 0.05f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.medium, vertical = 12.dp),
         horizontalAlignment = Alignment.Start
     ) {
         BoxWithConstraints(

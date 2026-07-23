@@ -46,6 +46,7 @@ import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
 import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 @Composable
 fun MediaControls(
@@ -63,10 +64,10 @@ fun MediaControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
+            .padding(Spacing.small)
             .clip(Corners.small)
             .clickable(onClick = onMediaAppClick)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = Spacing.small),
         verticalAlignment = Alignment.CenterVertically
     ) {
         MediaAlbumArt(
