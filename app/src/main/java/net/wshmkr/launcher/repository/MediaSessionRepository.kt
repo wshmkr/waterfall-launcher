@@ -198,10 +198,11 @@ class MediaSessionRepository @Inject constructor(
             val holdLastShown = lastMediaInfo != null && trackedControllers.any { (controller, _) ->
                 controller.sameSessionAs(lastControllerRef)
             }
-            // Only real playback steals the widget; buffering apps and metadata gaps hold the shown session.
-            val selected = candidates.firstOrNull { it.playbackState.state == PlaybackState.STATE_PLAYING }
-                ?: candidates.firstOrNull { it.controller.sameSessionAs(lastControllerRef) }
-                ?: (if (holdLastShown) null else candidates.firstOrNull())
+            val lastShownPresent = candidates.any { it.controller.sameSessionAs(lastControllerRef) }
+            // Mirror the system notification: getActiveSessions() ranks the most recently used
+            // session first, so honour that order rather than preferring whatever is playing.
+            // Only exception: hold the shown session while it transiently drops its metadata.
+            val selected = if (holdLastShown && !lastShownPresent) null else candidates.firstOrNull()
 
             if (selected == null) {
                 // Hold through transient metadata gaps; clear once the shown session itself is gone.
