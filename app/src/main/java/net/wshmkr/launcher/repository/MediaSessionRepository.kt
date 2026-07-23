@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
 import javax.inject.Inject
@@ -44,7 +45,8 @@ data class ActiveMediaSession(
 
 @Singleton
 class MediaSessionRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val mediaRankingRepository: MediaRankingRepository,
 ) {
     private val notificationListenerComponent =
         ComponentName(context, LauncherNotificationListenerService::class.java)
@@ -88,9 +90,18 @@ class MediaSessionRepository @Inject constructor(
             handler = handler,
             context = context,
             imageLoader = context.imageLoader,
+            initialRanking = mediaRankingRepository.ranking.value,
+            onObservedPlaying = { packageName ->
+                mediaRankingRepository.onObservedPlaying(packageName, System.currentTimeMillis())
+            },
             emit = { trySend(it) },
         )
         tracker.start()
+        launch {
+            mediaRankingRepository.ranking.collect { ranking ->
+                handler.post { tracker.onRankingChanged(ranking) }
+            }
+        }
         awaitClose {
             tracker.stop {
                 listenerThread.quitSafely()
@@ -104,11 +115,15 @@ class MediaSessionRepository @Inject constructor(
         private val handler: Handler,
         private val context: Context,
         private val imageLoader: ImageLoader,
+        initialRanking: MediaRanking,
+        private val onObservedPlaying: (String) -> Unit,
         private val emit: (ActiveMediaSession) -> Unit,
     ) {
         // All fields are read/written only on the handler thread; start/stop post to the handler
         // so callers on any thread converge onto the same serialised access.
         private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
+        private var mediaRanking: MediaRanking = initialRanking
+        private var playingPackages: Set<String> = emptySet()
         private var lastMediaInfo: MediaInfo? = null
         private var lastControllerRef: MediaController? = null
         // The art URI extracted together with lastMediaInfo; keeps art loads paired with their track.
@@ -158,6 +173,12 @@ class MediaSessionRepository @Inject constructor(
             }
         }
 
+        fun onRankingChanged(ranking: MediaRanking) {
+            if (ranking == mediaRanking) return
+            mediaRanking = ranking
+            publish()
+        }
+
         private fun refreshActiveSessions() {
             val controllers = try {
                 manager.getActiveSessions(listenerComponent)
@@ -198,10 +219,31 @@ class MediaSessionRepository @Inject constructor(
             val holdLastShown = lastMediaInfo != null && trackedControllers.any { (controller, _) ->
                 controller.sameSessionAs(lastControllerRef)
             }
-            // Only real playback steals the widget; buffering apps and metadata gaps hold the shown session.
-            val selected = candidates.firstOrNull { it.playbackState.state == PlaybackState.STATE_PLAYING }
-                ?: candidates.firstOrNull { it.controller.sameSessionAs(lastControllerRef) }
-                ?: (if (holdLastShown) null else candidates.firstOrNull())
+            val lastShownPresent = candidates.any { it.controller.sameSessionAs(lastControllerRef) }
+
+            val nowPlaying = candidates
+                .filter { it.playbackState.state == PlaybackState.STATE_PLAYING }
+                .map { it.controller.packageName }
+                .toSet()
+            (nowPlaying - playingPackages).forEach(onObservedPlaying)
+            playingPackages = nowPlaying
+
+            // Rank like the system controls: playing first, then most recently played. A paused
+            // app reposting its notification must not win, so notification time is a fallback only.
+            val selectionOrder = compareBy<SessionSnapshot>(
+                { it.playbackState.state == PlaybackState.STATE_PLAYING },
+                { mediaRanking.lastPlayingTimes[it.controller.packageName] ?: Long.MIN_VALUE },
+                { mediaRanking.notificationPostTimes[it.controller.packageName] ?: Long.MIN_VALUE },
+                { it.controller.sameSessionAs(lastControllerRef) },
+            )
+            val top = candidates.maxWithOrNull(selectionOrder)
+            val selected = when {
+                top == null -> null
+                top.playbackState.state == PlaybackState.STATE_PLAYING -> top
+                // Only real playback steals the widget from a shown session in a transient metadata gap.
+                holdLastShown && !lastShownPresent -> null
+                else -> top
+            }
 
             if (selected == null) {
                 // Hold through transient metadata gaps; clear once the shown session itself is gone.

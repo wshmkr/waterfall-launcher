@@ -1,7 +1,9 @@
 package net.wshmkr.launcher.service
 
 import android.app.Notification
+import android.media.session.MediaController
 import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -12,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.NotificationAction
+import net.wshmkr.launcher.repository.MediaNotification
+import net.wshmkr.launcher.repository.MediaRankingRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -27,29 +31,66 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     @Inject
     lateinit var notificationRepository: NotificationRepository
 
+    @Inject
+    lateinit var mediaRankingRepository: MediaRankingRepository
+
+    private val playingPackages = mutableSetOf<String>()
+
     override fun onListenerConnected() {
         super.onListenerConnected()
         _isConnected.value = true
-        val seed = activeNotifications
-            ?.map(::extractNotification)
-            ?.filter { !it.isOngoing && !it.isMedia }
-            ?: emptyList()
-        notificationRepository.reset(seed)
+        val active = activeNotifications?.toList() ?: emptyList()
+        notificationRepository.reset(
+            active.map(::extractNotification).filter { !it.isOngoing && !it.isMedia }
+        )
+        mediaRankingRepository.resetNotifications(
+            active.mapNotNull { sbn ->
+                sbn.mediaSessionToken()?.let { token ->
+                    recordPlaybackActivity(sbn.packageName, token)
+                    sbn.key to MediaNotification(sbn.packageName, sbn.postTime)
+                }
+            }.toMap()
+        )
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         _isConnected.value = false
         notificationRepository.clearAll()
+        mediaRankingRepository.resetNotifications(emptyMap())
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        sbn?.let { statusBarNotification ->
-            val notification = extractNotification(statusBarNotification)
+        val statusBarNotification = sbn ?: return
+        val token = statusBarNotification.mediaSessionToken()
+        if (token != null) {
+            mediaRankingRepository.onPosted(
+                statusBarNotification.key,
+                MediaNotification(statusBarNotification.packageName, statusBarNotification.postTime),
+            )
+            recordPlaybackActivity(statusBarNotification.packageName, token)
+            return
+        }
 
-            if (!notification.isOngoing && !notification.isMedia) {
-                notificationRepository.addNotification(notification)
+        val notification = extractNotification(statusBarNotification)
+        if (!notification.isOngoing) {
+            notificationRepository.addNotification(notification)
+        }
+    }
+
+    // Sampling on each repost catches play transitions even while the launcher UI isn't running.
+    private fun recordPlaybackActivity(packageName: String, token: MediaSession.Token) {
+        val state = try {
+            MediaController(this, token).playbackState?.state
+        } catch (e: Exception) {
+            null
+        }
+        if (state == PlaybackState.STATE_PLAYING) {
+            if (playingPackages.add(packageName)) {
+                mediaRankingRepository.onObservedPlaying(packageName, System.currentTimeMillis())
             }
+        } else {
+            playingPackages.remove(packageName)
         }
     }
 
@@ -59,6 +100,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             val notificationId = statusBarNotification.id
             val userHandle = statusBarNotification.user
 
+            mediaRankingRepository.onRemoved(statusBarNotification.key)
             notificationRepository.removeNotification(packageName, notificationId, userHandle)
         }
     }
@@ -83,8 +125,8 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         }?.toImmutableList() ?: persistentListOf()
         
         val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
-        val isMedia = extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java) != null
-        
+        val isMedia = sbn.mediaSessionToken() != null
+
         return NotificationInfo(
             id = sbn.id,
             packageName = sbn.packageName,
@@ -99,6 +141,9 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             isMedia = isMedia
         )
     }
+
+    private fun StatusBarNotification.mediaSessionToken(): MediaSession.Token? =
+        notification.extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
 
     private fun extractMessageText(extras: Bundle): String? {
         if (!extras.containsKey(Notification.EXTRA_MESSAGES)) {
