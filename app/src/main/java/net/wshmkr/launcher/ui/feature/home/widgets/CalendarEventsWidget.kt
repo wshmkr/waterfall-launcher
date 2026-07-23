@@ -43,7 +43,7 @@ import net.wshmkr.launcher.model.CalendarEvent
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.util.eventTimeLabel
-import net.wshmkr.launcher.util.launchCalendarApp
+import net.wshmkr.launcher.util.launchCalendarEvent
 import net.wshmkr.launcher.util.rememberCurrentDate
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
@@ -129,7 +129,15 @@ fun CalendarEventsWidget(
                 timeStyle = timeStyle,
                 timeColumnWidth = timeColumnWidth,
                 textStyle = if (ongoing) ongoingTextStyle else eventTextStyle,
-                onClick = { launchCalendarApp(context) },
+                onClick = {
+                    launchCalendarEvent(
+                        context,
+                        event.eventId,
+                        event.startMillis,
+                        event.endMillis,
+                        event.allDay,
+                    )
+                },
             )
         }
     }
