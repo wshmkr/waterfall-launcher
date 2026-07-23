@@ -1,8 +1,11 @@
 package net.wshmkr.launcher.repository
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.net.Uri
@@ -66,6 +69,22 @@ class CalendarRepository @Inject constructor(
         }
         registerObserverIfPermitted()
 
+        val timeChangeReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                invalidations.trySend(Unit)
+            }
+        }
+        ContextCompat.registerReceiver(
+            context,
+            timeChangeReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_TIME_CHANGED)
+                addAction(Intent.ACTION_TIMEZONE_CHANGED)
+                addAction(Intent.ACTION_DATE_CHANGED)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+
         val refreshJob = launch {
             refreshTrigger.collect { invalidations.trySend(Unit) }
         }
@@ -82,6 +101,7 @@ class CalendarRepository @Inject constructor(
         }
 
         awaitClose {
+            context.unregisterReceiver(timeChangeReceiver)
             if (observerRegistered) context.contentResolver.unregisterContentObserver(observer)
             worker.cancel()
             refreshJob.cancel()
