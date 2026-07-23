@@ -34,7 +34,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     @Inject
     lateinit var mediaRankingRepository: MediaRankingRepository
 
-    private val playingPackages = mutableSetOf<String>()
+    private val playingKeys = mutableSetOf<String>()
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -43,10 +43,11 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         notificationRepository.reset(
             active.map(::extractNotification).filter { !it.isOngoing && !it.isMedia }
         )
+        playingKeys.clear()
         mediaRankingRepository.resetNotifications(
             active.mapNotNull { sbn ->
                 sbn.mediaSessionToken()?.let { token ->
-                    recordPlaybackActivity(sbn.packageName, token)
+                    recordPlaybackActivity(sbn.key, sbn.packageName, token)
                     sbn.key to MediaNotification(sbn.packageName, sbn.postTime)
                 }
             }.toMap()
@@ -57,6 +58,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         super.onListenerDisconnected()
         _isConnected.value = false
         notificationRepository.clearAll()
+        playingKeys.clear()
         mediaRankingRepository.resetNotifications(emptyMap())
     }
 
@@ -68,7 +70,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                 statusBarNotification.key,
                 MediaNotification(statusBarNotification.packageName, statusBarNotification.postTime),
             )
-            recordPlaybackActivity(statusBarNotification.packageName, token)
+            recordPlaybackActivity(statusBarNotification.key, statusBarNotification.packageName, token)
             return
         }
 
@@ -79,18 +81,18 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     }
 
     // Sampling on each repost catches play transitions even while the launcher UI isn't running.
-    private fun recordPlaybackActivity(packageName: String, token: MediaSession.Token) {
+    private fun recordPlaybackActivity(notificationKey: String, packageName: String, token: MediaSession.Token) {
         val state = try {
             MediaController(this, token).playbackState?.state
         } catch (e: Exception) {
             null
         }
         if (state == PlaybackState.STATE_PLAYING) {
-            if (playingPackages.add(packageName)) {
+            if (playingKeys.add(notificationKey)) {
                 mediaRankingRepository.onObservedPlaying(packageName, System.currentTimeMillis())
             }
         } else {
-            playingPackages.remove(packageName)
+            playingKeys.remove(notificationKey)
         }
     }
 
@@ -100,6 +102,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             val notificationId = statusBarNotification.id
             val userHandle = statusBarNotification.user
 
+            playingKeys.remove(statusBarNotification.key)
             mediaRankingRepository.onRemoved(statusBarNotification.key)
             notificationRepository.removeNotification(packageName, notificationId, userHandle)
         }
