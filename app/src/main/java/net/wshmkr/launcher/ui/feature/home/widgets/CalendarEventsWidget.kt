@@ -3,7 +3,9 @@ package net.wshmkr.launcher.ui.feature.home.widgets
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -103,12 +106,13 @@ fun CalendarEventsWidget(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(start = EVENTS_INDENT, end = 8.dp),
     ) {
         events.forEachIndexed { index, event ->
             EventRow(
                 title = event.title,
                 timeLabel = timeLabels[index],
+                dotColor = event.calendarColor?.let(::Color) ?: DEFAULT_DOT_COLOR,
                 timeStyle = timeStyle,
                 timeColumnWidth = timeColumnWidth,
                 textStyle = eventTextStyle,
@@ -147,6 +151,7 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
 private fun EventRow(
     title: String,
     timeLabel: String,
+    dotColor: Color,
     timeStyle: TextStyle,
     timeColumnWidth: Dp,
     textStyle: TextStyle,
@@ -158,8 +163,14 @@ private fun EventRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
+        Box(
+            modifier = Modifier
+                .size(DOT_SIZE)
+                .background(dotColor, CircleShape),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = timeLabel,
             style = timeStyle,
@@ -178,3 +189,6 @@ private fun EventRow(
 }
 
 private const val ALL_DAY_LABEL = "All day"
+private val EVENTS_INDENT = 16.dp
+private val DOT_SIZE = 6.dp
+private val DEFAULT_DOT_COLOR = Color.White.copy(alpha = 0.7f)
