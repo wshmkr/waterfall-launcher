@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.graphics.drawable.Drawable
+import android.os.Bundle
 import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
@@ -69,8 +70,13 @@ class WidgetViewModel @Inject constructor(
     private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
     val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
 
+    // Last size pushed per widget, so redundant page compositions don't re-notify providers.
+    private val appliedWidgetSizes = mutableMapOf<Int, Pair<Int, Int>>()
+
     init {
         viewModelScope.launch {
+            // Before the first widget renders, so the stack never draws at the default and jumps.
+            stackHeightDp = widgetRepository.getStackHeightDp()
             val lastWidgetId = widgetRepository.getLastPageWidgetId()
             widgetRepository.loadWidgets()
             widgetRepository.widgetIds.collect {
@@ -92,10 +98,6 @@ class WidgetViewModel @Inject constructor(
                 backgroundUri = it
             }
         }
-
-        viewModelScope.launch {
-            stackHeightDp = widgetRepository.getStackHeightDp()
-        }
     }
 
     fun updateCurrentPage(widgetId: Int) {
@@ -105,12 +107,10 @@ class WidgetViewModel @Inject constructor(
     }
 
     fun previewStackHeight(dp: Int) {
-        val clamped = dp.coerceIn(
+        stackHeightDp = dp.coerceIn(
             WidgetDataSource.MIN_STACK_HEIGHT_DP,
             WidgetDataSource.MAX_STACK_HEIGHT_DP,
         )
-        if (clamped == stackHeightDp) return
-        stackHeightDp = clamped
     }
 
     fun commitStackHeight() {
@@ -120,8 +120,17 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
-    fun applyWidgetSize(widgetId: Int, widthDp: Int, heightDp: Int) {
-        widgetRepository.updateAppWidgetSize(widgetId, widthDp, heightDp)
+    fun applyWidgetSize(
+        widgetView: AppWidgetHostView,
+        widgetId: Int,
+        widthDp: Int,
+        heightDp: Int,
+    ) {
+        val size = widthDp to heightDp
+        if (appliedWidgetSizes[widgetId] == size) return
+        appliedWidgetSizes[widgetId] = size
+        // The host view variant also writes OPTION_APPWIDGET_SIZES and accounts for its padding.
+        widgetView.updateAppWidgetSize(Bundle(), widthDp, heightDp, widthDp, heightDp)
     }
 
     fun scrollToLetter(letter: String) {
@@ -144,6 +153,7 @@ class WidgetViewModel @Inject constructor(
     }
 
     fun removeWidget(widgetId: Int) {
+        appliedWidgetSizes.remove(widgetId)
         viewModelScope.launch {
             widgetRepository.removeWidget(widgetId)
         }

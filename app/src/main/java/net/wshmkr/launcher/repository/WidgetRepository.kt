@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Bundle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
@@ -38,16 +37,6 @@ class WidgetRepository @Inject constructor(
     suspend fun getStackHeightDp(): Int = widgetDataSource.getStackHeightDp()
 
     suspend fun setStackHeightDp(dp: Int) = widgetDataSource.setStackHeightDp(dp)
-
-    fun updateAppWidgetSize(widgetId: Int, widthDp: Int, heightDp: Int) {
-        val options = Bundle().apply {
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, heightDp)
-        }
-        appWidgetManager.updateAppWidgetOptions(widgetId, options)
-    }
 
     suspend fun loadWidgets() = updateIdsOnIo { }
 

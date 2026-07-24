@@ -39,6 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
@@ -69,6 +72,7 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
 fun WidgetStack(
     viewModel: WidgetViewModel = hiltViewModel(),
     interactionSource: MutableInteractionSource? = null,
+    onTouchedChange: (Boolean) -> Unit = {},
 ) {
     val widgetIds = viewModel.widgetIds
 
@@ -79,9 +83,13 @@ fun WidgetStack(
     }
     var editing by remember { mutableStateOf(false) }
 
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { editing = false }
-
-    val heightDp = viewModel.stackHeightDp
+    // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        if (editing) {
+            viewModel.commitStackHeight()
+            editing = false
+        }
+    }
 
     // Recreate the pager whenever the list changes so virtual pages always map
     // to a fixed list snapshot, re-seeded at the widget the user was viewing.
@@ -112,13 +120,21 @@ fun WidgetStack(
                 .captureLongPress(
                     enabled = { !editing },
                     interactionSource = pressSource,
+                    onTouchedChange = onTouchedChange,
                 ) { editing = true },
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(heightDp.dp),
+                        // Read in the layout phase so a resize drag never recomposes the pager.
+                        .layout { measurable, constraints ->
+                            val height = viewModel.stackHeightDp.dp.roundToPx()
+                            val placeable = measurable.measure(
+                                constraints.copy(minHeight = height, maxHeight = height),
+                            )
+                            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                        },
                 ) {
                     val stackWidth = maxWidth
                     val slotWidthDp = stackWidth.value.toInt()
@@ -136,7 +152,6 @@ fun WidgetStack(
                             WidgetPage(
                                 widgetId = widgetIds[page % pageCount],
                                 widthDp = slotWidthDp,
-                                heightDp = heightDp,
                                 viewModel = viewModel,
                             )
                         }
@@ -152,8 +167,15 @@ fun WidgetStack(
                                 properties = PopupProperties(focusable = true),
                             ) {
                                 Box(
-                                    modifier = Modifier
-                                        .size(stackWidth, heightDp.dp + DRAG_HANDLE_HEIGHT / 2),
+                                    modifier = Modifier.layout { measurable, _ ->
+                                        val width = stackWidth.roundToPx()
+                                        val height = (
+                                            viewModel.stackHeightDp.dp + DRAG_HANDLE_HEIGHT / 2
+                                            ).roundToPx()
+                                        val placeable =
+                                            measurable.measure(Constraints.fixed(width, height))
+                                        layout(width, height) { placeable.place(0, 0) }
+                                    },
                                 ) {
                                     Box(
                                         modifier = Modifier
@@ -192,32 +214,29 @@ fun WidgetStack(
 private fun WidgetPage(
     widgetId: Int,
     widthDp: Int,
-    heightDp: Int,
     viewModel: WidgetViewModel,
 ) {
-    LaunchedEffect(widgetId, widthDp) {
+    val context = LocalContext.current
+    val widgetView = remember(widgetId) {
+        (viewModel.createWidgetView(context, widgetId) ?: unavailableWidgetView(context)).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+        }
+    }
+
+    LaunchedEffect(widgetView, widthDp) {
         if (widthDp <= 0) return@LaunchedEffect
         snapshotFlow { viewModel.stackHeightDp }
             .debounce(WIDGET_SIZE_DEBOUNCE_MS)
             .collect { h ->
-                if (h > 0) viewModel.applyWidgetSize(widgetId, widthDp, h)
+                if (h > 0) viewModel.applyWidgetSize(widgetView, widgetId, widthDp, h)
             }
     }
-    AndroidView<AppWidgetHostView>(
-        factory = { ctx ->
-            val widgetView = viewModel.createWidgetView(ctx, widgetId)
-                ?: unavailableWidgetView(ctx)
 
-            widgetView.layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-
-            if (widthDp > 0 && heightDp > 0) {
-                viewModel.applyWidgetSize(widgetId, widthDp, heightDp)
-            }
-            widgetView
-        },
+    AndroidView(
+        factory = { widgetView },
         modifier = Modifier.fillMaxSize(),
     )
 }
