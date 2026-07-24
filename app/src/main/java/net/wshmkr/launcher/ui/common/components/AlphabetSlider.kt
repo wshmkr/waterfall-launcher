@@ -147,7 +147,7 @@ private fun InvisibleLettersColumn(letters: List<String>) {
     Column(
         modifier = Modifier
             .height(alphabetHeight(letters.size))
-            .width(dimensions.iconLarge)
+            .width(dimensions.alphabetColumnWidth)
             .graphicsLayer { alpha = 0f },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -188,7 +188,7 @@ private fun AnimatedLettersList(
     Column(
         modifier = Modifier
             .height(alphabetHeight(letters.size))
-            .width(dimensions.iconLarge)
+            .width(dimensions.alphabetColumnWidth)
             .offset { IntOffset(0, animatedVerticalOffset.roundToInt()) },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

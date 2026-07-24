@@ -137,7 +137,7 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
                         Image(
                             painter = rememberDrawablePainter(appIcon),
                             contentDescription = "App icon",
-                            modifier = Modifier.size(dimensions.playButtonSize)
+                            modifier = Modifier.size(dimensions.mediaAppIconSize)
                         )
                     } else {
                         Icon(

@@ -78,7 +78,7 @@ fun MenuOption(
                 modifier = Modifier.size(dimensions.iconSmall),
                 tint = color,
             )
-            Spacer(modifier = Modifier.width(dimensions.iconGap))
+            Spacer(modifier = Modifier.width(Spacing.large))
         }
         Column(
             modifier = Modifier.weight(1f)

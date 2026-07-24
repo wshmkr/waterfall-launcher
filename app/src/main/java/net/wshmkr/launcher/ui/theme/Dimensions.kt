@@ -33,7 +33,9 @@ data class Dimensions(
     val iconSmall: Dp,
     val iconMedium: Dp,
     val iconLarge: Dp,
+    val alphabetColumnWidth: Dp,
     val playButtonSize: Dp,
+    val mediaAppIconSize: Dp,
     val albumArtSize: Dp,
     val searchButtonEndInset: Dp,
 
@@ -55,7 +57,9 @@ val standardDimensions = Dimensions(
     iconSmall = 24.dp,
     iconMedium = 36.dp,
     iconLarge = 40.dp,
+    alphabetColumnWidth = 40.dp,
     playButtonSize = 56.dp,
+    mediaAppIconSize = 56.dp,
     albumArtSize = 96.dp,
     searchButtonEndInset = 64.dp,
 
@@ -77,7 +81,9 @@ val compactDimensions = Dimensions(
     iconSmall = 22.dp,
     iconMedium = 32.dp,
     iconLarge = 36.dp,
+    alphabetColumnWidth = 36.dp,
     playButtonSize = 48.dp,
+    mediaAppIconSize = 48.dp,
     albumArtSize = 80.dp,
     searchButtonEndInset = 56.dp,
 
@@ -99,7 +105,9 @@ val largeDimensions = Dimensions(
     iconSmall = 26.dp,
     iconMedium = 40.dp,
     iconLarge = 44.dp,
+    alphabetColumnWidth = 44.dp,
     playButtonSize = 64.dp,
+    mediaAppIconSize = 64.dp,
     albumArtSize = 112.dp,
     searchButtonEndInset = 72.dp,
 

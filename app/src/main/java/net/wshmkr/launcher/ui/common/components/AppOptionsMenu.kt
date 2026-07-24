@@ -71,7 +71,7 @@ fun AppOptionsMenu(
                     contentDescription = appInfo.label,
                     modifier = Modifier.size(dimensions.iconLarge)
                 )
-                Spacer(modifier = Modifier.width(dimensions.iconGap))
+                Spacer(modifier = Modifier.width(Spacing.medium))
                 Text(
                     text = appInfo.label,
                     fontSize = dimensions.fontXLarge,
