@@ -55,6 +55,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        homeViewModel.navigateToFavorites()
+    }
+
     override fun onPause() {
         super.onPause()
         widgetRepository.stopListening()

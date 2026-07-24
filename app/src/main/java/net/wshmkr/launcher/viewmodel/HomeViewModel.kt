@@ -11,8 +11,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
@@ -93,6 +96,9 @@ class HomeViewModel @Inject constructor(
 
     private var observedStop = false
 
+    private val _returnHomeEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val returnHomeEvents: SharedFlow<Unit> = _returnHomeEvents.asSharedFlow()
+
     private val notificationCountCache = ConcurrentHashMap<String, StateFlow<Int>>()
     private val notificationListCache = ConcurrentHashMap<String, StateFlow<ImmutableList<NotificationInfo>>>()
 
@@ -163,6 +169,7 @@ class HomeViewModel @Inject constructor(
         showingFavorites = true
         showSearchOverlay = false
         observedStop = false
+        _returnHomeEvents.tryEmit(Unit)
     }
 
     fun onLauncherStopped() {
