@@ -40,9 +40,13 @@ class WidgetRepository @Inject constructor(
     suspend fun setStackHeightDp(dp: Int) = widgetDataSource.setStackHeightDp(dp)
 
     fun updateAppWidgetSize(widgetId: Int, widthDp: Int, heightDp: Int) {
-        appWidgetManager.updateAppWidgetSize(
-            widgetId, Bundle(), widthDp, heightDp, widthDp, heightDp,
-        )
+        val options = Bundle().apply {
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
+            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, heightDp)
+        }
+        appWidgetManager.updateAppWidgetOptions(widgetId, options)
     }
 
     suspend fun loadWidgets() = updateIdsOnIo { }
