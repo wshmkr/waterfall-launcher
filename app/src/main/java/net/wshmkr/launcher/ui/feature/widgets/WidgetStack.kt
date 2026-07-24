@@ -6,6 +6,8 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -35,15 +37,24 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.withTimeoutOrNull
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 // Virtual page count for wrap-around scrolling; real page = virtual page % widget count.
 private const val LOOP_PAGE_COUNT = Int.MAX_VALUE
+
+// Debounce for AppWidgetManager.updateAppWidgetOptions during drag; per-frame IPC
+// storms caused ANRs on some devices.
+private const val WIDGET_SIZE_DEBOUNCE_MS = 80L
 
 private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     if (pageCount <= 1) return initialIndex
@@ -65,6 +76,7 @@ fun WidgetStack(
     var editing by remember { mutableStateOf(false) }
 
     val heightDp = viewModel.stackHeightDp
+    val hapticFeedback = LocalHapticFeedback.current
 
     // Recreate the pager whenever the list changes so virtual pages always map
     // to a fixed list snapshot, re-seeded at the widget the user was viewing.
@@ -105,9 +117,42 @@ fun WidgetStack(
                                 Modifier
                             }
                         )
-                        .pointerInput(editing) {
-                            if (!editing) {
-                                detectTapGestures(onLongPress = { editing = true })
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
+                                )
+                                if (editing) return@awaitEachGesture
+                                val timeoutMs = viewConfiguration.longPressTimeoutMillis
+                                val slop = viewConfiguration.touchSlop
+                                val slopSquared = slop * slop
+                                val startPos = down.position
+                                val outcome = withTimeoutOrNull(timeoutMs) {
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        val change = event.changes.firstOrNull { it.id == down.id }
+                                            ?: return@withTimeoutOrNull Unit
+                                        if (!change.pressed) return@withTimeoutOrNull Unit
+                                        val dx = change.position.x - startPos.x
+                                        val dy = change.position.y - startPos.y
+                                        if (dx * dx + dy * dy > slopSquared) {
+                                            return@withTimeoutOrNull Unit
+                                        }
+                                    }
+                                    @Suppress("UNREACHABLE_CODE")
+                                    Unit
+                                }
+                                if (outcome != null) return@awaitEachGesture
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                editing = true
+                                // Consume the rest of the gesture; the interop layer then sends
+                                // ACTION_CANCEL to the widget view instead of a click.
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    event.changes.forEach { it.consume() }
+                                    if (event.changes.none { it.pressed }) break
+                                }
                             }
                         },
                 ) {
@@ -133,9 +178,7 @@ fun WidgetStack(
                                 },
                         )
                         DragHandle(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = Spacing.small),
+                            modifier = Modifier.align(Alignment.BottomCenter),
                             currentHeightDp = { viewModel.stackHeightDp },
                             onResize = viewModel::previewStackHeight,
                             onResizeEnd = viewModel::commitStackHeight,
@@ -159,10 +202,13 @@ private fun WidgetPage(
     heightDp: Int,
     viewModel: WidgetViewModel,
 ) {
-    LaunchedEffect(widgetId, widthDp, heightDp) {
-        if (widthDp > 0 && heightDp > 0) {
-            viewModel.applyWidgetSize(widgetId, widthDp, heightDp)
-        }
+    LaunchedEffect(widgetId, widthDp) {
+        if (widthDp <= 0) return@LaunchedEffect
+        snapshotFlow { viewModel.stackHeightDp }
+            .debounce(WIDGET_SIZE_DEBOUNCE_MS)
+            .collect { h ->
+                if (h > 0) viewModel.applyWidgetSize(widgetId, widthDp, h)
+            }
     }
     AndroidView<AppWidgetHostView>(
         factory = { ctx ->
@@ -174,6 +220,9 @@ private fun WidgetPage(
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
 
+            if (widthDp > 0 && heightDp > 0) {
+                viewModel.applyWidgetSize(widgetId, widthDp, heightDp)
+            }
             widgetView
         },
         modifier = Modifier.fillMaxSize(),
@@ -189,8 +238,7 @@ private fun DragHandle(
 ) {
     Box(
         modifier = modifier
-            .size(width = 40.dp, height = 6.dp)
-            .background(Color.White.copy(alpha = 0.85f), CircleShape)
+            .size(width = 120.dp, height = 32.dp)
             .pointerInput(Unit) {
                 var pxAccum = 0f
                 detectVerticalDragGestures(
@@ -212,7 +260,15 @@ private fun DragHandle(
                     }
                 }
             },
-    )
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 6.dp)
+                .size(width = 56.dp, height = 5.dp)
+                .background(Color.White.copy(alpha = 0.9f), CircleShape),
+        )
+    }
 }
 
 @Composable
