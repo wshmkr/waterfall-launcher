@@ -6,8 +6,6 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -37,15 +35,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.withTimeoutOrNull
+import net.wshmkr.launcher.ui.common.gesture.captureLongPress
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
@@ -76,7 +71,6 @@ fun WidgetStack(
     var editing by remember { mutableStateOf(false) }
 
     val heightDp = viewModel.stackHeightDp
-    val hapticFeedback = LocalHapticFeedback.current
 
     // Recreate the pager whenever the list changes so virtual pages always map
     // to a fixed list snapshot, re-seeded at the widget the user was viewing.
@@ -117,44 +111,7 @@ fun WidgetStack(
                                 Modifier
                             }
                         )
-                        .pointerInput(Unit) {
-                            awaitEachGesture {
-                                val down = awaitFirstDown(
-                                    requireUnconsumed = false,
-                                    pass = PointerEventPass.Initial,
-                                )
-                                if (editing) return@awaitEachGesture
-                                val timeoutMs = viewConfiguration.longPressTimeoutMillis
-                                val slop = viewConfiguration.touchSlop
-                                val slopSquared = slop * slop
-                                val startPos = down.position
-                                val outcome = withTimeoutOrNull(timeoutMs) {
-                                    while (true) {
-                                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                                        val change = event.changes.firstOrNull { it.id == down.id }
-                                            ?: return@withTimeoutOrNull Unit
-                                        if (!change.pressed) return@withTimeoutOrNull Unit
-                                        val dx = change.position.x - startPos.x
-                                        val dy = change.position.y - startPos.y
-                                        if (dx * dx + dy * dy > slopSquared) {
-                                            return@withTimeoutOrNull Unit
-                                        }
-                                    }
-                                    @Suppress("UNREACHABLE_CODE")
-                                    Unit
-                                }
-                                if (outcome != null) return@awaitEachGesture
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                editing = true
-                                // Consume the rest of the gesture; the interop layer then sends
-                                // ACTION_CANCEL to the widget view instead of a click.
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    event.changes.forEach { it.consume() }
-                                    if (event.changes.none { it.pressed }) break
-                                }
-                            }
-                        },
+                        .captureLongPress(enabled = { !editing }) { editing = true },
                 ) {
                     HorizontalPager(
                         state = pagerState,
