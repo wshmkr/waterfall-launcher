@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,6 +25,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -45,6 +49,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.flow.debounce
 import net.wshmkr.launcher.ui.common.gesture.captureLongPress
+import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
@@ -108,22 +113,21 @@ fun WidgetStack(
             ) {
                 val stackWidth = maxWidth
                 val slotWidthDp = stackWidth.value.toInt()
+                val interactionSource = remember { MutableInteractionSource() }
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(
-                            if (editing) {
-                                Modifier.border(1.dp, Color.White.copy(alpha = 0.5f))
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .captureLongPress(enabled = { !editing }) { editing = true },
+                        .captureLongPress(
+                            enabled = { !editing },
+                            interactionSource = interactionSource,
+                        ) { editing = true },
                 ) {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(Corners.medium),
                         beyondViewportPageCount = 1,
                     ) { page ->
                         WidgetPage(
@@ -134,7 +138,20 @@ fun WidgetStack(
                         )
                     }
 
+                    // Ripple drawn on top of the (opaque) widgets.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(Corners.medium)
+                            .indication(interactionSource, ripple()),
+                    )
+
                     if (editing) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .border(1.dp, Color.White.copy(alpha = 0.5f), Corners.medium),
+                        )
                         // Focusable popup: outside taps and back press dismiss without passing through.
                         Popup(
                             onDismissRequest = { editing = false },
