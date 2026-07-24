@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.feature.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.launcherScrim
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
 @Composable
@@ -31,6 +33,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(launcherScrim())
             .padding(horizontal = dimensions.pagePadding)
     ) {
         Column(
@@ -44,6 +47,10 @@ fun SettingsScreen(
                 navController = navController,
                 viewModel = viewModel
             )
+
+            Spacer(modifier = Modifier.height(Spacing.xLarge))
+
+            AppearanceSettings(viewModel = viewModel)
 
             Spacer(modifier = Modifier.height(Spacing.xLarge))
 

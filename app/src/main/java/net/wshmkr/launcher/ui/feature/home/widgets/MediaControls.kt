@@ -28,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +45,7 @@ import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
 import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.ui.theme.Spacing
 
 @Composable
@@ -113,12 +113,13 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
         ownerPackage?.let { runCatching { context.packageManager.getApplicationIcon(it) }.getOrNull() }
     }
 
+    val colors = LocalWallpaperContentColors.current
     val dimensions = LocalDimensions.current
     Box(
         modifier = Modifier
             .size(dimensions.albumArtSize)
             .clip(Corners.small)
-            .background(Color.White.copy(alpha = 0.1f))
+            .background(colors.primary.copy(alpha = 0.1f))
     ) {
         Crossfade(targetState = displayedArt, label = "albumArt") { art ->
             if (art != null) {
@@ -143,7 +144,7 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
                         Icon(
                             painter = MusicNoteIcon(),
                             contentDescription = "No album art",
-                            tint = Color.White.copy(alpha = 0.3f),
+                            tint = colors.primary.copy(alpha = 0.3f),
                             modifier = Modifier.size(dimensions.iconLarge)
                         )
                     }
@@ -155,12 +156,13 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
 
 @Composable
 private fun MediaInfoDisplay(title: String?, artist: String?) {
+    val colors = LocalWallpaperContentColors.current
     val dimensions = LocalDimensions.current
     Text(
         text = title ?: "No title",
         fontSize = dimensions.fontMedium,
         fontWeight = FontWeight.Medium,
-        color = Color.White,
+        color = colors.primary,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Left,
@@ -172,7 +174,7 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
     Text(
         text = artist ?: "Unknown artist",
         fontSize = dimensions.fontSmall,
-        color = Color.White,
+        color = colors.secondary,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Left,
@@ -190,6 +192,7 @@ private fun MediaControlButtons(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
 ) {
+    val colors = LocalWallpaperContentColors.current
     val dimensions = LocalDimensions.current
     Row(
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -204,7 +207,7 @@ private fun MediaControlButtons(
             Icon(
                 painter = SkipPreviousIcon(),
                 contentDescription = "Previous",
-                tint = Color.White.copy(alpha = if (canSkipPrevious) 1f else 0.3f),
+                tint = colors.primary.copy(alpha = if (canSkipPrevious) 1f else 0.3f),
                 modifier = Modifier.size(dimensions.iconSmall)
             )
         }
@@ -223,7 +226,7 @@ private fun MediaControlButtons(
             Icon(
                 painter = SkipNextIcon(),
                 contentDescription = "Next",
-                tint = Color.White.copy(alpha = if (canSkipNext) 1f else 0.3f),
+                tint = colors.primary.copy(alpha = if (canSkipNext) 1f else 0.3f),
                 modifier = Modifier.size(dimensions.iconSmall)
             )
         }
@@ -237,6 +240,7 @@ private fun PlayPauseButton(
     onPlay: () -> Unit,
     onPause: () -> Unit,
 ) {
+    val colors = LocalWallpaperContentColors.current
     val dimensions = LocalDimensions.current
     // Flip the icon optimistically on tap; the real state change (or a timeout) settles it.
     var pendingPlaying by remember { mutableStateOf<Boolean?>(null) }
@@ -261,7 +265,7 @@ private fun PlayPauseButton(
         Icon(
             painter = if (shownPlaying) PauseIcon() else PlayArrowIcon(),
             contentDescription = if (shownPlaying) "Pause" else "Play",
-            tint = Color.White,
+            tint = colors.primary,
             modifier = Modifier.size(dimensions.iconLarge)
         )
     }

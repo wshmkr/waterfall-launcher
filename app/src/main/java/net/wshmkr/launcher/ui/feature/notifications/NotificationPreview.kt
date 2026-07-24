@@ -26,6 +26,7 @@ fun NotificationPreview(
     label: String,
     isHidden: Boolean,
     notifications: ImmutableList<NotificationInfo>,
+    contentColor: Color,
 ) {
     val notification = remember(notifications) { notifications.maxByOrNull { it.timestamp } }
 
@@ -33,6 +34,7 @@ fun NotificationPreview(
         label = label,
         isHidden = isHidden,
         notificationTimestamp = notification?.timestamp,
+        color = contentColor,
     )
 
     val previewFont = LocalDimensions.current.fontCaption
@@ -42,7 +44,7 @@ fun NotificationPreview(
             Text(
                 text = it,
                 fontSize = previewFont,
-                color = Color.White,
+                color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -54,7 +56,7 @@ fun NotificationPreview(
             Text(
                 text = it,
                 fontSize = previewFont,
-                color = Color.White,
+                color = contentColor,
                 maxLines = 2,
                 lineHeight = previewFont * 1.25f,
                 overflow = TextOverflow.Ellipsis,
@@ -65,16 +67,21 @@ fun NotificationPreview(
 
 // Leaf that owns the age tick — parent siblings don't recompose on time changes.
 @Composable
-private fun NotificationAppTitle(label: String, isHidden: Boolean, notificationTimestamp: Long?) {
+private fun NotificationAppTitle(
+    label: String,
+    isHidden: Boolean,
+    notificationTimestamp: Long?,
+    color: Color,
+) {
     if (notificationTimestamp == null) {
-        AppTitle(label, isHidden)
+        AppTitle(label, isHidden, color)
         return
     }
     val currentTime by rememberNotificationAgeTicker(notificationTimestamp)
     val display = remember(label, notificationTimestamp, currentTime) {
         "$label · ${timeSince(notificationTimestamp)}"
     }
-    AppTitle(display, isHidden)
+    AppTitle(display, isHidden, color)
 }
 
 // Cadence matches the age bucket — fresh notifications tick often, week-old ones rarely.

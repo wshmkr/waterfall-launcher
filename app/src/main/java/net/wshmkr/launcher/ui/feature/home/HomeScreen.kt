@@ -1,16 +1,12 @@
 package net.wshmkr.launcher.ui.feature.home
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
-import androidx.core.net.toUri
 import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
 import net.wshmkr.launcher.ui.common.components.AlphabetSlider
 import net.wshmkr.launcher.ui.common.components.AppLauncher
 import net.wshmkr.launcher.ui.feature.search.SearchOverlay
@@ -34,17 +30,6 @@ fun HomeScreen(
     val onSelectionCleared = remember(viewModel) { { viewModel.deselectLetter() } }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        val uriString = viewModel.backgroundUri
-        if (uriString != null) {
-            val backgroundUri = remember(uriString) { uriString.toUri() }
-            Image(
-                painter = rememberAsyncImagePainter(backgroundUri),
-                contentDescription = "Home screen background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
-
         if (viewModel.showSearchOverlay) {
             SearchOverlay(onDismiss = onSearchDismiss)
         } else {

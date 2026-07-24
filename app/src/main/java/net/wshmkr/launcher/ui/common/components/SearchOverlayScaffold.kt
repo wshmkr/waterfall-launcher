@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -35,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -47,8 +47,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
-
-private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
+import net.wshmkr.launcher.ui.theme.launcherScrim
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,7 +133,7 @@ fun SearchOverlayScaffold(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ScrimColor)
+            .background(launcherScrim())
     ) {
         Column(
             modifier = Modifier
@@ -162,7 +161,7 @@ fun SearchOverlayScaffold(
                             placeholder = {
                                 Text(
                                     text = placeholder,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         )

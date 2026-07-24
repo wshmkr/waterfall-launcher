@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,7 +18,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -84,7 +84,6 @@ fun WeatherLocationOverlay(
             MenuOption(
                 icon = LocationOnIcon(),
                 text = "Use device location",
-                color = Color.White,
                 onClick = onUseDeviceLocation
             )
             Spacer(modifier = Modifier.height(Spacing.small))
@@ -98,14 +97,14 @@ fun WeatherLocationOverlay(
                         .padding(vertical = Spacing.small),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color.White)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
         } else if (hasError) {
             item {
                 Text(
                     text = "Couldn't reach search. Check your connection.",
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = Spacing.medium)
                 )
                 Spacer(modifier = Modifier.height(Spacing.small))
@@ -114,7 +113,7 @@ fun WeatherLocationOverlay(
             item {
                 Text(
                     text = "No results",
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = Spacing.medium)
                 )
                 Spacer(modifier = Modifier.height(Spacing.small))
@@ -138,7 +137,6 @@ fun WeatherLocationOverlay(
             MenuOption(
                 text = result.name,
                 subtext = result.regionLabel,
-                color = Color.White,
                 onClick = onSelect
             )
             Spacer(modifier = Modifier.height(Spacing.small))

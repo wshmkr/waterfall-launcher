@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -67,7 +67,7 @@ fun WidgetListItem(
         modifier = modifier
             .alpha(animatedAlpha)
             .clip(Corners.small)
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.medium, vertical = 12.dp),
         horizontalAlignment = Alignment.Start
@@ -104,12 +104,12 @@ fun WidgetListItem(
                 )
             } else {
                 Box(
-                    modifier = previewModifier.background(Color.White.copy(alpha = 0.08f)),
+                    modifier = previewModifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Preview unavailable",
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = dimensions.fontCaption
                     )
                 }
@@ -120,7 +120,7 @@ fun WidgetListItem(
 
         Text(
             text = widgetOption.label,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = dimensions.fontMedium,
             fontWeight = FontWeight.Medium
         )

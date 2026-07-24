@@ -2,15 +2,12 @@ package net.wshmkr.launcher.ui.feature.settings
 
 import android.content.Context
 import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
@@ -34,7 +31,7 @@ fun HomeScreenSettings(
 ) {
     SettingsSectionHeader("Home Screen")
 
-    ChangeWallpaperRow(context = context, viewModel = viewModel)
+    ChangeWallpaperRow(context = context)
 
     Spacer(modifier = Modifier.height(Spacing.small))
     ClockRow(viewModel = viewModel)
@@ -57,30 +54,18 @@ fun HomeScreenSettings(
 }
 
 @Composable
-private fun ChangeWallpaperRow(
-    context: Context,
-    viewModel: SettingsViewModel,
-) {
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let {
-            context.contentResolver.takePersistableUriPermission(
-                it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
+private fun ChangeWallpaperRow(context: Context) {
+    val onClick = remember(context) {
+        {
+            context.startActivity(
+                Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Change wallpaper")
             )
-            viewModel.setBackgroundUri(it)
         }
     }
-    val onPick = remember(imagePickerLauncher) {
-        { imagePickerLauncher.launch(arrayOf("image/*")) }
-    }
-
     MenuOption(
         icon = WallpaperIcon(),
         text = "Change wallpaper",
-        color = Color.White,
-        onClick = onPick,
+        onClick = onClick,
     )
 }
 
@@ -91,7 +76,6 @@ private fun ClockRow(viewModel: SettingsViewModel) {
     ToggleMenuOption(
         icon = ScheduleIcon(),
         text = "Clock",
-        color = Color.White,
         checked = checked,
         onCheckedChange = onChange,
     )
@@ -105,7 +89,6 @@ private fun Use24HourRow(viewModel: SettingsViewModel) {
         text = "Time format",
         textSize = MenuOptionTextSize.Small,
         indent = 1,
-        color = Color.White,
         checked = checked,
         onCheckedChange = onChange,
         offText = "12",
@@ -120,7 +103,6 @@ private fun CalendarRow(viewModel: SettingsViewModel) {
     ToggleMenuOption(
         icon = CalendarTodayIcon(),
         text = "Calendar",
-        color = Color.White,
         checked = checked,
         onCheckedChange = onChange,
     )
@@ -134,7 +116,6 @@ private fun TodaysEventsRow(viewModel: SettingsViewModel) {
         text = "Today's events",
         textSize = MenuOptionTextSize.Small,
         indent = 1,
-        color = Color.White,
         checked = checked,
         onCheckedChange = onChange,
     )
@@ -147,7 +128,6 @@ private fun WeatherRow(viewModel: SettingsViewModel) {
     ToggleMenuOption(
         icon = PartlyCloudyDayIcon(),
         text = "Weather",
-        color = Color.White,
         checked = checked,
         onCheckedChange = onChange,
     )
@@ -161,7 +141,6 @@ private fun UseFahrenheitRow(viewModel: SettingsViewModel) {
         text = "Temperature unit",
         textSize = MenuOptionTextSize.Small,
         indent = 1,
-        color = Color.White,
         checked = checked,
         onCheckedChange = onChange,
         offText = "°C",
@@ -186,7 +165,6 @@ private fun WeatherLocationRow(
         subtext = label,
         textSize = MenuOptionTextSize.Small,
         indent = 1,
-        color = Color.White,
         onClick = onClick,
     )
 }
@@ -198,7 +176,6 @@ private fun MediaControlsRow(viewModel: SettingsViewModel) {
     ToggleMenuOption(
         icon = MusicVideoIcon(),
         text = "Media controls",
-        color = Color.White,
         checked = checked,
         onCheckedChange = onChange,
     )
@@ -212,7 +189,6 @@ private fun ManageWidgetsRow(navController: NavController) {
     MenuOption(
         icon = WidgetsIcon(),
         text = "Manage widgets",
-        color = Color.White,
         onClick = onClick,
     )
 }

@@ -47,9 +47,6 @@ class HomeViewModel @Inject constructor(
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
-    var backgroundUri by mutableStateOf<String?>(null)
-        private set
-
     var homeWidgetSettings by mutableStateOf(HomeWidgetSettings())
         private set
 
@@ -119,12 +116,6 @@ class HomeViewModel @Inject constructor(
                     }
                     previousProfiles = newProfiles
                 }
-        }
-
-        viewModelScope.launch {
-            userSettingsDataSource.backgroundUri.collect { uri ->
-                backgroundUri = uri
-            }
         }
 
         viewModelScope.launch {

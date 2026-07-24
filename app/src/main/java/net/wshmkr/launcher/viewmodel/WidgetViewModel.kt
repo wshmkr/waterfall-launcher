@@ -19,7 +19,6 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.WidgetRepository
@@ -30,7 +29,6 @@ import kotlinx.coroutines.withContext
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
     private val widgetRepository: WidgetRepository,
-    private val userSettingsDataSource: UserSettingsDataSource,
 ) : ViewModel() {
 
     var widgetIds by mutableStateOf<ImmutableList<Int>>(persistentListOf())
@@ -40,9 +38,6 @@ class WidgetViewModel @Inject constructor(
         private set
 
     var managedWidgets by mutableStateOf<ImmutableList<ManagedWidget>>(persistentListOf())
-        private set
-
-    var backgroundUri by mutableStateOf<String?>(null)
         private set
 
     val alphabetLetters: ImmutableList<String> by derivedStateOf {
@@ -80,12 +75,6 @@ class WidgetViewModel @Inject constructor(
 
         viewModelScope.launch {
             loadWidgetProviders()
-        }
-
-        viewModelScope.launch {
-            userSettingsDataSource.backgroundUri.collect {
-                backgroundUri = it
-            }
         }
     }
 

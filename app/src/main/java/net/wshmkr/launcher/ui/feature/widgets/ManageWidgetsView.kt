@@ -19,13 +19,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,7 +65,7 @@ fun ManageWidgetsView(
             text = "Manage Widgets",
             fontSize = dimensions.fontTitle,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(Spacing.medium))
@@ -130,7 +130,7 @@ private fun ManagedWidgetRow(
         ) {
             Text(
                 text = item.widgetName,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = dimensions.fontMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -139,7 +139,7 @@ private fun ManagedWidgetRow(
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = item.appName,
-                color = Color.White.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = dimensions.fontCaption,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -150,7 +150,7 @@ private fun ManagedWidgetRow(
             Icon(
                 painter = DeleteIcon(),
                 contentDescription = "Remove widget",
-                tint = Color.White
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -172,7 +172,7 @@ private fun AddWidgetRow(
         Icon(
             painter = AddIcon(),
             contentDescription = "Add widget",
-            tint = Color.White.copy(alpha = 0.7f),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(dimensions.iconSmall)
         )
 
@@ -180,7 +180,7 @@ private fun AddWidgetRow(
 
         Text(
             text = "Add Widget",
-            color = Color.White.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = dimensions.fontMedium,
             fontWeight = FontWeight.Medium
         )

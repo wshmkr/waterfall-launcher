@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ fun AppListItem(
     targetAlpha: Float = 1f,
     isActiveLetter: Boolean = false,
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -96,9 +98,9 @@ fun AppListItem(
             modifier = Modifier.weight(1f)
         ) {
             if (notifications.isNotEmpty()) {
-                NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
+                NotificationPreview(appInfo.label, appInfo.isHidden, notifications, contentColor)
             } else {
-                AppTitle(appInfo.label, appInfo.isHidden)
+                AppTitle(appInfo.label, appInfo.isHidden, contentColor)
             }
         }
     }
@@ -115,11 +117,11 @@ fun AppListItem(
 }
 
 @Composable
-fun AppTitle(title: String, isHidden: Boolean) {
+fun AppTitle(title: String, isHidden: Boolean, color: Color) {
     Text(
         text = title,
         fontSize = LocalDimensions.current.fontMedium,
-        color = Color.White,
+        color = color,
         maxLines = 1,
         fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,
         overflow = TextOverflow.Ellipsis,

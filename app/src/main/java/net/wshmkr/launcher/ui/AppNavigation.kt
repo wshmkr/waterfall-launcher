@@ -8,13 +8,11 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -32,10 +30,6 @@ sealed class Screen(val route: String) {
     data object WidgetList : Screen("widgets")
     data object WeatherLocation : Screen("weather_location")
 }
-
-private val NavRootModifier = Modifier
-    .fillMaxSize()
-    .background(Color.Black)
 
 private val NavFadeIn: EnterTransition = fadeIn(animationSpec = tween(500))
 private val NavFadeOut: ExitTransition = fadeOut(animationSpec = tween(500))
@@ -57,7 +51,7 @@ fun AppNavigation(
         }
     }
 
-    Box(modifier = NavRootModifier) {
+    Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = Screen.Home.route,

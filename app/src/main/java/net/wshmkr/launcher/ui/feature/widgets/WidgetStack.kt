@@ -27,10 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
@@ -131,9 +131,14 @@ private fun PageDashes(
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         val currentPage = pagerState.currentPage % pageCount
+        val dotColors = LocalWallpaperContentColors.current
         repeat(pageCount) { index ->
             val color =
-                if (index == currentPage) Color.White else Color.White.copy(alpha = 0.3f)
+                if (index == currentPage) {
+                    dotColors.primary
+                } else {
+                    dotColors.primary.copy(alpha = 0.3f)
+                }
             Box(
                 modifier = Modifier
                     .weight(1f)

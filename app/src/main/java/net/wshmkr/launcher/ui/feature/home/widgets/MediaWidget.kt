@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -127,7 +127,7 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
             .padding(horizontal = 12.dp)
             .clip(Corners.medium)
             .clickable { onRequestPermission() }
-            .background(Color.Black.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .fillMaxWidth()
             .padding(horizontal = Spacing.large),
         verticalAlignment = Alignment.CenterVertically,
@@ -135,14 +135,14 @@ private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
         Icon(
             painter = MusicNoteIcon(),
             contentDescription = "Media",
-            tint = Color.White.copy(alpha = 0.5f),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(dimensions.iconMedium)
         )
         Spacer(modifier = Modifier.height(Spacing.small))
         Text(
             text = "Enable notification access\nfor media controls",
             fontSize = dimensions.fontSmall,
-            color = Color.White.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )

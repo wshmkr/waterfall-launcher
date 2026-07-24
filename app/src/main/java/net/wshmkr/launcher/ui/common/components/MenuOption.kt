@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -40,12 +41,13 @@ fun MenuOption(
     text: String,
     subtext: String? = null,
     onClick: () -> Unit,
-    color: Color = Color.Black,
+    color: Color = Color.Unspecified,
     indent: Int = 0,
     endContent: (@Composable () -> Unit)? = null,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
 ) {
     val dimensions = LocalDimensions.current
+    val resolvedColor = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurface else color
     val fontSize = when (textSize) {
         MenuOptionTextSize.Small -> dimensions.fontMedium
         MenuOptionTextSize.Medium -> dimensions.fontLarge
@@ -76,7 +78,7 @@ fun MenuOption(
                 painter = icon,
                 contentDescription = text,
                 modifier = Modifier.size(dimensions.iconSmall),
-                tint = color,
+                tint = resolvedColor,
             )
             Spacer(modifier = Modifier.width(Spacing.large))
         }
@@ -86,13 +88,13 @@ fun MenuOption(
             Text(
                 text = text,
                 fontSize = fontSize,
-                color = color,
+                color = resolvedColor,
             )
             subtext?.let {
                 Text(
                     text = subtext,
                     fontSize = subtextSize,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -109,7 +111,7 @@ fun ToggleMenuOption(
     onCheckedChange: (Boolean) -> Unit,
     icon: Painter? = null,
     subtext: String? = null,
-    color: Color = Color.Black,
+    color: Color = Color.Unspecified,
     indent: Int = 0,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
     offText: String? = null,

@@ -33,6 +33,7 @@ import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -160,6 +161,7 @@ fun FavoritesView(
                     onToggleHidden = onToggleHidden,
                     onToggleSuggest = onToggleSuggest,
                     notifications = notifications,
+                    contentColor = LocalWallpaperContentColors.current.primary,
                 )
             }
         }

@@ -13,7 +13,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -99,7 +98,6 @@ fun PermissionSettings(
         ToggleMenuOption(
             text = "Accessibility service",
             subtext = "Used for notification drawer control",
-            color = Color.White,
             checked = isAccessibilityEnabled,
             onCheckedChange = openAccessibilitySettings,
         )
@@ -107,7 +105,6 @@ fun PermissionSettings(
         ToggleMenuOption(
             text = "Notification access",
             subtext = "Used for media controls",
-            color = Color.White,
             checked = isNotificationAccessEnabled,
             onCheckedChange = openNotificationListenerSettings,
         )
@@ -115,7 +112,6 @@ fun PermissionSettings(
         ToggleMenuOption(
             text = "Location access",
             subtext = "Used for weather",
-            color = Color.White,
             checked = isLocationEnabled,
             onCheckedChange = handleLocationClick,
         )
@@ -123,7 +119,6 @@ fun PermissionSettings(
         ToggleMenuOption(
             text = "Calendar access",
             subtext = "Used for today's events",
-            color = Color.White,
             checked = isCalendarEnabled,
             onCheckedChange = handleCalendarClick,
         )

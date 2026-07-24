@@ -41,6 +41,7 @@ import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.formatEventTime
 import net.wshmkr.launcher.util.isPermissionPermanentlyDenied
@@ -99,10 +100,11 @@ fun CalendarEventsWidget(
     val (eventList, hiddenCount) = events
     if (eventList.isEmpty()) return
 
+    val colors = LocalWallpaperContentColors.current
     val typography = MaterialTheme.typography
     val eventFont = LocalDimensions.current.fontSmall
-    val eventTextStyle = remember(typography, eventFont) {
-        typography.bodyMedium.copy(color = Color.White, fontSize = eventFont)
+    val eventTextStyle = remember(typography, eventFont, colors) {
+        typography.bodyMedium.copy(color = colors.primary, fontSize = eventFont)
     }
     val ongoingTextStyle = remember(eventTextStyle) {
         eventTextStyle.copy(fontWeight = FontWeight.Bold)
@@ -111,8 +113,8 @@ fun CalendarEventsWidget(
     val currentTime by rememberCurrentLocalTime()
     val nowMillis = remember(currentTime) { System.currentTimeMillis() }
 
-    val timeStyle = remember(eventTextStyle) {
-        eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
+    val timeStyle = remember(eventTextStyle, colors) {
+        eventTextStyle.copy(color = colors.secondary)
     }
     val ongoingTimeStyle = remember(timeStyle) {
         timeStyle.copy(fontWeight = FontWeight.Bold)
@@ -145,7 +147,7 @@ fun CalendarEventsWidget(
             EventRow(
                 title = event.title,
                 timeLabel = timeLabel,
-                dotColor = event.color?.let(::Color) ?: DEFAULT_DOT_COLOR,
+                dotColor = event.color?.let(::Color) ?: colors.secondary,
                 timeStyle = if (ongoing) ongoingTimeStyle else timeStyle,
                 timeColumnWidth = timeColumnWidth,
                 textStyle = if (ongoing || timeLabel == null) ongoingTextStyle else eventTextStyle,
@@ -170,6 +172,7 @@ fun CalendarEventsWidget(
 
 @Composable
 private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
+    val colors = LocalWallpaperContentColors.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -181,14 +184,14 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
         Icon(
             painter = CalendarTodayIcon(),
             contentDescription = null,
-            tint = Color.White,
+            tint = colors.primary,
             modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = "Show today's events",
             fontSize = LocalDimensions.current.fontSmall,
-            color = Color.White,
+            color = colors.primary,
         )
     }
 }
@@ -237,4 +240,3 @@ private fun EventRow(
 }
 
 private val DOT_SIZE = 6.dp
-private val DEFAULT_DOT_COLOR = Color.White.copy(alpha = 0.7f)

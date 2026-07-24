@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInParent
@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.ui.theme.alphabetBottomLift
 import net.wshmkr.launcher.ui.theme.alphabetHeight
 import net.wshmkr.launcher.viewmodel.AlphabetSliderViewModel
@@ -221,7 +222,11 @@ private fun AnimatedLettersList(
                     modifier = Modifier
                         .graphicsLayer { translationX = waveAnimatable.value.dp.toPx() },
                     fontSize = dimensions.fontMedium,
-                    color = if (letter == activeLetter) Color.Red else Color.White,
+                    color = if (letter == activeLetter) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        LocalWallpaperContentColors.current.primary
+                    },
                     textAlign = TextAlign.Center
                 )
             }
