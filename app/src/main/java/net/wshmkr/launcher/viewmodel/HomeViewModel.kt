@@ -34,6 +34,7 @@ import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
+import net.wshmkr.launcher.util.NotificationActionHelper
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
@@ -207,6 +208,10 @@ class HomeViewModel @Inject constructor(
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
         }
     }
+
+    fun dismissNotification(key: String) = NotificationActionHelper.dismiss(key)
+
+    fun clearNotifications(keys: List<String>) = NotificationActionHelper.dismissAll(keys)
 
     private fun buildListItems(apps: List<AppInfo>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()

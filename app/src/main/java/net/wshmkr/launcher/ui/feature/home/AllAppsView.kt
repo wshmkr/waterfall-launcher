@@ -85,6 +85,8 @@ fun AllAppsView(
     val onToggleFavorite = remember(viewModel) { viewModel::toggleFavorite }
     val onToggleHidden = remember(viewModel) { viewModel::toggleHidden }
     val onToggleSuggest = remember(viewModel) { viewModel::toggleSuggest }
+    val onDismissNotification = remember(viewModel) { viewModel::dismissNotification }
+    val onClearNotifications = remember(viewModel) { viewModel::clearNotifications }
     val onOpenSearch = remember(viewModel) { { viewModel.showSearchOverlay = true } }
 
     AnimatedVisibility(
@@ -133,6 +135,8 @@ fun AllAppsView(
                                 targetAlpha = alphaByLetter[item.sectionLetter] ?: 1f,
                                 isActiveLetter = item.sectionLetter == activeLetter,
                                 notifications = notifications,
+                                onDismissNotification = onDismissNotification,
+                                onClearAll = onClearNotifications,
                             )
                         }
                     }
