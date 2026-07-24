@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.alphabetBottomLift
+import net.wshmkr.launcher.ui.theme.alphabetHeight
 import net.wshmkr.launcher.viewmodel.AlphabetSliderViewModel
 import kotlin.math.roundToInt
 
@@ -144,18 +146,24 @@ private fun InvisibleLettersColumn(letters: List<String>) {
     val dimensions = LocalDimensions.current
     Column(
         modifier = Modifier
+            .height(alphabetHeight(letters.size))
             .width(dimensions.iconLarge)
             .graphicsLayer { alpha = 0f },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy((-6).dp),
     ) {
         letters.forEach { letter ->
-            Text(
-                text = letter,
-                modifier = Modifier.fillMaxWidth(),
-                fontSize = dimensions.fontMedium,
-                textAlign = TextAlign.Center,
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = letter,
+                    fontSize = dimensions.fontMedium,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -179,10 +187,10 @@ private fun AnimatedLettersList(
 
     Column(
         modifier = Modifier
+            .height(alphabetHeight(letters.size))
             .width(dimensions.iconLarge)
             .offset { IntOffset(0, animatedVerticalOffset.roundToInt()) },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy((-6).dp),
     ) {
         letters.forEachIndexed { index, letter ->
             // Per-letter Animatable driven off snapshotFlow so the wave settles smoothly on
@@ -198,19 +206,25 @@ private fun AnimatedLettersList(
                         }
                     }
             }
-            Text(
-                text = letter,
+            Box(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .graphicsLayer { translationX = waveAnimatable.value.dp.toPx() }
                     .onGloballyPositioned { coordinates ->
                         val bounds = coordinates.boundsInParent()
                         viewModel.updateLetterBounds(index, bounds.top, bounds.bottom)
                     },
-                fontSize = dimensions.fontMedium,
-                color = if (letter == activeLetter) Color.Red else Color.White,
-                textAlign = TextAlign.Center
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = letter,
+                    modifier = Modifier
+                        .graphicsLayer { translationX = waveAnimatable.value.dp.toPx() },
+                    fontSize = dimensions.fontMedium,
+                    color = if (letter == activeLetter) Color.Red else Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }

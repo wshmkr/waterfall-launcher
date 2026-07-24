@@ -18,7 +18,7 @@ import kotlin.math.abs
 import kotlin.math.sign
 import kotlin.math.sqrt
 
-val VERTICAL_SWIPE_THRESHOLD = 100.dp
+val VERTICAL_SWIPE_THRESHOLD = 180.dp
 
 fun verticalDragFeedback(dy: Float) = sqrt(abs(dy)) * sign(dy) * 5
 

@@ -127,6 +127,15 @@ private const val LARGE_WIDTH_THRESHOLD_DP = 430
 fun alphabetBottomLift(): Dp =
     LocalConfiguration.current.screenHeightDp.dp * ALPHABET_BOTTOM_LIFT_FRACTION
 
+// Height of the alphabet scrub column: up to half the screen, but capped so per-letter spacing
+// stays comfortable on tall phones instead of stretching with screen height.
+@Composable
+fun alphabetHeight(letterCount: Int): Dp {
+    val fractional = LocalConfiguration.current.screenHeightDp.dp * ALPHABET_HEIGHT_FRACTION
+    val pitchCapped = ALPHABET_MAX_LETTER_PITCH * letterCount
+    return minOf(fractional, pitchCapped)
+}
+
 @Composable
 fun searchButtonBottomInset(): Dp =
     LocalConfiguration.current.screenHeightDp.dp * SEARCH_BUTTON_BOTTOM_FRACTION
@@ -136,5 +145,7 @@ fun homeWidgetGap(): Dp =
     LocalConfiguration.current.screenHeightDp.dp * HOME_WIDGET_GAP_FRACTION
 
 private const val ALPHABET_BOTTOM_LIFT_FRACTION = 0.11f
+private const val ALPHABET_HEIGHT_FRACTION = 0.45f
+private val ALPHABET_MAX_LETTER_PITCH = 18.dp
 private const val SEARCH_BUTTON_BOTTOM_FRACTION = 0.055f
 private const val HOME_WIDGET_GAP_FRACTION = 0.018f
