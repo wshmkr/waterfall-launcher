@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
@@ -33,6 +32,7 @@ import net.wshmkr.launcher.ui.feature.home.widgets.CalendarEventsWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -103,7 +103,7 @@ fun FavoritesView(
                         onLongPress = { onLongPress() }
                     )
                 },
-            contentPadding = PaddingValues(horizontal = 32.dp),
+            contentPadding = PaddingValues(horizontal = LocalDimensions.current.gutterLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
             userScrollEnabled = false,
         ) {

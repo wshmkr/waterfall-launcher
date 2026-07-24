@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
@@ -24,6 +23,7 @@ import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.WallpaperIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
 @Composable
@@ -36,23 +36,23 @@ fun HomeScreenSettings(
 
     ChangeWallpaperRow(context = context, viewModel = viewModel)
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(Spacing.small))
     ClockRow(viewModel = viewModel)
     Use24HourRow(viewModel = viewModel)
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(Spacing.small))
     CalendarRow(viewModel = viewModel)
     TodaysEventsRow(viewModel = viewModel)
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(Spacing.small))
     WeatherRow(viewModel = viewModel)
     UseFahrenheitRow(viewModel = viewModel)
     WeatherLocationRow(navController = navController, viewModel = viewModel)
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(Spacing.small))
     MediaControlsRow(viewModel = viewModel)
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(Spacing.small))
     ManageWidgetsRow(navController = navController)
 }
 

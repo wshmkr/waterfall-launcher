@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -37,7 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.delay
 import net.wshmkr.launcher.model.MediaInfo
@@ -46,6 +44,9 @@ import net.wshmkr.launcher.ui.common.icons.PauseIcon
 import net.wshmkr.launcher.ui.common.icons.PlayArrowIcon
 import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
 import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
+import net.wshmkr.launcher.ui.theme.Corners
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 @Composable
 fun MediaControls(
@@ -59,13 +60,14 @@ fun MediaControls(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .padding(Spacing.small)
+            .clip(Corners.small)
             .clickable(onClick = onMediaAppClick)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = Spacing.small),
         verticalAlignment = Alignment.CenterVertically
     ) {
         MediaAlbumArt(
@@ -74,7 +76,7 @@ fun MediaControls(
             ownerPackage = mediaInfo.packageName,
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(dimensions.gutterSmall))
 
         Column(
             modifier = Modifier.weight(1f),
@@ -111,10 +113,11 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
         ownerPackage?.let { runCatching { context.packageManager.getApplicationIcon(it) }.getOrNull() }
     }
 
+    val dimensions = LocalDimensions.current
     Box(
         modifier = Modifier
-            .size(96.dp)
-            .clip(RoundedCornerShape(6.dp))
+            .size(dimensions.albumArtSize)
+            .clip(Corners.small)
             .background(Color.White.copy(alpha = 0.1f))
     ) {
         Crossfade(targetState = displayedArt, label = "albumArt") { art ->
@@ -134,14 +137,14 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
                         Image(
                             painter = rememberDrawablePainter(appIcon),
                             contentDescription = "App icon",
-                            modifier = Modifier.size(56.dp)
+                            modifier = Modifier.size(dimensions.mediaAppIconSize)
                         )
                     } else {
                         Icon(
                             painter = MusicNoteIcon(),
                             contentDescription = "No album art",
                             tint = Color.White.copy(alpha = 0.3f),
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(dimensions.iconLarge)
                         )
                     }
                 }
@@ -152,9 +155,10 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
 
 @Composable
 private fun MediaInfoDisplay(title: String?, artist: String?) {
+    val dimensions = LocalDimensions.current
     Text(
         text = title ?: "No title",
-        fontSize = 16.sp,
+        fontSize = dimensions.fontMedium,
         fontWeight = FontWeight.Medium,
         color = Color.White,
         maxLines = 1,
@@ -167,7 +171,7 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
 
     Text(
         text = artist ?: "Unknown artist",
-        fontSize = 14.sp,
+        fontSize = dimensions.fontSmall,
         color = Color.White,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -186,25 +190,24 @@ private fun MediaControlButtons(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Row(
-        horizontalArrangement = Arrangement.Start,
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
         IconButton(
             onClick = onPrevious,
             enabled = canSkipPrevious,
-            modifier = Modifier.size(36.dp)
+            modifier = Modifier.size(dimensions.iconMedium)
         ) {
             Icon(
                 painter = SkipPreviousIcon(),
                 contentDescription = "Previous",
                 tint = Color.White.copy(alpha = if (canSkipPrevious) 1f else 0.3f),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(dimensions.iconSmall)
             )
         }
-
-        Spacer(modifier = Modifier.width(24.dp))
 
         PlayPauseButton(
             isPlaying = isPlaying,
@@ -212,18 +215,16 @@ private fun MediaControlButtons(
             onPause = onPause,
         )
 
-        Spacer(modifier = Modifier.width(24.dp))
-
         IconButton(
             onClick = onNext,
             enabled = canSkipNext,
-            modifier = Modifier.size(36.dp)
+            modifier = Modifier.size(dimensions.iconMedium)
         ) {
             Icon(
                 painter = SkipNextIcon(),
                 contentDescription = "Next",
                 tint = Color.White.copy(alpha = if (canSkipNext) 1f else 0.3f),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(dimensions.iconSmall)
             )
         }
     }
@@ -236,6 +237,7 @@ private fun PlayPauseButton(
     onPlay: () -> Unit,
     onPause: () -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     // Flip the icon optimistically on tap; the real state change (or a timeout) settles it.
     var pendingPlaying by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(isPlaying) { pendingPlaying = null }
@@ -254,13 +256,13 @@ private fun PlayPauseButton(
             pendingPlaying = startPlaying
             if (startPlaying) onPlay() else onPause()
         },
-        modifier = Modifier.size(56.dp)
+        modifier = Modifier.size(dimensions.playButtonSize)
     ) {
         Icon(
             painter = if (shownPlaying) PauseIcon() else PlayArrowIcon(),
             contentDescription = if (shownPlaying) "Pause" else "Play",
             tint = Color.White,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(dimensions.iconLarge)
         )
     }
 }

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,8 +20,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import net.wshmkr.launcher.ui.theme.Corners
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.formatDate
 import net.wshmkr.launcher.util.formatTime
 import net.wshmkr.launcher.util.launchCalendarToday
@@ -43,6 +44,7 @@ fun ClockWidget(
     if (!showClock && !showCalendar && !showWeather) return
 
     val context = LocalContext.current
+    val dimensions = LocalDimensions.current
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -56,7 +58,7 @@ fun ClockWidget(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = Spacing.small)
                     .heightIn(min = 32.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -67,7 +69,7 @@ fun ClockWidget(
                 if (showCalendar && showWeather) {
                     Text(
                         text = "•",
-                        fontSize = 16.sp,
+                        fontSize = dimensions.fontMedium,
                         color = Color.White,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
@@ -76,11 +78,11 @@ fun ClockWidget(
                 if (showWeather) {
                     WeatherWidget(
                         Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(Corners.small)
                             .clickable {
                                 launchWeatherApp(context)
                             }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = Spacing.small, vertical = 4.dp),
                         useFahrenheit,
                         weatherLocationLatitude,
                         weatherLocationLongitude,
@@ -98,13 +100,13 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
     val display = remember(now, use24Hour) { formatTime(now, use24Hour) }
     Text(
         text = display,
-        fontSize = 48.sp,
+        fontSize = LocalDimensions.current.fontClock,
         color = Color.White,
         modifier = Modifier
             .padding(horizontal = 4.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = Spacing.small)
     )
 }
 
@@ -115,12 +117,12 @@ private fun ClockDateText(onClick: () -> Unit) {
     val display = remember(today) { formatDate(today) }
     Text(
         text = display,
-        fontSize = 16.sp,
+        fontSize = LocalDimensions.current.fontMedium,
         color = Color.White,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = Spacing.small, vertical = 4.dp)
     )
 }
 

@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 // Virtual page count for wrap-around scrolling; real page = virtual page % widget count.
@@ -126,8 +127,8 @@ private fun PageDashes(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = Spacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         val currentPage = pagerState.currentPage % pageCount
         repeat(pageCount) { index ->

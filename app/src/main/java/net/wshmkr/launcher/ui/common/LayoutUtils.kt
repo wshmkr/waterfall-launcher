@@ -18,5 +18,7 @@ fun calculateCenteredContentTopPadding(): Dp {
     } else {
         LocalConfiguration.current.screenHeightDp.dp
     }
-    return screenHeight * 0.25f
+    return screenHeight * CENTERED_CONTENT_TOP_FRACTION
 }
+
+private const val CENTERED_CONTENT_TOP_FRACTION = 0.25f

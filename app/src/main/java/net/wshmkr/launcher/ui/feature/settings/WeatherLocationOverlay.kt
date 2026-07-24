@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import net.wshmkr.launcher.ui.common.components.MenuOption
 import net.wshmkr.launcher.ui.common.components.SearchOverlayScaffold
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.WeatherHelper
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
@@ -79,14 +80,14 @@ fun WeatherLocationOverlay(
         onDismiss = onDismissRequest,
     ) {
         item {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.small))
             MenuOption(
                 icon = LocationOnIcon(),
                 text = "Use device location",
                 color = Color.White,
                 onClick = onUseDeviceLocation
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.small))
         }
 
         if (isLoading) {
@@ -94,7 +95,7 @@ fun WeatherLocationOverlay(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = Spacing.small),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = Color.White)
@@ -105,18 +106,18 @@ fun WeatherLocationOverlay(
                 Text(
                     text = "Couldn't reach search. Check your connection.",
                     color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = Spacing.medium)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.small))
             }
         } else if (query.isNotBlank() && results.isEmpty()) {
             item {
                 Text(
                     text = "No results",
                     color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = Spacing.medium)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.small))
             }
         }
 
@@ -140,7 +141,7 @@ fun WeatherLocationOverlay(
                 color = Color.White,
                 onClick = onSelect
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.small))
         }
     }
 }

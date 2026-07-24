@@ -8,12 +8,12 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.sp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.common.components.AppTitle
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.util.ONE_DAY
 import net.wshmkr.launcher.util.ONE_HOUR
 import net.wshmkr.launcher.util.ONE_MINUTE
@@ -35,11 +35,13 @@ fun NotificationPreview(
         notificationTimestamp = notification?.timestamp,
     )
 
+    val previewFont = LocalDimensions.current.fontCaption
+
     notification?.title?.let {
         if (it.isNotBlank()) {
             Text(
                 text = it,
-                fontSize = 12.sp,
+                fontSize = previewFont,
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -51,10 +53,10 @@ fun NotificationPreview(
         if (it.isNotBlank()) {
             Text(
                 text = it,
-                fontSize = 12.sp,
+                fontSize = previewFont,
                 color = Color.White,
                 maxLines = 2,
-                lineHeight = 15.sp,
+                lineHeight = previewFont * 1.25f,
                 overflow = TextOverflow.Ellipsis,
             )
         }

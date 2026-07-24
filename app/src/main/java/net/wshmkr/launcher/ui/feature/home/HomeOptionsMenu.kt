@@ -22,6 +22,7 @@ import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.SettingsIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
 
@@ -60,7 +61,7 @@ fun HomeOptionsMenu(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = Spacing.medium)
                 .padding(vertical = 18.dp)
         ) {
             ToggleMenuOption(

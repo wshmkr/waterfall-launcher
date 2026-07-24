@@ -11,12 +11,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlin.math.sqrt
 
-const val VERTICAL_SWIPE_SENSITIVITY = 500
+val VERTICAL_SWIPE_THRESHOLD = 180.dp
 
 fun verticalDragFeedback(dy: Float) = sqrt(abs(dy)) * sign(dy) * 5
 
@@ -25,6 +27,8 @@ fun Modifier.verticalSwipeDetection(
     onSwipeUp: (() -> Unit)? = null,
     onSwipeDown: (() -> Unit)? = null,
 ): Modifier {
+    val thresholdPx = with(LocalDensity.current) { VERTICAL_SWIPE_THRESHOLD.toPx() }
+
     val offsetY = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     val currentOnSwipeUp by rememberUpdatedState(onSwipeUp)
@@ -41,9 +45,9 @@ fun Modifier.verticalSwipeDetection(
                     totalDragY = 0f
                 },
                 onDragEnd = {
-                    if (totalDragY > VERTICAL_SWIPE_SENSITIVITY) {
+                    if (totalDragY > thresholdPx) {
                         currentOnSwipeDown?.invoke()
-                    } else if (totalDragY < -VERTICAL_SWIPE_SENSITIVITY) {
+                    } else if (totalDragY < -thresholdPx) {
                         currentOnSwipeUp?.invoke()
                     }
                     totalDragY = 0f

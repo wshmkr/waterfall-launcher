@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -27,6 +26,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import net.wshmkr.launcher.ui.theme.Corners
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 enum class MenuOptionTextSize {
     Small, Medium, Large
@@ -43,28 +45,29 @@ fun MenuOption(
     endContent: (@Composable () -> Unit)? = null,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
 ) {
+    val dimensions = LocalDimensions.current
     val fontSize = when (textSize) {
-        MenuOptionTextSize.Small -> 16.sp
-        MenuOptionTextSize.Medium -> 18.sp
-        MenuOptionTextSize.Large -> 20.sp
+        MenuOptionTextSize.Small -> dimensions.fontMedium
+        MenuOptionTextSize.Medium -> dimensions.fontLarge
+        MenuOptionTextSize.Large -> dimensions.fontXLarge
     }
 
     val subtextSize = when (textSize) {
-        MenuOptionTextSize.Small -> 14.sp
-        MenuOptionTextSize.Medium -> 16.sp
-        MenuOptionTextSize.Large -> 18.sp
+        MenuOptionTextSize.Small -> dimensions.fontSmall
+        MenuOptionTextSize.Medium -> dimensions.fontMedium
+        MenuOptionTextSize.Large -> dimensions.fontLarge
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .clickable(onClick = onClick)
             .padding(
-                start = 16.dp * (indent + 1),
-                end = 16.dp,
-                top = 8.dp,
-                bottom = 8.dp,
+                start = Spacing.medium * (indent + 1),
+                end = Spacing.medium,
+                top = Spacing.small,
+                bottom = Spacing.small,
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -72,10 +75,10 @@ fun MenuOption(
             Icon(
                 painter = icon,
                 contentDescription = text,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(dimensions.iconSmall),
                 tint = color,
             )
-            Spacer(modifier = Modifier.width(24.dp))
+            Spacer(modifier = Modifier.width(Spacing.large))
         }
         Column(
             modifier = Modifier.weight(1f)

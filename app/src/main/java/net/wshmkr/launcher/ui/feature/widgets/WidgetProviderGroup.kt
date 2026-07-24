@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,11 +26,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
 import net.wshmkr.launcher.ui.common.icons.ArrowDropUpIcon
+import net.wshmkr.launcher.ui.theme.Corners
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetAppListItem
 import net.wshmkr.launcher.viewmodel.WidgetOption
 
@@ -45,6 +46,7 @@ fun WidgetProviderGroup(
     onProviderClick: () -> Unit,
     onWidgetSelected: (WidgetOption) -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Column {
         WidgetProviderRow(
             provider = provider,
@@ -57,7 +59,11 @@ fun WidgetProviderGroup(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 32.dp, top = 8.dp)
+                    .padding(
+                        start = Spacing.large,
+                        end = dimensions.gutterLarge,
+                        top = Spacing.small,
+                    )
             ) {
                 provider.widgets.forEachIndexed { index, widgetOption ->
                     key(widgetOption.info.provider) {
@@ -72,7 +78,7 @@ fun WidgetProviderGroup(
                             onClick = onClick
                         )
                         if (index != provider.widgets.lastIndex) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Spacing.small))
                         }
                     }
                 }
@@ -95,14 +101,16 @@ private fun WidgetProviderRow(
         isActiveLetter = isActiveLetter,
         label = "widget_provider_alpha"
     )
+    val dimensions = LocalDimensions.current
+
     Row(
         modifier = modifier
-            .padding(start = 8.dp, end = 32.dp)
+            .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(Corners.medium)
             .background(Color.White.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Spacing.medium, vertical = 12.dp)
             .alpha(animatedAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -110,17 +118,17 @@ private fun WidgetProviderRow(
             painter = rememberDrawablePainter(drawable = provider.icon),
             contentDescription = provider.label,
             modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .size(dimensions.iconLarge)
+                .clip(Corners.small)
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(Spacing.medium))
         Column(
             modifier = Modifier.weight(1f),
         ) {
             Text(
                 text = provider.label,
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = dimensions.fontLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -129,13 +137,13 @@ private fun WidgetProviderRow(
             Text(
                 text = widgetCountLabel(provider.widgetCount),
                 color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp
+                fontSize = dimensions.fontCaption,
             )
         }
         Icon(
             painter = if (isExpanded) ArrowDropUpIcon() else ArrowDropDownIcon(),
             contentDescription = if (isExpanded) "Collapse Widgets" else "Expand Widgets",
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(dimensions.iconSmall),
             tint = Color.White
         )
     }

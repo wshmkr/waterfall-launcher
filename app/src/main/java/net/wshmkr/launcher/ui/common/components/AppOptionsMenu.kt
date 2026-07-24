@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.icons.CheckIcon
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
@@ -34,6 +33,8 @@ import net.wshmkr.launcher.ui.common.icons.StarFilledIcon
 import net.wshmkr.launcher.ui.common.icons.StarIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +47,7 @@ fun AppOptionsMenu(
 ) {
     val sheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
+    val dimensions = LocalDimensions.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -55,31 +57,31 @@ fun AppOptionsMenu(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = Spacing.medium)
                 .padding(top = 18.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(Spacing.small),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
                     painter = appInfo.icon,
                     contentDescription = appInfo.label,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(dimensions.iconLarge)
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(Spacing.medium))
                 Text(
                     text = appInfo.label,
-                    fontSize = 20.sp,
+                    fontSize = dimensions.fontXLarge,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                 )
             }
 
             HorizontalDivider(
-                modifier = Modifier.padding(vertical = 8.dp),
+                modifier = Modifier.padding(vertical = Spacing.small),
             )
 
             if (appInfo.isSuggested) {
@@ -161,9 +163,9 @@ fun AppOptionsMenu(
             if (appInfo.isSystemApp) {
                 Text(
                     text = "This is a system app and can't be uninstalled.",
-                    fontSize = 14.sp,
+                    fontSize = dimensions.fontSmall,
                     color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = Spacing.medium)
                 )
             } else {
                 MenuOption(
@@ -180,7 +182,7 @@ fun AppOptionsMenu(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Spacing.small))
         }
     }
 }

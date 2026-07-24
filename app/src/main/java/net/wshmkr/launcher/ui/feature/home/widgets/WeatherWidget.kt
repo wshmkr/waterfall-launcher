@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.android.gms.location.LocationServices
@@ -35,6 +34,7 @@ import kotlinx.coroutines.isActive
 import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
+import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.util.WeatherHelper
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
@@ -132,7 +132,7 @@ private fun WeatherContent(
 ) {
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
         color = Color.White,
-        fontSize = 16.sp
+        fontSize = LocalDimensions.current.fontMedium
     )
 
     when {

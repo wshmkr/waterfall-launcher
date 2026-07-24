@@ -35,10 +35,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
 
@@ -58,6 +61,9 @@ fun SearchOverlayScaffold(
         isVisible = true
     }
 
+    val dimensions = LocalDimensions.current
+    val thresholdPx = with(LocalDensity.current) { VERTICAL_SWIPE_THRESHOLD.toPx() }
+
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
     val coroutineScope = rememberCoroutineScope()
@@ -76,7 +82,7 @@ fun SearchOverlayScaffold(
         currentDismissOverlay()
     }
 
-    val nestedScrollConnection = remember {
+    val nestedScrollConnection = remember(thresholdPx) {
         object : NestedScrollConnection {
             var totalDragY = 0f
 
@@ -99,7 +105,7 @@ fun SearchOverlayScaffold(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (totalDragY > VERTICAL_SWIPE_SENSITIVITY) {
+                if (totalDragY > thresholdPx) {
                     currentDismissOverlay()
                 } else if (totalDragY > 0) {
                     offsetY.animateTo(
@@ -158,14 +164,14 @@ fun SearchOverlayScaffold(
                     },
                     expanded = false,
                     onExpandedChange = { },
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = Spacing.small)
                 ) { }
             }
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = dimensions.gutterSmall)
                     .nestedScroll(nestedScrollConnection)
             ) {
                 content()

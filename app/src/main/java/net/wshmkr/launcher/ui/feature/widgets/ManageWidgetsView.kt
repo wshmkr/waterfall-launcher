@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -30,13 +29,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.icons.AddIcon
 import net.wshmkr.launcher.ui.common.icons.DeleteIcon
+import net.wshmkr.launcher.ui.theme.Corners
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.ManagedWidget
 
 @Composable
@@ -47,21 +48,27 @@ fun ManageWidgetsView(
 ) {
     val listState = rememberLazyListState()
     val topPadding = calculateCenteredContentTopPadding()
+    val dimensions = LocalDimensions.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .padding(start = 24.dp, end = 24.dp, top = topPadding, bottom = 16.dp)
+            .padding(
+                start = dimensions.pagePadding,
+                end = dimensions.pagePadding,
+                top = topPadding,
+                bottom = Spacing.medium,
+            )
     ) {
         Text(
             text = "Manage Widgets",
-            fontSize = 24.sp,
+            fontSize = dimensions.fontTitle,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Spacing.medium))
 
         Box(
             modifier = Modifier
@@ -70,7 +77,7 @@ fun ManageWidgetsView(
         ) {
             LazyColumn(
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(Spacing.small),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(
@@ -101,21 +108,22 @@ private fun ManagedWidgetRow(
     item: ManagedWidget,
     onDelete: () -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.medium, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
             painter = rememberDrawablePainter(drawable = item.appIcon),
             contentDescription = item.appName,
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(dimensions.iconMedium)
+                .clip(Corners.medium)
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(Spacing.medium))
 
         Column(
             modifier = Modifier.weight(1f)
@@ -123,7 +131,7 @@ private fun ManagedWidgetRow(
             Text(
                 text = item.widgetName,
                 color = Color.White,
-                fontSize = 16.sp,
+                fontSize = dimensions.fontMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -132,7 +140,7 @@ private fun ManagedWidgetRow(
             Text(
                 text = item.appName,
                 color = Color.White.copy(alpha = 0.7f),
-                fontSize = 13.sp,
+                fontSize = dimensions.fontCaption,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -152,27 +160,28 @@ private fun ManagedWidgetRow(
 private fun AddWidgetRow(
     onClick: () -> Unit,
 ) {
+    val dimensions = LocalDimensions.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(Corners.large)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = Spacing.medium, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             painter = AddIcon(),
             contentDescription = "Add widget",
             tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(dimensions.iconSmall)
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(Spacing.medium))
 
         Text(
             text = "Add Widget",
             color = Color.White.copy(alpha = 0.7f),
-            fontSize = 16.sp,
+            fontSize = dimensions.fontMedium,
             fontWeight = FontWeight.Medium
         )
     }

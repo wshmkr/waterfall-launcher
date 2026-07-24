@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,12 +26,14 @@ import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
+import net.wshmkr.launcher.ui.theme.Corners
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -66,11 +67,13 @@ fun AppListItem(
         }
     }
 
+    val dimensions = LocalDimensions.current
+
     Row(
         modifier = Modifier
-            .padding(start = 8.dp, end = 32.dp)
+            .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(Corners.small)
             .combinedClickable(
                 onClick = { onClick(appInfo) },
                 onLongClick = {
@@ -78,17 +81,17 @@ fun AppListItem(
                     showBottomSheet = true
                 }
             )
-            .padding(8.dp)
+            .padding(Spacing.small)
             .alpha(animatedAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
             painter = appInfo.icon,
             contentDescription = appInfo.label,
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(dimensions.iconLarge),
             colorFilter = inactiveFilter
         )
-        Spacer(modifier = Modifier.width(20.dp))
+        Spacer(modifier = Modifier.width(dimensions.iconGap))
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -115,7 +118,7 @@ fun AppListItem(
 fun AppTitle(title: String, isHidden: Boolean) {
     Text(
         text = title,
-        fontSize = 16.sp,
+        fontSize = LocalDimensions.current.fontMedium,
         color = Color.White,
         maxLines = 1,
         fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,
