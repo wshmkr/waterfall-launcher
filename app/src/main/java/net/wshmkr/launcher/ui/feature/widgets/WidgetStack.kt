@@ -38,7 +38,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.flow.debounce
 import net.wshmkr.launcher.ui.common.gesture.captureLongPress
 import net.wshmkr.launcher.ui.theme.Spacing
@@ -70,6 +74,9 @@ fun WidgetStack(
     }
     var editing by remember { mutableStateOf(false) }
 
+    // Exit edit mode when the launcher loses foreground.
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { editing = false }
+
     val heightDp = viewModel.stackHeightDp
 
     // Recreate the pager whenever the list changes so virtual pages always map
@@ -99,7 +106,8 @@ fun WidgetStack(
                     .fillMaxWidth()
                     .height(heightDp.dp),
             ) {
-                val slotWidthDp = maxWidth.value.toInt()
+                val stackWidth = maxWidth
+                val slotWidthDp = stackWidth.value.toInt()
 
                 Box(
                     modifier = Modifier
@@ -127,19 +135,27 @@ fun WidgetStack(
                     }
 
                     if (editing) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = { editing = false })
-                                },
-                        )
-                        DragHandle(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            currentHeightDp = { viewModel.stackHeightDp },
-                            onResize = viewModel::previewStackHeight,
-                            onResizeEnd = viewModel::commitStackHeight,
-                        )
+                        // Focusable popup: outside taps and back press dismiss without passing through.
+                        Popup(
+                            onDismissRequest = { editing = false },
+                            properties = PopupProperties(focusable = true),
+                        ) {
+                            Box(modifier = Modifier.size(stackWidth, heightDp.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(onTap = { editing = false })
+                                        },
+                                )
+                                DragHandle(
+                                    modifier = Modifier.align(Alignment.BottomCenter),
+                                    currentHeightDp = { viewModel.stackHeightDp },
+                                    onResize = viewModel::previewStackHeight,
+                                    onResizeEnd = viewModel::commitStackHeight,
+                                )
+                            }
+                        }
                     }
                 }
             }
