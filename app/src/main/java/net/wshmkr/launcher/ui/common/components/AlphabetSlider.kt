@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -175,7 +176,8 @@ private fun AnimatedLettersList(
     viewModel: AlphabetSliderViewModel,
 ) {
     val sliderVerticalOffsetPx = viewModel.sliderVerticalOffset
-    val isReleasing = viewModel.touchYPosition == null
+    // Derived so the column recomposes only when the drag starts/stops, not on every touch-move.
+    val isReleasing by remember { derivedStateOf { viewModel.touchYPosition == null } }
 
     val animatedVerticalOffset by animateFloatAsState(
         targetValue = sliderVerticalOffsetPx,
