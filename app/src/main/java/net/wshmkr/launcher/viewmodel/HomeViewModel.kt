@@ -37,6 +37,7 @@ import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.repository.NotificationMap
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
+import net.wshmkr.launcher.util.NotificationActionHelper
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
@@ -199,6 +200,10 @@ class HomeViewModel @Inject constructor(
         notificationsByApp.computeIfAbsent(packageName to user) {
             mutableStateOf(notificationRepository.notifications.value.notificationsFor(packageName, user))
         }
+
+    fun dismissNotification(key: String) = NotificationActionHelper.dismiss(key)
+
+    fun clearNotifications(keys: List<String>) = NotificationActionHelper.dismissAll(keys)
 
     private fun buildListItems(apps: List<AppInfo>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()

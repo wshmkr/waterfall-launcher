@@ -2,6 +2,7 @@ package net.wshmkr.launcher.ui.common.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +31,8 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
+import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
+import net.wshmkr.launcher.ui.feature.notifications.NotificationPanel
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
@@ -45,8 +50,11 @@ fun AppListItem(
     onLongClick: ((AppInfo) -> Unit)? = null,
     alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
+    onDismissNotification: (String) -> Unit = {},
+    onClearAll: (List<String>) -> Unit = {},
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showNotificationPanel by remember { mutableStateOf(false) }
 
     val inactiveFilter = remember(isActiveUser) {
         if (!isActiveUser) {
@@ -92,6 +100,18 @@ fun AppListItem(
                 AppTitle(appInfo.label, appInfo.isHidden)
             }
         }
+        if (notifications.isNotEmpty()) {
+            Icon(
+                painter = ArrowDropDownIcon(),
+                contentDescription = "Show notifications",
+                tint = Color.White,
+                modifier = Modifier
+                    .size(dimensions.iconMedium)
+                    .clip(CircleShape)
+                    .clickable { showNotificationPanel = true }
+                    .padding(Spacing.small),
+            )
+        }
     }
 
     if (showBottomSheet) {
@@ -101,6 +121,16 @@ fun AppListItem(
             onToggleFavorite = onToggleFavorite,
             onToggleHidden = onToggleHidden,
             onToggleSuggest = onToggleSuggest,
+        )
+    }
+
+    if (showNotificationPanel) {
+        NotificationPanel(
+            appInfo = appInfo,
+            notifications = notifications,
+            onDismissNotification = onDismissNotification,
+            onClearAll = onClearAll,
+            onDismiss = { showNotificationPanel = false },
         )
     }
 }

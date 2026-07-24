@@ -26,6 +26,11 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     companion object {
         private val _isConnected = MutableStateFlow(false)
         val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+
+        @Volatile
+        private var instance: LauncherNotificationListenerService? = null
+
+        fun getInstance(): LauncherNotificationListenerService? = instance
     }
 
     @Inject
@@ -38,6 +43,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        instance = this
         _isConnected.value = true
         val active = activeNotifications?.toList() ?: emptyList()
         notificationRepository.reset(
@@ -56,10 +62,31 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        if (instance == this) instance = null
         _isConnected.value = false
         notificationRepository.clearAll()
         playingKeys.clear()
         mediaRankingRepository.resetNotifications(emptyMap())
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) instance = null
+    }
+
+    fun dismiss(key: String) {
+        try {
+            cancelNotification(key)
+        } catch (ignored: Exception) {
+        }
+    }
+
+    fun dismissAll(keys: List<String>) {
+        if (keys.isEmpty()) return
+        try {
+            cancelNotifications(keys.toTypedArray())
+        } catch (ignored: Exception) {
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -122,15 +149,17 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             action.title?.toString()?.let { title ->
                 NotificationAction(
                     title = title,
-                    actionIntent = action.actionIntent
+                    actionIntent = action.actionIntent,
+                    remoteInputs = action.remoteInputs?.toList()?.toImmutableList() ?: persistentListOf(),
                 )
             }
         }?.toImmutableList() ?: persistentListOf()
-        
+
         val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
         val isMedia = sbn.mediaSessionToken() != null
 
         return NotificationInfo(
+            key = sbn.key,
             id = sbn.id,
             packageName = sbn.packageName,
             userHandle = sbn.user,

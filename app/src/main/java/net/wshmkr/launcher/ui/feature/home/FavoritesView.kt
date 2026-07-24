@@ -78,6 +78,8 @@ fun FavoritesView(
     val onToggleFavorite = remember(viewModel) { viewModel::toggleFavorite }
     val onToggleHidden = remember(viewModel) { viewModel::toggleHidden }
     val onToggleSuggest = remember(viewModel) { viewModel::toggleSuggest }
+    val onDismissNotification = remember(viewModel) { viewModel::dismissNotification }
+    val onClearNotifications = remember(viewModel) { viewModel::clearNotifications }
 
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
@@ -162,6 +164,8 @@ fun FavoritesView(
                     onToggleHidden = onToggleHidden,
                     onToggleSuggest = onToggleSuggest,
                     notifications = notifications,
+                    onDismissNotification = onDismissNotification,
+                    onClearAll = onClearNotifications,
                 )
             }
         }
