@@ -5,6 +5,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,6 +49,8 @@ fun FavoritesView(
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
     val showHomeOptionsMenu = remember { mutableStateOf(false) }
+    val widgetInteractionSource = remember { MutableInteractionSource() }
+    val widgetPressed = widgetInteractionSource.collectIsPressedAsState()
     val activeProfiles by viewModel.activeProfiles.collectAsState()
     val favoritesVisible by viewModel.favoritesVisible.collectAsState()
     val favoriteApps = viewModel.favoriteApps
@@ -68,7 +72,9 @@ fun FavoritesView(
             }
         }
     }
-    val onLongPress = remember(showHomeOptionsMenu) { { showHomeOptionsMenu.value = true } }
+    val onLongPress = remember(showHomeOptionsMenu, widgetPressed) {
+        { if (!widgetPressed.value) showHomeOptionsMenu.value = true }
+    }
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -132,7 +138,7 @@ fun FavoritesView(
             }
 
             item(key = "widget_stack") {
-                WidgetStack()
+                WidgetStack(interactionSource = widgetInteractionSource)
             }
 
             item(key = "media_widget") {

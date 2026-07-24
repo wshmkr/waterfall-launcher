@@ -69,6 +69,7 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
 @Composable
 fun WidgetStack(
     viewModel: WidgetViewModel = hiltViewModel(),
+    interactionSource: MutableInteractionSource? = null,
 ) {
     val widgetIds = viewModel.widgetIds
 
@@ -112,14 +113,15 @@ fun WidgetStack(
             ) {
                 val stackWidth = maxWidth
                 val slotWidthDp = stackWidth.value.toInt()
-                val interactionSource = remember { MutableInteractionSource() }
+                val fallbackSource = remember { MutableInteractionSource() }
+                val pressSource = interactionSource ?: fallbackSource
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .captureLongPress(
                             enabled = { !editing },
-                            interactionSource = interactionSource,
+                            interactionSource = pressSource,
                         ) { editing = true },
                 ) {
                     HorizontalPager(
@@ -142,7 +144,7 @@ fun WidgetStack(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(Corners.medium)
-                            .indication(interactionSource, ripple()),
+                            .indication(pressSource, ripple()),
                     )
 
                     if (editing) {

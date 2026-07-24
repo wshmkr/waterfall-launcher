@@ -62,12 +62,13 @@ fun Modifier.captureLongPress(
             }
 
             onLongPress()
-            endPress(cancelled = false)
-            // Consume until every pointer lifts so the gesture never completes below.
+            // Hold the press until the finger lifts, so a concurrent ancestor long-press can
+            // observe it and defer; also consumes so the gesture never completes below.
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Initial)
                 event.changes.forEach { it.consume() }
                 if (event.changes.none { it.pressed }) break
             }
+            endPress(cancelled = false)
         }
     }
