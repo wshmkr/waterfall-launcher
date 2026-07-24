@@ -12,7 +12,6 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -40,8 +40,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
@@ -49,6 +52,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import net.wshmkr.launcher.ui.common.gesture.captureLongPress
 import net.wshmkr.launcher.ui.theme.Corners
@@ -68,10 +72,17 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     return mid - mid % pageCount + initialIndex
 }
 
+/** Reads the height in the layout phase so a resize drag never recomposes the stack. */
+private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
+    layout { measurable, constraints ->
+        val height = heightDp().roundToPx()
+        val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+
 @Composable
 fun WidgetStack(
     viewModel: WidgetViewModel = hiltViewModel(),
-    interactionSource: MutableInteractionSource? = null,
     onTouchedChange: (Boolean) -> Unit = {},
 ) {
     val widgetIds = viewModel.widgetIds
@@ -82,6 +93,9 @@ fun WidgetStack(
         mutableIntStateOf(widgetIds[viewModel.initialPageIndex.coerceIn(0, widgetIds.lastIndex)])
     }
     var editing by remember { mutableStateOf(false) }
+    val pressSource = remember { MutableInteractionSource() }
+    var stackWidthPx by remember { mutableIntStateOf(0) }
+    val stackWidth = with(LocalDensity.current) { stackWidthPx.toDp() }
 
     // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
@@ -110,87 +124,67 @@ fun WidgetStack(
             }
         }
 
-        val fallbackSource = remember { MutableInteractionSource() }
-        val pressSource = interactionSource ?: fallbackSource
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(Corners.medium)
                 .captureLongPress(
-                    enabled = { !editing },
                     interactionSource = pressSource,
+                    enabled = { !editing },
                     onTouchedChange = onTouchedChange,
                 ) { editing = true },
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                BoxWithConstraints(
+            Column {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        // Read in the layout phase so a resize drag never recomposes the pager.
-                        .layout { measurable, constraints ->
-                            val height = viewModel.stackHeightDp.dp.roundToPx()
-                            val placeable = measurable.measure(
-                                constraints.copy(minHeight = height, maxHeight = height),
-                            )
-                            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-                        },
+                        .stackHeight { viewModel.stackHeightDp.dp }
+                        .onSizeChanged { stackWidthPx = it.width },
                 ) {
-                    val stackWidth = maxWidth
-                    val slotWidthDp = stackWidth.value.toInt()
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(Corners.medium),
+                        beyondViewportPageCount = 1,
+                    ) { page ->
+                        WidgetPage(
+                            widgetId = widgetIds[page % pageCount],
+                            widthDp = stackWidth.value.toInt(),
+                            viewModel = viewModel,
+                        )
+                    }
 
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        HorizontalPager(
-                            state = pagerState,
+                    if (editing) {
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(Corners.medium),
-                            beyondViewportPageCount = 1,
-                        ) { page ->
-                            WidgetPage(
-                                widgetId = widgetIds[page % pageCount],
-                                widthDp = slotWidthDp,
-                                viewModel = viewModel,
-                            )
-                        }
-
-                        if (editing) {
+                                .border(1.dp, Color.White.copy(alpha = 0.5f), Corners.medium),
+                        )
+                        Popup(
+                            onDismissRequest = { editing = false },
+                            properties = PopupProperties(focusable = true),
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .border(1.dp, Color.White.copy(alpha = 0.5f), Corners.medium),
-                            )
-                            Popup(
-                                onDismissRequest = { editing = false },
-                                properties = PopupProperties(focusable = true),
+                                    .width(stackWidth)
+                                    .stackHeight {
+                                        viewModel.stackHeightDp.dp + DRAG_HANDLE_HEIGHT / 2
+                                    },
                             ) {
                                 Box(
-                                    modifier = Modifier.layout { measurable, _ ->
-                                        val width = stackWidth.roundToPx()
-                                        val height = (
-                                            viewModel.stackHeightDp.dp + DRAG_HANDLE_HEIGHT / 2
-                                            ).roundToPx()
-                                        val placeable =
-                                            measurable.measure(Constraints.fixed(width, height))
-                                        layout(width, height) { placeable.place(0, 0) }
-                                    },
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .pointerInput(Unit) {
-                                                detectTapGestures(onTap = { editing = false })
-                                            },
-                                    )
-                                    DragHandle(
-                                        modifier = Modifier.align(Alignment.BottomCenter),
-                                        currentHeightDp = { viewModel.stackHeightDp },
-                                        onResize = viewModel::previewStackHeight,
-                                        onResizeEnd = viewModel::commitStackHeight,
-                                    )
-                                }
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(onTap = { editing = false })
+                                        },
+                                )
+                                DragHandle(
+                                    modifier = Modifier.align(Alignment.BottomCenter),
+                                    currentHeightDp = { viewModel.stackHeightDp },
+                                    onResize = viewModel::previewStackHeight,
+                                    onResizeEnd = viewModel::commitStackHeight,
+                                )
                             }
                         }
                     }
@@ -201,6 +195,7 @@ fun WidgetStack(
                 }
             }
 
+            // A sibling, so the ripple draws above the opaque interop widget views.
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -210,6 +205,7 @@ fun WidgetStack(
     }
 }
 
+@OptIn(FlowPreview::class)
 @Composable
 private fun WidgetPage(
     widgetId: Int,
@@ -230,9 +226,7 @@ private fun WidgetPage(
         if (widthDp <= 0) return@LaunchedEffect
         snapshotFlow { viewModel.stackHeightDp }
             .debounce(WIDGET_SIZE_DEBOUNCE_MS)
-            .collect { h ->
-                if (h > 0) viewModel.applyWidgetSize(widgetView, widgetId, widthDp, h)
-            }
+            .collect { viewModel.applyWidgetSize(widgetView, widthDp, it) }
     }
 
     AndroidView(
@@ -255,14 +249,8 @@ private fun DragHandle(
                 var pxAccum = 0f
                 detectVerticalDragGestures(
                     onDragStart = { pxAccum = 0f },
-                    onDragEnd = {
-                        pxAccum = 0f
-                        onResizeEnd()
-                    },
-                    onDragCancel = {
-                        pxAccum = 0f
-                        onResizeEnd()
-                    },
+                    onDragEnd = onResizeEnd,
+                    onDragCancel = onResizeEnd,
                 ) { _, dragAmount ->
                     pxAccum += dragAmount
                     val dpDelta = pxAccum.toDp().value.toInt()

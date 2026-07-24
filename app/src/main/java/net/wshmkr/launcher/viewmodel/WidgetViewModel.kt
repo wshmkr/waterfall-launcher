@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
+import android.util.SizeF
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -67,16 +68,16 @@ class WidgetViewModel @Inject constructor(
     var stackHeightDp by mutableIntStateOf(WidgetDataSource.DEFAULT_STACK_HEIGHT_DP)
         private set
 
+    private var persistedStackHeightDp = WidgetDataSource.DEFAULT_STACK_HEIGHT_DP
+
     private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
     val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
-
-    // Last size pushed per widget, so redundant page compositions don't re-notify providers.
-    private val appliedWidgetSizes = mutableMapOf<Int, Pair<Int, Int>>()
 
     init {
         viewModelScope.launch {
             // Before the first widget renders, so the stack never draws at the default and jumps.
             stackHeightDp = widgetRepository.getStackHeightDp()
+            persistedStackHeightDp = stackHeightDp
             val lastWidgetId = widgetRepository.getLastPageWidgetId()
             widgetRepository.loadWidgets()
             widgetRepository.widgetIds.collect {
@@ -115,22 +116,19 @@ class WidgetViewModel @Inject constructor(
 
     fun commitStackHeight() {
         val current = stackHeightDp
+        if (current == persistedStackHeightDp) return
+        persistedStackHeightDp = current
         viewModelScope.launch {
             widgetRepository.setStackHeightDp(current)
         }
     }
 
-    fun applyWidgetSize(
-        widgetView: AppWidgetHostView,
-        widgetId: Int,
-        widthDp: Int,
-        heightDp: Int,
-    ) {
-        val size = widthDp to heightDp
-        if (appliedWidgetSizes[widgetId] == size) return
-        appliedWidgetSizes[widgetId] = size
+    fun applyWidgetSize(widgetView: AppWidgetHostView, widthDp: Int, heightDp: Int) {
         // The host view variant also writes OPTION_APPWIDGET_SIZES and accounts for its padding.
-        widgetView.updateAppWidgetSize(Bundle(), widthDp, heightDp, widthDp, heightDp)
+        widgetView.updateAppWidgetSize(
+            Bundle(),
+            listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())),
+        )
     }
 
     fun scrollToLetter(letter: String) {
@@ -153,7 +151,6 @@ class WidgetViewModel @Inject constructor(
     }
 
     fun removeWidget(widgetId: Int) {
-        appliedWidgetSizes.remove(widgetId)
         viewModelScope.launch {
             widgetRepository.removeWidget(widgetId)
         }
