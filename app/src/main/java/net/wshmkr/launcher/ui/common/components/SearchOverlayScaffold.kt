@@ -8,8 +8,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -169,6 +174,9 @@ fun SearchOverlayScaffold(
             }
             LazyColumn(
                 state = listState,
+                contentPadding = WindowInsets.ime
+                    .union(WindowInsets.navigationBars)
+                    .asPaddingValues(),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = dimensions.gutterSmall)
