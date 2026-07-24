@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -20,6 +21,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
+import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.WidgetRepository
@@ -61,6 +63,9 @@ class WidgetViewModel @Inject constructor(
 
     private var initialPageRestored = false
 
+    var stackHeightDp by mutableIntStateOf(WidgetDataSource.DEFAULT_STACK_HEIGHT_DP)
+        private set
+
     private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
     val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
 
@@ -87,12 +92,36 @@ class WidgetViewModel @Inject constructor(
                 backgroundUri = it
             }
         }
+
+        viewModelScope.launch {
+            stackHeightDp = widgetRepository.getStackHeightDp()
+        }
     }
 
     fun updateCurrentPage(widgetId: Int) {
         viewModelScope.launch {
             widgetRepository.setLastPageWidgetId(widgetId)
         }
+    }
+
+    fun previewStackHeight(dp: Int) {
+        val clamped = dp.coerceIn(
+            WidgetDataSource.MIN_STACK_HEIGHT_DP,
+            WidgetDataSource.MAX_STACK_HEIGHT_DP,
+        )
+        if (clamped == stackHeightDp) return
+        stackHeightDp = clamped
+    }
+
+    fun commitStackHeight() {
+        val current = stackHeightDp
+        viewModelScope.launch {
+            widgetRepository.setStackHeightDp(current)
+        }
+    }
+
+    fun applyWidgetSize(widgetId: Int, widthDp: Int, heightDp: Int) {
+        widgetRepository.updateAppWidgetSize(widgetId, widthDp, heightDp)
     }
 
     fun scrollToLetter(letter: String) {

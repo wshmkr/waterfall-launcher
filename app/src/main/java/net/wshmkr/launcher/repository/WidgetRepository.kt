@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Bundle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,16 @@ class WidgetRepository @Inject constructor(
     suspend fun getLastPageWidgetId(): Int? = widgetDataSource.getLastPageWidgetId()
 
     suspend fun setLastPageWidgetId(widgetId: Int) = widgetDataSource.setLastPageWidgetId(widgetId)
+
+    suspend fun getStackHeightDp(): Int = widgetDataSource.getStackHeightDp()
+
+    suspend fun setStackHeightDp(dp: Int) = widgetDataSource.setStackHeightDp(dp)
+
+    fun updateAppWidgetSize(widgetId: Int, widthDp: Int, heightDp: Int) {
+        appWidgetManager.updateAppWidgetSize(
+            widgetId, Bundle(), widthDp, heightDp, widthDp, heightDp,
+        )
+    }
 
     suspend fun loadWidgets() = updateIdsOnIo { }
 
