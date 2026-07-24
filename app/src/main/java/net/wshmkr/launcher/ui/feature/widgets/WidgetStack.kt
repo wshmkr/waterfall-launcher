@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -103,89 +102,88 @@ fun WidgetStack(
             }
         }
 
-        Column(
-            modifier = Modifier.fillMaxWidth(),
+        val fallbackSource = remember { MutableInteractionSource() }
+        val pressSource = interactionSource ?: fallbackSource
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(Corners.medium)
+                .captureLongPress(
+                    enabled = { !editing },
+                    interactionSource = pressSource,
+                ) { editing = true },
         ) {
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(heightDp.dp),
-            ) {
-                val stackWidth = maxWidth
-                val slotWidthDp = stackWidth.value.toInt()
-                val fallbackSource = remember { MutableInteractionSource() }
-                val pressSource = interactionSource ?: fallbackSource
-
-                Box(
+            Column(modifier = Modifier.fillMaxWidth()) {
+                BoxWithConstraints(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .captureLongPress(
-                            enabled = { !editing },
-                            interactionSource = pressSource,
-                        ) { editing = true },
+                        .fillMaxWidth()
+                        .height(heightDp.dp),
                 ) {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(Corners.medium),
-                        beyondViewportPageCount = 1,
-                    ) { page ->
-                        WidgetPage(
-                            widgetId = widgetIds[page % pageCount],
-                            widthDp = slotWidthDp,
-                            heightDp = heightDp,
-                            viewModel = viewModel,
-                        )
-                    }
+                    val stackWidth = maxWidth
+                    val slotWidthDp = stackWidth.value.toInt()
 
-                    // Ripple drawn on top of the (opaque) widgets.
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(Corners.medium)
-                            .indication(pressSource, ripple()),
-                    )
-
-                    if (editing) {
-                        Box(
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        HorizontalPager(
+                            state = pagerState,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .border(1.dp, Color.White.copy(alpha = 0.5f), Corners.medium),
-                        )
-                        // Focusable popup: outside taps and back press dismiss without passing through.
-                        Popup(
-                            onDismissRequest = { editing = false },
-                            properties = PopupProperties(focusable = true),
-                        ) {
-                            // Extend below the stack so the handle can straddle the bottom border.
+                                .clip(Corners.medium),
+                            beyondViewportPageCount = 1,
+                        ) { page ->
+                            WidgetPage(
+                                widgetId = widgetIds[page % pageCount],
+                                widthDp = slotWidthDp,
+                                heightDp = heightDp,
+                                viewModel = viewModel,
+                            )
+                        }
+
+                        if (editing) {
                             Box(
                                 modifier = Modifier
-                                    .size(stackWidth, heightDp.dp + DRAG_HANDLE_HEIGHT / 2),
+                                    .fillMaxSize()
+                                    .border(1.dp, Color.White.copy(alpha = 0.5f), Corners.medium),
+                            )
+                            Popup(
+                                onDismissRequest = { editing = false },
+                                properties = PopupProperties(focusable = true),
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .pointerInput(Unit) {
-                                            detectTapGestures(onTap = { editing = false })
-                                        },
-                                )
-                                DragHandle(
-                                    modifier = Modifier.align(Alignment.BottomCenter),
-                                    currentHeightDp = { viewModel.stackHeightDp },
-                                    onResize = viewModel::previewStackHeight,
-                                    onResizeEnd = viewModel::commitStackHeight,
-                                )
+                                        .size(stackWidth, heightDp.dp + DRAG_HANDLE_HEIGHT / 2),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .pointerInput(Unit) {
+                                                detectTapGestures(onTap = { editing = false })
+                                            },
+                                    )
+                                    DragHandle(
+                                        modifier = Modifier.align(Alignment.BottomCenter),
+                                        currentHeightDp = { viewModel.stackHeightDp },
+                                        onResize = viewModel::previewStackHeight,
+                                        onResizeEnd = viewModel::commitStackHeight,
+                                    )
+                                }
                             }
                         }
                     }
                 }
+
+                if (pageCount > 1) {
+                    PageDashes(pagerState = pagerState, pageCount = pageCount)
+                }
             }
 
-            if (pageCount > 1) {
-                Spacer(modifier = Modifier.height(4.dp))
-                PageDashes(pagerState = pagerState, pageCount = pageCount)
-            }
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .indication(pressSource, ripple()),
+            )
         }
     }
 }
@@ -273,7 +271,7 @@ private fun PageDashes(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.medium),
+            .padding(horizontal = Spacing.medium, vertical = Spacing.small),
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         val currentPage = pagerState.currentPage % pageCount
