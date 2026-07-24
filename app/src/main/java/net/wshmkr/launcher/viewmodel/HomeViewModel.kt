@@ -57,6 +57,12 @@ class HomeViewModel @Inject constructor(
         buildListItems(appsRepository.allApps.filter { !it.isHidden })
     }
 
+    private val letterPositions by derivedStateOf {
+        allAppsListItems.asSequence()
+            .filterIsInstance<AppListItem.SectionHeader>()
+            .associate { it.letter to it.position }
+    }
+
     val alphabetLetters by derivedStateOf {
         buildList {
             add(STAR_SYMBOL)
@@ -152,12 +158,7 @@ class HomeViewModel @Inject constructor(
 
     fun getScrollPosition(letter: String): Int? {
         if (letter == STAR_SYMBOL) return null
-
-        val header = allAppsListItems.find {
-            it is AppListItem.SectionHeader && it.letter == letter
-        } as? AppListItem.SectionHeader
-
-        return header?.position
+        return letterPositions[letter]
     }
 
     fun deselectLetter() {
