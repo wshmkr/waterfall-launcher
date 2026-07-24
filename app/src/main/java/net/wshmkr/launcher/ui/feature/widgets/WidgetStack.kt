@@ -56,9 +56,9 @@ import net.wshmkr.launcher.viewmodel.WidgetViewModel
 // Virtual page count for wrap-around scrolling; real page = virtual page % widget count.
 private const val LOOP_PAGE_COUNT = Int.MAX_VALUE
 
-// Debounce for AppWidgetManager.updateAppWidgetOptions during drag; per-frame IPC
-// storms caused ANRs on some devices.
 private const val WIDGET_SIZE_DEBOUNCE_MS = 80L
+
+private val DRAG_HANDLE_HEIGHT = 32.dp
 
 private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     if (pageCount <= 1) return initialIndex
@@ -79,7 +79,6 @@ fun WidgetStack(
     }
     var editing by remember { mutableStateOf(false) }
 
-    // Exit edit mode when the launcher loses foreground.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { editing = false }
 
     val heightDp = viewModel.stackHeightDp
@@ -157,7 +156,11 @@ fun WidgetStack(
                             onDismissRequest = { editing = false },
                             properties = PopupProperties(focusable = true),
                         ) {
-                            Box(modifier = Modifier.size(stackWidth, heightDp.dp)) {
+                            // Extend below the stack so the handle can straddle the bottom border.
+                            Box(
+                                modifier = Modifier
+                                    .size(stackWidth, heightDp.dp + DRAG_HANDLE_HEIGHT / 2),
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -228,7 +231,7 @@ private fun DragHandle(
 ) {
     Box(
         modifier = modifier
-            .size(width = 120.dp, height = 32.dp)
+            .size(width = 120.dp, height = DRAG_HANDLE_HEIGHT)
             .pointerInput(Unit) {
                 var pxAccum = 0f
                 detectVerticalDragGestures(
@@ -253,8 +256,7 @@ private fun DragHandle(
     ) {
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 6.dp)
+                .align(Alignment.Center)
                 .size(width = 56.dp, height = 5.dp)
                 .background(Color.White.copy(alpha = 0.9f), CircleShape),
         )
