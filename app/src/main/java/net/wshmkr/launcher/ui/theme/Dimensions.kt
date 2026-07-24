@@ -9,7 +9,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Spacing steps that don't scale with screen width; use instead of raw dp for padding and gaps.
 object Spacing {
     val small = 8.dp
     val medium = 16.dp
@@ -17,7 +16,6 @@ object Spacing {
     val xLarge = 32.dp
 }
 
-// Standard corner roundings; use instead of raw RoundedCornerShape. Fully-round stays CircleShape.
 object Corners {
     val small = RoundedCornerShape(8.dp)
     val medium = RoundedCornerShape(12.dp)
@@ -135,8 +133,7 @@ private const val LARGE_WIDTH_THRESHOLD_DP = 430
 fun alphabetBottomLift(): Dp =
     LocalConfiguration.current.screenHeightDp.dp * ALPHABET_BOTTOM_LIFT_FRACTION
 
-// Height of the alphabet scrub column: up to half the screen, but capped so per-letter spacing
-// stays comfortable on tall phones instead of stretching with screen height.
+// Alphabet scrub column height, capped so per-letter spacing doesn't stretch on tall phones.
 @Composable
 fun alphabetHeight(letterCount: Int): Dp {
     val fractional = LocalConfiguration.current.screenHeightDp.dp * ALPHABET_HEIGHT_FRACTION

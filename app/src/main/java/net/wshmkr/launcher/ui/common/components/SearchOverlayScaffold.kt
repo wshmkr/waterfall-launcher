@@ -82,7 +82,7 @@ fun SearchOverlayScaffold(
         currentDismissOverlay()
     }
 
-    val nestedScrollConnection = remember {
+    val nestedScrollConnection = remember(thresholdPx) {
         object : NestedScrollConnection {
             var totalDragY = 0f
 
