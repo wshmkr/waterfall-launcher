@@ -221,8 +221,7 @@ private fun AnimatedLettersList(
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                // Unbounded height: the letter slot is shorter than the text line, and a bounded
-                // measure would clip the glyph.
+                // The letter slot is shorter than the text line, so a bounded measure clips the glyph.
                 Text(
                     text = letter,
                     modifier = Modifier
