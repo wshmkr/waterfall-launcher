@@ -1,10 +1,12 @@
 package net.wshmkr.launcher.ui.theme
 
 import android.app.Activity
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -23,13 +25,23 @@ fun WaterfallLauncherTheme(
         ThemeMode.LIGHT -> false
         ThemeMode.DARK -> true
     }
-    val colorScheme = rememberWallpaperColorScheme(wallpaperColors, paletteStyle, darkTheme)
+    val colorScheme = rememberSheetSurfaceScheme(
+        rememberWallpaperColorScheme(wallpaperColors, paletteStyle, darkTheme)
+    )
     SystemBarIcons(darkTheme)
     val widthDp = LocalConfiguration.current.screenWidthDp
     CompositionLocalProvider(LocalDimensions provides dimensionsFor(widthDp)) {
         MaterialTheme(colorScheme = colorScheme) { content() }
     }
 }
+
+// Material floats dialogs and the search bar a tone above the option sheets. Flattening the role
+// keeps every surface that sits over the wallpaper on one tone, with no per-component overrides.
+@Composable
+private fun rememberSheetSurfaceScheme(colorScheme: ColorScheme): ColorScheme =
+    remember(colorScheme) {
+        colorScheme.copy(surfaceContainerHigh = colorScheme.surfaceContainerLow)
+    }
 
 // The bars sit over the wallpaper, so their icons follow the same lightness as app content.
 @Composable

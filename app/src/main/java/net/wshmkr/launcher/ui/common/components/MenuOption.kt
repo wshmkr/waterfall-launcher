@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.accentSwitchColors
 
 enum class MenuOptionTextSize {
     Small, Medium, Large
@@ -144,7 +145,7 @@ fun MenuOptionSwitch(
     offText: String? = null,
     onText: String? = null,
 ) {
-    val defaultColors = SwitchDefaults.colors()
+    val labeled = offText != null && onText != null
     Switch(
         modifier = modifier
             .scale(0.8f)
@@ -162,19 +163,11 @@ fun MenuOptionSwitch(
                         fontSize = 13.sp,
                         lineHeight = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
         },
-        colors = if (offText != null && onText != null) {
-            SwitchDefaults.colors(
-                uncheckedThumbColor = defaultColors.checkedThumbColor,
-                uncheckedTrackColor = defaultColors.checkedTrackColor,
-                uncheckedBorderColor = defaultColors.checkedBorderColor,
-            )
-        } else {
-            defaultColors
-        }
+        colors = accentSwitchColors(alwaysFilled = labeled),
     )
 }

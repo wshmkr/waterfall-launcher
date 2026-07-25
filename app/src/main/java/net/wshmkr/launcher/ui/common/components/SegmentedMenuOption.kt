@@ -14,8 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.accentSegmentedColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,23 +29,21 @@ fun <T> SegmentedMenuOption(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
+    val dimensions = LocalDimensions.current
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = Spacing.medium, vertical = Spacing.small),
     ) {
-        Text(text = text, fontSize = 18.sp, color = color)
-        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = text, fontSize = dimensions.fontLarge, color = color)
+        Spacer(modifier = Modifier.height(Spacing.small))
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, option ->
                 SegmentedButton(
                     selected = option == selected,
                     onClick = { onSelect(option) },
                     shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    ),
+                    colors = accentSegmentedColors(),
                     // The filled container marks the selection; dropping the icon fits longer labels.
                     icon = {},
                 ) {

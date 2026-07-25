@@ -10,4 +10,4 @@ import androidx.compose.ui.graphics.Color
 @ReadOnlyComposable
 fun launcherScrim(): Color = MaterialTheme.colorScheme.surface.copy(alpha = SCRIM_ALPHA)
 
-private const val SCRIM_ALPHA = 0.8f
+private const val SCRIM_ALPHA = 0.6f

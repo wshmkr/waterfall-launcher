@@ -1,11 +1,10 @@
 package net.wshmkr.launcher.ui.common.dialog
 
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import net.wshmkr.launcher.ui.common.components.AccentButton
 
 @Composable
 fun PermissionSettingsDialog(
@@ -16,7 +15,6 @@ fun PermissionSettingsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         title = {
             Text(text = title)
         },
@@ -24,7 +22,7 @@ fun PermissionSettingsDialog(
             Text(text = message)
         },
         confirmButton = {
-            Button(onClick = onOpenSettings) {
+            AccentButton(onClick = onOpenSettings) {
                 Text("Open Settings")
             }
         },
