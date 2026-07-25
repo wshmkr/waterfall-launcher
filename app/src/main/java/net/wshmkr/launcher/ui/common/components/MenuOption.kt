@@ -162,7 +162,7 @@ fun MenuOptionSwitch(
                         fontSize = 13.sp,
                         lineHeight = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = defaultColors.checkedIconColor
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }

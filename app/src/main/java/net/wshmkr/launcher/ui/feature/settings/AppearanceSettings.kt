@@ -46,7 +46,7 @@ private fun themeModeLabel(mode: ThemeMode): String = when (mode) {
 }
 
 private fun paletteStyleLabel(style: PaletteStyle): String = when (style) {
-    PaletteStyle.FIDELITY -> "Fidelity"
+    PaletteStyle.VIBRANT -> "Vibrant"
     PaletteStyle.EXPRESSIVE -> "Expressive"
     PaletteStyle.NEUTRAL -> "Neutral"
 }

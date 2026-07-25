@@ -59,7 +59,7 @@ private fun systemColorScheme(context: Context, darkTheme: Boolean): ColorScheme
     if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
 
 private fun PaletteStyle.toKolorStyle(): KolorPaletteStyle = when (this) {
-    PaletteStyle.FIDELITY -> KolorPaletteStyle.Fidelity
+    PaletteStyle.VIBRANT -> KolorPaletteStyle.Vibrant
     PaletteStyle.EXPRESSIVE -> KolorPaletteStyle.Expressive
     PaletteStyle.NEUTRAL -> KolorPaletteStyle.Neutral
 }

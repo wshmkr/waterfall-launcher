@@ -14,7 +14,7 @@ import net.wshmkr.launcher.model.ThemeMode
 @Composable
 fun WaterfallLauncherTheme(
     themeMode: ThemeMode = ThemeMode.AUTO,
-    paletteStyle: PaletteStyle = PaletteStyle.FIDELITY,
+    paletteStyle: PaletteStyle = PaletteStyle.VIBRANT,
     content: @Composable () -> Unit,
 ) {
     val wallpaperColors = rememberSystemWallpaperColors()

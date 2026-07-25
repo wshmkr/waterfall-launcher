@@ -5,9 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
-// Translucent scrim tinted from the dynamic color scheme, letting the wallpaper show through.
+// Softened outline so separators read as hairlines rather than lit edges.
 @Composable
 @ReadOnlyComposable
-fun launcherScrim(): Color = MaterialTheme.colorScheme.surface.copy(alpha = SCRIM_ALPHA)
+fun sheetDivider(): Color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = DIVIDER_ALPHA)
 
-private const val SCRIM_ALPHA = 0.8f
+private const val DIVIDER_ALPHA = 0.5f

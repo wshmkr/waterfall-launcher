@@ -50,7 +50,7 @@ class SettingsViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> =
         userSettingsDataSource.themeMode.stateIn(viewModelScope, subscribed, ThemeMode.AUTO)
     val paletteStyle: StateFlow<PaletteStyle> =
-        userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.FIDELITY)
+        userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.VIBRANT)
 
     init {
         viewModelScope.launch {

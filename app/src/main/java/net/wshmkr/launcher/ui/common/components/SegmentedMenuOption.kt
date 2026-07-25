@@ -41,6 +41,10 @@ fun <T> SegmentedMenuOption(
                     selected = option == selected,
                     onClick = { onSelect(option) },
                     shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
                     // The filled container marks the selection; dropping the icon fits longer labels.
                     icon = {},
                 ) {

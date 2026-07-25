@@ -35,6 +35,7 @@ import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.sheetDivider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +83,7 @@ fun AppOptionsMenu(
 
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = Spacing.small),
+                color = sheetDivider(),
             )
 
             if (appInfo.isSuggested) {

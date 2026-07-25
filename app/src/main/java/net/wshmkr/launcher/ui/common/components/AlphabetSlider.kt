@@ -224,7 +224,7 @@ private fun AnimatedLettersList(
                         .graphicsLayer { translationX = waveAnimatable.value.dp.toPx() },
                     fontSize = dimensions.fontMedium,
                     color = if (letter == activeLetter) {
-                        MaterialTheme.colorScheme.primary
+                        MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
