@@ -151,6 +151,7 @@ fun AllAppsView(
                 FloatingActionButton(
                     onClick = onOpenSearch,
                     shape = CircleShape,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
                     Icon(painter = SearchIcon(), contentDescription = "Search")
                 }

@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -47,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.invertedSearchBarColors
+import net.wshmkr.launcher.ui.theme.invertedSearchInputColors
 import net.wshmkr.launcher.ui.theme.launcherScrim
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,17 +159,14 @@ fun SearchOverlayScaffold(
                             expanded = false,
                             onExpandedChange = { },
                             modifier = Modifier.focusRequester(focusRequester),
-                            placeholder = {
-                                Text(
-                                    text = placeholder,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
+                            placeholder = { Text(text = placeholder) },
+                            colors = invertedSearchInputColors(),
                         )
                     },
                     expanded = false,
                     onExpandedChange = { },
-                    modifier = Modifier.padding(vertical = Spacing.small)
+                    modifier = Modifier.padding(vertical = Spacing.small),
+                    colors = invertedSearchBarColors(),
                 ) { }
             }
             LazyColumn(
