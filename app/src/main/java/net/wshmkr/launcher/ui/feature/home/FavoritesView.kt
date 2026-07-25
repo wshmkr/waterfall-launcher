@@ -47,6 +47,8 @@ fun FavoritesView(
     var showAccessibilityDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
     val showHomeOptionsMenu = remember { mutableStateOf(false) }
+    val widgetTouched = remember { mutableStateOf(false) }
+    val onWidgetTouchedChange = remember { { touched: Boolean -> widgetTouched.value = touched } }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
     val favoritesVisible by viewModel.favoritesVisible.collectAsState()
     val favoriteApps = viewModel.favoriteApps
@@ -68,7 +70,7 @@ fun FavoritesView(
             }
         }
     }
-    val onLongPress = remember(showHomeOptionsMenu) { { showHomeOptionsMenu.value = true } }
+    val onLongPress = remember { { if (!widgetTouched.value) showHomeOptionsMenu.value = true } }
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -132,7 +134,7 @@ fun FavoritesView(
             }
 
             item(key = "widget_stack") {
-                WidgetStack()
+                WidgetStack(onTouchedChange = onWidgetTouchedChange)
             }
 
             item(key = "media_widget") {

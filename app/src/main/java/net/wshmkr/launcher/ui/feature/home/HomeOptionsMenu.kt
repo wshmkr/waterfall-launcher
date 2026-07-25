@@ -23,6 +23,7 @@ import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.SettingsIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.sheetDivider
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
 
@@ -100,6 +101,7 @@ fun HomeOptionsMenu(
 
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 12.dp),
+                color = sheetDivider(),
             )
 
             MenuOption(

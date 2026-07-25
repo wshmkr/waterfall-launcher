@@ -17,15 +17,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInParent
@@ -175,7 +176,8 @@ private fun AnimatedLettersList(
     viewModel: AlphabetSliderViewModel,
 ) {
     val sliderVerticalOffsetPx = viewModel.sliderVerticalOffset
-    val isReleasing = viewModel.touchYPosition == null
+    // Derived so the column recomposes only when the drag starts/stops, not on every touch-move.
+    val isReleasing by remember { derivedStateOf { viewModel.touchYPosition == null } }
 
     val animatedVerticalOffset by animateFloatAsState(
         targetValue = sliderVerticalOffsetPx,
@@ -221,7 +223,11 @@ private fun AnimatedLettersList(
                     modifier = Modifier
                         .graphicsLayer { translationX = waveAnimatable.value.dp.toPx() },
                     fontSize = dimensions.fontMedium,
-                    color = if (letter == activeLetter) Color.Red else Color.White,
+                    color = if (letter == activeLetter) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
                     textAlign = TextAlign.Center
                 )
             }

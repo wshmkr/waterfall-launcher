@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -113,12 +113,13 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
         ownerPackage?.let { runCatching { context.packageManager.getApplicationIcon(it) }.getOrNull() }
     }
 
+    val colors = MaterialTheme.colorScheme
     val dimensions = LocalDimensions.current
     Box(
         modifier = Modifier
             .size(dimensions.albumArtSize)
             .clip(Corners.small)
-            .background(Color.White.copy(alpha = 0.1f))
+            .background(colors.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Crossfade(targetState = displayedArt, label = "albumArt") { art ->
             if (art != null) {
@@ -143,7 +144,7 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
                         Icon(
                             painter = MusicNoteIcon(),
                             contentDescription = "No album art",
-                            tint = Color.White.copy(alpha = 0.3f),
+                            tint = colors.outline,
                             modifier = Modifier.size(dimensions.iconLarge)
                         )
                     }
@@ -155,12 +156,12 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
 
 @Composable
 private fun MediaInfoDisplay(title: String?, artist: String?) {
+    val colors = MaterialTheme.colorScheme
     val dimensions = LocalDimensions.current
     Text(
         text = title ?: "No title",
         fontSize = dimensions.fontMedium,
         fontWeight = FontWeight.Medium,
-        color = Color.White,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Left,
@@ -172,7 +173,7 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
     Text(
         text = artist ?: "Unknown artist",
         fontSize = dimensions.fontSmall,
-        color = Color.White,
+        color = colors.onSurfaceVariant,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Left,
@@ -204,7 +205,6 @@ private fun MediaControlButtons(
             Icon(
                 painter = SkipPreviousIcon(),
                 contentDescription = "Previous",
-                tint = Color.White.copy(alpha = if (canSkipPrevious) 1f else 0.3f),
                 modifier = Modifier.size(dimensions.iconSmall)
             )
         }
@@ -223,7 +223,6 @@ private fun MediaControlButtons(
             Icon(
                 painter = SkipNextIcon(),
                 contentDescription = "Next",
-                tint = Color.White.copy(alpha = if (canSkipNext) 1f else 0.3f),
                 modifier = Modifier.size(dimensions.iconSmall)
             )
         }
@@ -261,7 +260,6 @@ private fun PlayPauseButton(
         Icon(
             painter = if (shownPlaying) PauseIcon() else PlayArrowIcon(),
             contentDescription = if (shownPlaying) "Pause" else "Play",
-            tint = Color.White,
             modifier = Modifier.size(dimensions.iconLarge)
         )
     }

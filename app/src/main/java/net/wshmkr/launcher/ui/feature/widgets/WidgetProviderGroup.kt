@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -20,7 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -97,7 +97,7 @@ private fun WidgetProviderRow(
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
             .clip(Corners.medium)
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.medium, vertical = 12.dp)
             .graphicsLayer { this.alpha = alphaProvider() },
@@ -116,7 +116,6 @@ private fun WidgetProviderRow(
         ) {
             Text(
                 text = provider.label,
-                color = Color.White,
                 fontSize = dimensions.fontLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -125,7 +124,7 @@ private fun WidgetProviderRow(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = widgetCountLabel(provider.widgetCount),
-                color = Color.White.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = dimensions.fontCaption,
             )
         }
@@ -133,7 +132,6 @@ private fun WidgetProviderRow(
             painter = if (isExpanded) ArrowDropUpIcon() else ArrowDropDownIcon(),
             contentDescription = if (isExpanded) "Collapse Widgets" else "Expand Widgets",
             modifier = Modifier.size(dimensions.iconSmall),
-            tint = Color.White
         )
     }
 }

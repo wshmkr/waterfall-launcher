@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +41,7 @@ import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
 import net.wshmkr.launcher.ui.common.icons.SearchIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.launcherScrim
 import net.wshmkr.launcher.ui.theme.searchButtonBottomInset
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
@@ -89,7 +90,7 @@ fun AllAppsView(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0f, 0f, 0f, 0.5f))
+                .background(launcherScrim())
         ) {
             LazyColumn(
                 state = listState,
@@ -143,7 +144,8 @@ fun AllAppsView(
             ) {
                 FloatingActionButton(
                     onClick = onOpenSearch,
-                    shape = CircleShape
+                    shape = CircleShape,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                 ) {
                     Icon(painter = SearchIcon(), contentDescription = "Search")
                 }
@@ -164,6 +166,5 @@ fun SectionHeaderItem(letter: String, alphaProvider: () -> Float) {
             .graphicsLayer { this.alpha = alphaProvider() },
         fontSize = dimensions.fontXLarge,
         fontWeight = FontWeight.Bold,
-        color = Color.White
     )
 }

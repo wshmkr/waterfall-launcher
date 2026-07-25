@@ -6,10 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
+import net.wshmkr.launcher.datastore.UserSettingsDataSource
+import net.wshmkr.launcher.model.PaletteStyle
 import net.wshmkr.launcher.repository.WidgetRepository
 import net.wshmkr.launcher.ui.AppNavigation
 import net.wshmkr.launcher.ui.theme.WaterfallLauncherTheme
@@ -27,6 +31,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var widgetRepository: WidgetRepository
 
+    @Inject
+    lateinit var userSettingsDataSource: UserSettingsDataSource
+
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var widgetPickerHelper: WidgetPickerHelper
     private var screenOffReceiver: BroadcastReceiver? = null
@@ -37,7 +44,9 @@ class MainActivity : ComponentActivity() {
         initWidgetPickerHelper()
         registerScreenOffReceiver()
         setContent {
-            WaterfallLauncherTheme {
+            val paletteStyle by userSettingsDataSource.paletteStyle
+                .collectAsStateWithLifecycle(PaletteStyle.Default)
+            WaterfallLauncherTheme(paletteStyle = paletteStyle) {
                 val navController = rememberNavController()
                 val widgetViewModel: WidgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {

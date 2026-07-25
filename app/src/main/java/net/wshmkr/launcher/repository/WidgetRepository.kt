@@ -34,6 +34,10 @@ class WidgetRepository @Inject constructor(
 
     suspend fun setLastPageWidgetId(widgetId: Int) = widgetDataSource.setLastPageWidgetId(widgetId)
 
+    suspend fun getStackHeightDp(): Int = widgetDataSource.getStackHeightDp()
+
+    suspend fun setStackHeightDp(dp: Int) = widgetDataSource.setStackHeightDp(dp)
+
     suspend fun loadWidgets() = updateIdsOnIo { }
 
     suspend fun addWidget(widgetId: Int) = updateIdsOnIo {

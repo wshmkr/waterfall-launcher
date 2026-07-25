@@ -50,14 +50,17 @@ class HomeViewModel @Inject constructor(
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
-    var backgroundUri by mutableStateOf<String?>(null)
-        private set
-
     var homeWidgetSettings by mutableStateOf(HomeWidgetSettings())
         private set
 
     val allAppsListItems by derivedStateOf {
         buildListItems(appsRepository.allApps.filter { !it.isHidden })
+    }
+
+    private val letterPositions by derivedStateOf {
+        allAppsListItems.asSequence()
+            .filterIsInstance<AppListItem.SectionHeader>()
+            .associate { it.letter to it.position }
     }
 
     val alphabetLetters by derivedStateOf {
@@ -125,12 +128,6 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            userSettingsDataSource.backgroundUri.collect { uri ->
-                backgroundUri = uri
-            }
-        }
-
-        viewModelScope.launch {
             userSettingsDataSource.homeWidgetSettings.collectLatest { settings ->
                 homeWidgetSettings = settings
             }
@@ -172,12 +169,7 @@ class HomeViewModel @Inject constructor(
 
     fun getScrollPosition(letter: String): Int? {
         if (letter == STAR_SYMBOL) return null
-
-        val header = allAppsListItems.find {
-            it is AppListItem.SectionHeader && it.letter == letter
-        } as? AppListItem.SectionHeader
-
-        return header?.position
+        return letterPositions[letter]
     }
 
     fun deselectLetter() {

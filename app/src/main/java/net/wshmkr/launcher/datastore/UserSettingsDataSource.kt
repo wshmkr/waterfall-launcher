@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import net.wshmkr.launcher.model.HomeWidgetSettings
+import net.wshmkr.launcher.model.PaletteStyle
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,7 +31,6 @@ class UserSettingsDataSource @Inject constructor(
     private val defaultUseFahrenheit: Boolean get() = Locale.getDefault().country == "US"
 
     companion object {
-        private val KEY_BACKGROUND_URI = stringPreferencesKey("background_uri")
         private val KEY_SHOW_CLOCK = booleanPreferencesKey("show_clock")
         private val KEY_SHOW_CALENDAR = booleanPreferencesKey("show_calendar")
         private val KEY_SHOW_CALENDAR_EVENTS = booleanPreferencesKey("show_calendar_events")
@@ -41,6 +41,7 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_NAME = stringPreferencesKey("weather_location_name")
         private val KEY_WEATHER_LOCATION_LAT = doublePreferencesKey("weather_location_latitude")
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
+        private val KEY_PALETTE_STYLE = stringPreferencesKey("palette_style")
     }
 
     val showClock: Flow<Boolean> = perField(KEY_SHOW_CLOCK) { true }
@@ -71,23 +72,14 @@ class UserSettingsDataSource @Inject constructor(
         }
         .distinctUntilChanged()
 
-    val backgroundUri: Flow<String?> = optionalField(KEY_BACKGROUND_URI)
+    val paletteStyle: Flow<PaletteStyle> =
+        optionalField(KEY_PALETTE_STYLE).map(PaletteStyle::fromName)
 
     private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
         dataStore.data.map { it[key] ?: default() }.distinctUntilChanged()
 
     private fun <T> optionalField(key: Preferences.Key<T>): Flow<T?> =
         dataStore.data.map { it[key] }.distinctUntilChanged()
-
-    suspend fun setBackgroundUri(uri: String?) {
-        dataStore.edit { preferences ->
-            if (uri != null) {
-                preferences[KEY_BACKGROUND_URI] = uri
-            } else {
-                preferences.remove(KEY_BACKGROUND_URI)
-            }
-        }
-    }
 
     suspend fun setShowClock(enabled: Boolean) {
         dataStore.edit { preferences ->
@@ -136,6 +128,12 @@ class UserSettingsDataSource @Inject constructor(
             preferences[KEY_WEATHER_LOCATION_NAME] = name
             preferences[KEY_WEATHER_LOCATION_LAT] = latitude
             preferences[KEY_WEATHER_LOCATION_LON] = longitude
+        }
+    }
+
+    suspend fun setPaletteStyle(style: PaletteStyle) {
+        dataStore.edit { preferences ->
+            preferences[KEY_PALETTE_STYLE] = style.name
         }
     }
 

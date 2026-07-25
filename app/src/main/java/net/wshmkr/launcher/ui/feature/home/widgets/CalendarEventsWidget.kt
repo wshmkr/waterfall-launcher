@@ -99,10 +99,11 @@ fun CalendarEventsWidget(
     val (eventList, hiddenCount) = events
     if (eventList.isEmpty()) return
 
+    val colors = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
     val eventFont = LocalDimensions.current.fontSmall
     val eventTextStyle = remember(typography, eventFont) {
-        typography.bodyMedium.copy(color = Color.White, fontSize = eventFont)
+        typography.bodyMedium.copy(fontSize = eventFont)
     }
     val ongoingTextStyle = remember(eventTextStyle) {
         eventTextStyle.copy(fontWeight = FontWeight.Bold)
@@ -111,8 +112,11 @@ fun CalendarEventsWidget(
     val currentTime by rememberCurrentLocalTime()
     val nowMillis = remember(currentTime) { System.currentTimeMillis() }
 
-    val timeStyle = remember(eventTextStyle) {
-        eventTextStyle.copy(color = Color.White.copy(alpha = 0.7f))
+    val timeStyle = remember(eventTextStyle, colors) {
+        eventTextStyle.copy(color = colors.onSurfaceVariant)
+    }
+    val metaStyle = remember(eventTextStyle, colors) {
+        eventTextStyle.copy(color = colors.outline)
     }
     val ongoingTimeStyle = remember(timeStyle) {
         timeStyle.copy(fontWeight = FontWeight.Bold)
@@ -145,7 +149,7 @@ fun CalendarEventsWidget(
             EventRow(
                 title = event.title,
                 timeLabel = timeLabel,
-                dotColor = event.color?.let(::Color) ?: DEFAULT_DOT_COLOR,
+                dotColor = event.color?.let(::Color) ?: colors.onSurfaceVariant,
                 timeStyle = if (ongoing) ongoingTimeStyle else timeStyle,
                 timeColumnWidth = timeColumnWidth,
                 textStyle = if (ongoing || timeLabel == null) ongoingTextStyle else eventTextStyle,
@@ -158,7 +162,7 @@ fun CalendarEventsWidget(
         if (hiddenCount > 0) {
             Text(
                 text = "+$hiddenCount more",
-                style = timeStyle,
+                style = metaStyle,
                 modifier = Modifier
                     .clip(Corners.small)
                     .clickable(onClick = { launchCalendarToday(context) })
@@ -181,14 +185,12 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
         Icon(
             painter = CalendarTodayIcon(),
             contentDescription = null,
-            tint = Color.White,
             modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = "Show today's events",
             fontSize = LocalDimensions.current.fontSmall,
-            color = Color.White,
         )
     }
 }
@@ -237,4 +239,3 @@ private fun EventRow(
 }
 
 private val DOT_SIZE = 6.dp
-private val DEFAULT_DOT_COLOR = Color.White.copy(alpha = 0.7f)

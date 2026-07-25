@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -19,7 +20,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import net.wshmkr.launcher.datastore.UserSettingsDataSource
+import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.WidgetRepository
@@ -30,7 +31,6 @@ import kotlinx.coroutines.withContext
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
     private val widgetRepository: WidgetRepository,
-    private val userSettingsDataSource: UserSettingsDataSource,
 ) : ViewModel() {
 
     var widgetIds by mutableStateOf<ImmutableList<Int>>(persistentListOf())
@@ -40,9 +40,6 @@ class WidgetViewModel @Inject constructor(
         private set
 
     var managedWidgets by mutableStateOf<ImmutableList<ManagedWidget>>(persistentListOf())
-        private set
-
-    var backgroundUri by mutableStateOf<String?>(null)
         private set
 
     val alphabetLetters: ImmutableList<String> by derivedStateOf {
@@ -61,11 +58,19 @@ class WidgetViewModel @Inject constructor(
 
     private var initialPageRestored = false
 
+    var stackHeightDp by mutableIntStateOf(WidgetDataSource.DEFAULT_STACK_HEIGHT_DP)
+        private set
+
+    private var persistedStackHeightDp = WidgetDataSource.DEFAULT_STACK_HEIGHT_DP
+
     private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
     val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
 
     init {
         viewModelScope.launch {
+            // Before the first widget renders, so the stack never draws at the default and jumps.
+            stackHeightDp = widgetRepository.getStackHeightDp()
+            persistedStackHeightDp = stackHeightDp
             val lastWidgetId = widgetRepository.getLastPageWidgetId()
             widgetRepository.loadWidgets()
             widgetRepository.widgetIds.collect {
@@ -81,17 +86,27 @@ class WidgetViewModel @Inject constructor(
         viewModelScope.launch {
             loadWidgetProviders()
         }
-
-        viewModelScope.launch {
-            userSettingsDataSource.backgroundUri.collect {
-                backgroundUri = it
-            }
-        }
     }
 
     fun updateCurrentPage(widgetId: Int) {
         viewModelScope.launch {
             widgetRepository.setLastPageWidgetId(widgetId)
+        }
+    }
+
+    fun previewStackHeight(dp: Int) {
+        stackHeightDp = dp.coerceIn(
+            WidgetDataSource.MIN_STACK_HEIGHT_DP,
+            WidgetDataSource.MAX_STACK_HEIGHT_DP,
+        )
+    }
+
+    fun commitStackHeight() {
+        val current = stackHeightDp
+        if (current == persistedStackHeightDp) return
+        persistedStackHeightDp = current
+        viewModelScope.launch {
+            widgetRepository.setStackHeightDp(current)
         }
     }
 
