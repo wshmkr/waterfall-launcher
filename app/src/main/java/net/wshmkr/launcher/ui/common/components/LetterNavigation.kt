@@ -19,9 +19,13 @@ fun rememberLetterAlpha(activeLetter: String?): (String) -> Float {
         label = "letter_dim_alpha",
     )
     // Outlives the scrub so the section jumped to stays opaque instead of fading in from dim on release.
-    val opaqueLetter = remember { mutableStateOf<String?>(null) }
-    if (activeLetter != null) {
-        opaqueLetter.value = activeLetter
+    // Set from an effect, not composition, so it lands in the same dispatch as the scroll in
+    // rememberLetterIndexedListState — applied during composition it lights the letter a frame early.
+    val opaqueLetter = remember { mutableStateOf(activeLetter) }
+    LaunchedEffect(activeLetter) {
+        if (activeLetter != null) {
+            opaqueLetter.value = activeLetter
+        }
     }
 
     return remember(dimAlpha) {
