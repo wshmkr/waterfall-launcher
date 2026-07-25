@@ -127,7 +127,6 @@ private fun WidgetProviderRow(
         ) {
             Text(
                 text = provider.label,
-                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = dimensions.fontLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -144,7 +143,6 @@ private fun WidgetProviderRow(
             painter = if (isExpanded) ArrowDropUpIcon() else ArrowDropDownIcon(),
             contentDescription = if (isExpanded) "Collapse Widgets" else "Expand Widgets",
             modifier = Modifier.size(dimensions.iconSmall),
-            tint = MaterialTheme.colorScheme.onSurface
         )
     }
 }

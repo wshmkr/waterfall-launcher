@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,13 +41,11 @@ fun MenuOption(
     text: String,
     subtext: String? = null,
     onClick: () -> Unit,
-    color: Color = Color.Unspecified,
     indent: Int = 0,
     endContent: (@Composable () -> Unit)? = null,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
 ) {
     val dimensions = LocalDimensions.current
-    val resolvedColor = if (color == Color.Unspecified) MaterialTheme.colorScheme.onSurface else color
     val fontSize = when (textSize) {
         MenuOptionTextSize.Small -> dimensions.fontMedium
         MenuOptionTextSize.Medium -> dimensions.fontLarge
@@ -79,7 +76,6 @@ fun MenuOption(
                 painter = icon,
                 contentDescription = text,
                 modifier = Modifier.size(dimensions.iconSmall),
-                tint = resolvedColor,
             )
             Spacer(modifier = Modifier.width(Spacing.large))
         }
@@ -89,7 +85,6 @@ fun MenuOption(
             Text(
                 text = text,
                 fontSize = fontSize,
-                color = resolvedColor,
             )
             subtext?.let {
                 Text(
@@ -112,7 +107,6 @@ fun ToggleMenuOption(
     onCheckedChange: (Boolean) -> Unit,
     icon: Painter? = null,
     subtext: String? = null,
-    color: Color = Color.Unspecified,
     indent: Int = 0,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
     offText: String? = null,
@@ -123,7 +117,6 @@ fun ToggleMenuOption(
         text = text,
         subtext = subtext,
         onClick = { onCheckedChange(!checked) },
-        color = color,
         indent = indent,
         textSize = textSize,
         endContent = {

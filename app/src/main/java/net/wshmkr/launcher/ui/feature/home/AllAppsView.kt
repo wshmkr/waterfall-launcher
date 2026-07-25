@@ -177,6 +177,5 @@ fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolea
             .alpha(animatedAlpha),
         fontSize = dimensions.fontXLarge,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface
     )
 }

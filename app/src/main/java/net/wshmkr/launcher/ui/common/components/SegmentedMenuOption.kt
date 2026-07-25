@@ -7,14 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
@@ -29,7 +27,6 @@ fun <T> SegmentedMenuOption(
     onSelect: (T) -> Unit,
     optionLabel: (T) -> String,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     val dimensions = LocalDimensions.current
     Column(
@@ -37,7 +34,7 @@ fun <T> SegmentedMenuOption(
             .fillMaxWidth()
             .padding(horizontal = Spacing.medium, vertical = Spacing.small),
     ) {
-        Text(text = text, fontSize = dimensions.fontLarge, color = color)
+        Text(text = text, fontSize = dimensions.fontLarge)
         Spacer(modifier = Modifier.height(Spacing.small))
         SingleChoiceSegmentedButtonRow(
             modifier = Modifier

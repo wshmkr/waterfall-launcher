@@ -120,7 +120,6 @@ fun WidgetListItem(
 
         Text(
             text = widgetOption.label,
-            color = MaterialTheme.colorScheme.onSurface,
             fontSize = dimensions.fontMedium,
             fontWeight = FontWeight.Medium
         )

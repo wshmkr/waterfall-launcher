@@ -7,7 +7,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -27,7 +26,6 @@ fun NotificationPreview(
     label: String,
     isHidden: Boolean,
     notifications: ImmutableList<NotificationInfo>,
-    contentColor: Color,
 ) {
     val notification = remember(notifications) { notifications.maxByOrNull { it.timestamp } }
 
@@ -35,7 +33,6 @@ fun NotificationPreview(
         label = label,
         isHidden = isHidden,
         notificationTimestamp = notification?.timestamp,
-        color = contentColor,
     )
 
     val previewFont = LocalDimensions.current.fontCaption
@@ -45,7 +42,6 @@ fun NotificationPreview(
             Text(
                 text = it,
                 fontSize = previewFont,
-                color = contentColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -72,17 +68,16 @@ private fun NotificationAppTitle(
     label: String,
     isHidden: Boolean,
     notificationTimestamp: Long?,
-    color: Color,
 ) {
     if (notificationTimestamp == null) {
-        AppTitle(label, isHidden, color)
+        AppTitle(label, isHidden)
         return
     }
     val currentTime by rememberNotificationAgeTicker(notificationTimestamp)
     val display = remember(label, notificationTimestamp, currentTime) {
         "$label · ${timeSince(notificationTimestamp)}"
     }
-    AppTitle(display, isHidden, color)
+    AppTitle(display, isHidden)
 }
 
 // Cadence matches the age bucket — fresh notifications tick often, week-old ones rarely.

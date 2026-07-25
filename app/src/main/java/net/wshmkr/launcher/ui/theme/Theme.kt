@@ -2,6 +2,7 @@ package net.wshmkr.launcher.ui.theme
 
 import android.app.Activity
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -14,18 +15,22 @@ import net.wshmkr.launcher.model.PaletteStyle
 
 @Composable
 fun WaterfallLauncherTheme(
-    paletteStyle: PaletteStyle = PaletteStyle.VIBRANT,
+    paletteStyle: PaletteStyle,
     content: @Composable () -> Unit,
 ) {
     val wallpaperColors = rememberSystemWallpaperColors()
     // Forcing a polarity would leave content illegible over the wallpaper, so it always follows it.
-    val darkTheme = wallpaperIsDark(wallpaperColors)
+    val darkTheme = remember(wallpaperColors) { wallpaperIsDark(wallpaperColors) }
     val colorScheme = rememberSheetSurfaceScheme(
         rememberWallpaperColorScheme(wallpaperColors, paletteStyle, darkTheme)
     )
     SystemBarIcons(darkTheme)
     val widthDp = LocalConfiguration.current.screenWidthDp
-    CompositionLocalProvider(LocalDimensions provides dimensionsFor(widthDp)) {
+    CompositionLocalProvider(
+        LocalDimensions provides dimensionsFor(widthDp),
+        // The app draws straight over the wallpaper with no Surface to set the ambient ink.
+        LocalContentColor provides colorScheme.onSurface,
+    ) {
         MaterialTheme(colorScheme = colorScheme) { content() }
     }
 }

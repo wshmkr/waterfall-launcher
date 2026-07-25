@@ -47,7 +47,7 @@ class SettingsViewModel @Inject constructor(
     val weatherLon: StateFlow<Double?> =
         userSettingsDataSource.weatherLon.stateIn(viewModelScope, subscribed, null)
     val paletteStyle: StateFlow<PaletteStyle> =
-        userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.VIBRANT)
+        userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.Default)
 
     init {
         viewModelScope.launch {

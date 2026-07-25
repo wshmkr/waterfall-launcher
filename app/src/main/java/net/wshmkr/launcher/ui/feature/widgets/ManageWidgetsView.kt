@@ -65,7 +65,6 @@ fun ManageWidgetsView(
             text = "Manage Widgets",
             fontSize = dimensions.fontTitle,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(Spacing.medium))
@@ -130,7 +129,6 @@ private fun ManagedWidgetRow(
         ) {
             Text(
                 text = item.widgetName,
-                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = dimensions.fontMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -150,7 +148,6 @@ private fun ManagedWidgetRow(
             Icon(
                 painter = DeleteIcon(),
                 contentDescription = "Remove widget",
-                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }

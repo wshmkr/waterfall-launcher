@@ -1,5 +1,8 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
+import android.appwidget.AppWidgetHostView
+import android.os.Bundle
+import android.util.SizeF
 import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -70,6 +73,10 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     val mid = LOOP_PAGE_COUNT / 2
     return mid - mid % pageCount + initialIndex
 }
+
+// The host view variant also writes OPTION_APPWIDGET_SIZES and accounts for its padding.
+private fun AppWidgetHostView.applyWidgetSize(widthDp: Int, heightDp: Int) =
+    updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
 
 /** Reads the height in the layout phase so a resize drag never recomposes the stack. */
 private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
@@ -229,7 +236,7 @@ private fun WidgetPage(
         if (widgetView == null || widthDp <= 0) return@LaunchedEffect
         snapshotFlow { viewModel.stackHeightDp }
             .debounce(WIDGET_SIZE_DEBOUNCE_MS)
-            .collect { viewModel.applyWidgetSize(widgetView, widthDp, it) }
+            .collect { widgetView.applyWidgetSize(widthDp, it) }
     }
 
     if (widgetView == null) {
@@ -247,7 +254,6 @@ private fun UnavailableWidget() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = "Unable to load widget",
-            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(Spacing.large),
         )
     }

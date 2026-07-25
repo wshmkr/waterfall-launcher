@@ -6,18 +6,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import net.wshmkr.launcher.ui.theme.accentButtonColors
 
-// Material fills a Button with primary; this is the app's accent fill, matching the FAB.
+// Material fills a Button with primary; this is the app's accent fill.
 @Composable
 fun AccentButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
     Button(
         onClick = onClick,
         modifier = modifier,
-        enabled = enabled,
         colors = accentButtonColors(),
         content = content,
     )

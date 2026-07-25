@@ -12,12 +12,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
+import net.wshmkr.launcher.datastore.UserSettingsDataSource
+import net.wshmkr.launcher.model.PaletteStyle
 import net.wshmkr.launcher.repository.WidgetRepository
 import net.wshmkr.launcher.ui.AppNavigation
 import net.wshmkr.launcher.ui.theme.WaterfallLauncherTheme
 import net.wshmkr.launcher.util.WidgetPickerHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
-import net.wshmkr.launcher.viewmodel.SettingsViewModel
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 import javax.inject.Inject
 import android.content.BroadcastReceiver
@@ -30,6 +31,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var widgetRepository: WidgetRepository
 
+    @Inject
+    lateinit var userSettingsDataSource: UserSettingsDataSource
+
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var widgetPickerHelper: WidgetPickerHelper
     private var screenOffReceiver: BroadcastReceiver? = null
@@ -40,8 +44,8 @@ class MainActivity : ComponentActivity() {
         initWidgetPickerHelper()
         registerScreenOffReceiver()
         setContent {
-            val settingsViewModel: SettingsViewModel = hiltViewModel()
-            val paletteStyle by settingsViewModel.paletteStyle.collectAsStateWithLifecycle()
+            val paletteStyle by userSettingsDataSource.paletteStyle
+                .collectAsStateWithLifecycle(PaletteStyle.Default)
             WaterfallLauncherTheme(paletteStyle = paletteStyle) {
                 val navController = rememberNavController()
                 val widgetViewModel: WidgetViewModel = hiltViewModel()

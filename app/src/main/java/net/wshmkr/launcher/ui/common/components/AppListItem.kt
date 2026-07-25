@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,12 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
@@ -49,7 +46,6 @@ fun AppListItem(
     targetAlpha: Float = 1f,
     isActiveLetter: Boolean = false,
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
-    contentColor: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
 
@@ -98,9 +94,9 @@ fun AppListItem(
             modifier = Modifier.weight(1f)
         ) {
             if (notifications.isNotEmpty()) {
-                NotificationPreview(appInfo.label, appInfo.isHidden, notifications, contentColor)
+                NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
             } else {
-                AppTitle(appInfo.label, appInfo.isHidden, contentColor)
+                AppTitle(appInfo.label, appInfo.isHidden)
             }
         }
     }
@@ -117,11 +113,10 @@ fun AppListItem(
 }
 
 @Composable
-fun AppTitle(title: String, isHidden: Boolean, color: Color) {
+fun AppTitle(title: String, isHidden: Boolean) {
     Text(
         text = title,
         fontSize = LocalDimensions.current.fontMedium,
-        color = color,
         maxLines = 1,
         fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,
         overflow = TextOverflow.Ellipsis,

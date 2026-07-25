@@ -7,7 +7,9 @@ enum class PaletteStyle {
     NEUTRAL;
 
     companion object {
+        val Default = VIBRANT
+
         fun fromName(name: String?): PaletteStyle =
-            entries.firstOrNull { it.name == name } ?: VIBRANT
+            entries.firstOrNull { it.name == name } ?: Default
     }
 }

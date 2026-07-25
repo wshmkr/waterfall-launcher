@@ -39,11 +39,11 @@ fun accentSwitchColors(alwaysFilled: Boolean = false): SwitchColors {
 
 // The search bar floats over a scrim tinted like the app surface, so matching that surface would
 // leave it barely visible. Inverting the pair keeps the field legible against its own backdrop.
+// The input field takes its own colors, since the caller owns that slot.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun invertedSearchBarColors(): SearchBarColors = SearchBarDefaults.colors(
     containerColor = MaterialTheme.colorScheme.inverseSurface,
-    inputFieldColors = invertedSearchInputColors(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
@@ -42,7 +41,6 @@ fun WidgetAppList(
         if (widgetListItems.isEmpty()) {
             Text(
                 text = "No widget-enabled apps found",
-                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = LocalDimensions.current.fontLarge,
                 modifier = Modifier.align(Alignment.Center)
             )

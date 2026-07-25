@@ -73,7 +73,7 @@ class UserSettingsDataSource @Inject constructor(
         .distinctUntilChanged()
 
     val paletteStyle: Flow<PaletteStyle> =
-        dataStore.data.map { PaletteStyle.fromName(it[KEY_PALETTE_STYLE]) }.distinctUntilChanged()
+        optionalField(KEY_PALETTE_STYLE).map(PaletteStyle::fromName)
 
     private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
         dataStore.data.map { it[key] ?: default() }.distinctUntilChanged()

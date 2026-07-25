@@ -131,7 +131,6 @@ private fun WeatherContent(
 ) {
     val colors = MaterialTheme.colorScheme
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
-        color = colors.onSurface,
         fontSize = LocalDimensions.current.fontMedium
     )
 
@@ -144,7 +143,6 @@ private fun WeatherContent(
                 Icon(
                     painter = LocationOnIcon(),
                     contentDescription = "Enable location",
-                    tint = colors.onSurface,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -164,7 +162,6 @@ private fun WeatherContent(
                 Icon(
                     painter = HelpIcon(),
                     contentDescription = "Weather unavailable, tap to retry",
-                    tint = colors.onSurface,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -204,7 +201,6 @@ private fun WeatherReadyRow(
         Icon(
             painter = if (iconRes == null) CloudOffIcon() else painterResource(iconRes),
             contentDescription = "Weather",
-            tint = colors.onSurface,
             modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))

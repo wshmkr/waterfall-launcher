@@ -4,9 +4,7 @@ import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.graphics.drawable.Drawable
-import android.os.Bundle
 import android.util.Log
-import android.util.SizeF
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -110,14 +108,6 @@ class WidgetViewModel @Inject constructor(
         viewModelScope.launch {
             widgetRepository.setStackHeightDp(current)
         }
-    }
-
-    fun applyWidgetSize(widgetView: AppWidgetHostView, widthDp: Int, heightDp: Int) {
-        // The host view variant also writes OPTION_APPWIDGET_SIZES and accounts for its padding.
-        widgetView.updateAppWidgetSize(
-            Bundle(),
-            listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())),
-        )
     }
 
     fun scrollToLetter(letter: String) {

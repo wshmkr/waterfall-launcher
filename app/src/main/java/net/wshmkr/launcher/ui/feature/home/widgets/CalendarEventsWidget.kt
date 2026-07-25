@@ -102,8 +102,8 @@ fun CalendarEventsWidget(
     val colors = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
     val eventFont = LocalDimensions.current.fontSmall
-    val eventTextStyle = remember(typography, eventFont, colors) {
-        typography.bodyMedium.copy(color = colors.onSurface, fontSize = eventFont)
+    val eventTextStyle = remember(typography, eventFont) {
+        typography.bodyMedium.copy(fontSize = eventFont)
     }
     val ongoingTextStyle = remember(eventTextStyle) {
         eventTextStyle.copy(fontWeight = FontWeight.Bold)
@@ -174,7 +174,6 @@ fun CalendarEventsWidget(
 
 @Composable
 private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -186,14 +185,12 @@ private fun EnableCalendarRow(modifier: Modifier, onClick: () -> Unit) {
         Icon(
             painter = CalendarTodayIcon(),
             contentDescription = null,
-            tint = colors.onSurface,
             modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = "Show today's events",
             fontSize = LocalDimensions.current.fontSmall,
-            color = colors.onSurface,
         )
     }
 }

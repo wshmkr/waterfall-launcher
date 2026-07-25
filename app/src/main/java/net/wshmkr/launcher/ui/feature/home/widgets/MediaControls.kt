@@ -44,7 +44,6 @@ import net.wshmkr.launcher.ui.common.icons.PauseIcon
 import net.wshmkr.launcher.ui.common.icons.PlayArrowIcon
 import net.wshmkr.launcher.ui.common.icons.SkipNextIcon
 import net.wshmkr.launcher.ui.common.icons.SkipPreviousIcon
-import net.wshmkr.launcher.ui.theme.ContentAlpha
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
@@ -163,7 +162,6 @@ private fun MediaInfoDisplay(title: String?, artist: String?) {
         text = title ?: "No title",
         fontSize = dimensions.fontMedium,
         fontWeight = FontWeight.Medium,
-        color = colors.onSurface,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Left,
@@ -193,7 +191,6 @@ private fun MediaControlButtons(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
     val dimensions = LocalDimensions.current
     Row(
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -208,9 +205,6 @@ private fun MediaControlButtons(
             Icon(
                 painter = SkipPreviousIcon(),
                 contentDescription = "Previous",
-                tint = colors.onSurface.copy(
-                    alpha = if (canSkipPrevious) 1f else ContentAlpha.disabled,
-                ),
                 modifier = Modifier.size(dimensions.iconSmall)
             )
         }
@@ -229,9 +223,6 @@ private fun MediaControlButtons(
             Icon(
                 painter = SkipNextIcon(),
                 contentDescription = "Next",
-                tint = colors.onSurface.copy(
-                    alpha = if (canSkipNext) 1f else ContentAlpha.disabled,
-                ),
                 modifier = Modifier.size(dimensions.iconSmall)
             )
         }
@@ -245,7 +236,6 @@ private fun PlayPauseButton(
     onPlay: () -> Unit,
     onPause: () -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
     val dimensions = LocalDimensions.current
     // Flip the icon optimistically on tap; the real state change (or a timeout) settles it.
     var pendingPlaying by remember { mutableStateOf<Boolean?>(null) }
@@ -270,7 +260,6 @@ private fun PlayPauseButton(
         Icon(
             painter = if (shownPlaying) PauseIcon() else PlayArrowIcon(),
             contentDescription = if (shownPlaying) "Pause" else "Play",
-            tint = colors.onSurface,
             modifier = Modifier.size(dimensions.iconLarge)
         )
     }

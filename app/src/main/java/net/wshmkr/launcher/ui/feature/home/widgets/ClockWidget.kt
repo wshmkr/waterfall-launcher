@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,7 +69,6 @@ fun ClockWidget(
                     Text(
                         text = "•",
                         fontSize = dimensions.fontMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
                 }
@@ -101,7 +99,6 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
     Text(
         text = display,
         fontSize = LocalDimensions.current.fontClock,
-        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .padding(horizontal = 4.dp)
             .clip(Corners.small)
@@ -118,7 +115,6 @@ private fun ClockDateText(onClick: () -> Unit) {
     Text(
         text = display,
         fontSize = LocalDimensions.current.fontMedium,
-        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .clip(Corners.small)
             .clickable(onClick = onClick)
