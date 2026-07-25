@@ -20,12 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
@@ -119,7 +117,6 @@ fun AppTitle(title: String, isHidden: Boolean) {
     Text(
         text = title,
         fontSize = LocalDimensions.current.fontMedium,
-        color = Color.White,
         maxLines = 1,
         fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,
         overflow = TextOverflow.Ellipsis,

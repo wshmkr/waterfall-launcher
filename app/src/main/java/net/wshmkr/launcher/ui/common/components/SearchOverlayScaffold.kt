@@ -35,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -47,8 +46,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
-
-private val ScrimColor = Color(0f, 0f, 0f, 0.5f)
+import net.wshmkr.launcher.ui.theme.invertedSearchBarColors
+import net.wshmkr.launcher.ui.theme.invertedSearchInputColors
+import net.wshmkr.launcher.ui.theme.launcherScrim
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,7 +134,7 @@ fun SearchOverlayScaffold(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ScrimColor)
+            .background(launcherScrim())
     ) {
         Column(
             modifier = Modifier
@@ -159,17 +159,14 @@ fun SearchOverlayScaffold(
                             expanded = false,
                             onExpandedChange = { },
                             modifier = Modifier.focusRequester(focusRequester),
-                            placeholder = {
-                                Text(
-                                    text = placeholder,
-                                    color = Color.Gray
-                                )
-                            }
+                            placeholder = { Text(text = placeholder) },
+                            colors = invertedSearchInputColors(),
                         )
                     },
                     expanded = false,
                     onExpandedChange = { },
-                    modifier = Modifier.padding(vertical = Spacing.small)
+                    modifier = Modifier.padding(vertical = Spacing.small),
+                    colors = invertedSearchBarColors(),
                 ) { }
             }
             LazyColumn(

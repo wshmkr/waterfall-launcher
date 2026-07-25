@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -70,7 +69,6 @@ fun ClockWidget(
                     Text(
                         text = "•",
                         fontSize = dimensions.fontMedium,
-                        color = Color.White,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
                 }
@@ -101,7 +99,6 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
     Text(
         text = display,
         fontSize = LocalDimensions.current.fontClock,
-        color = Color.White,
         modifier = Modifier
             .padding(horizontal = 4.dp)
             .clip(Corners.small)
@@ -118,7 +115,6 @@ private fun ClockDateText(onClick: () -> Unit) {
     Text(
         text = display,
         fontSize = LocalDimensions.current.fontMedium,
-        color = Color.White,
         modifier = Modifier
             .clip(Corners.small)
             .clickable(onClick = onClick)

@@ -1,6 +1,5 @@
 package net.wshmkr.launcher.viewmodel
 
-import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -13,15 +12,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.HomeWidgetSettings
+import net.wshmkr.launcher.model.PaletteStyle
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val userSettingsDataSource: UserSettingsDataSource
 ) : ViewModel() {
-
-    var backgroundUri by mutableStateOf<String?>(null)
-        private set
 
     // Kept for existing callers (e.g. HomeOptionsMenu) that consume the composed snapshot.
     var homeWidgetSettings by mutableStateOf(HomeWidgetSettings())
@@ -49,30 +46,14 @@ class SettingsViewModel @Inject constructor(
         userSettingsDataSource.weatherLat.stateIn(viewModelScope, subscribed, null)
     val weatherLon: StateFlow<Double?> =
         userSettingsDataSource.weatherLon.stateIn(viewModelScope, subscribed, null)
+    val paletteStyle: StateFlow<PaletteStyle> =
+        userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.Default)
 
     init {
-        viewModelScope.launch {
-            userSettingsDataSource.backgroundUri.collect {
-                backgroundUri = it
-            }
-        }
-
         viewModelScope.launch {
             userSettingsDataSource.homeWidgetSettings.collect {
                 homeWidgetSettings = it
             }
-        }
-    }
-
-    fun setBackgroundUri(uri: Uri?) {
-        viewModelScope.launch {
-            userSettingsDataSource.setBackgroundUri(uri?.toString())
-        }
-    }
-
-    fun removeBackground() {
-        viewModelScope.launch {
-            userSettingsDataSource.setBackgroundUri(null)
         }
     }
 
@@ -114,5 +95,9 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userSettingsDataSource.clearWeatherLocation()
         }
+    }
+
+    fun setPaletteStyle(style: PaletteStyle) {
+        viewModelScope.launch { userSettingsDataSource.setPaletteStyle(style) }
     }
 }

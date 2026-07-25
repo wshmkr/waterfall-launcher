@@ -1,9 +1,9 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
 import android.appwidget.AppWidgetHostView
-import android.content.Context
+import android.os.Bundle
+import android.util.SizeF
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -24,6 +24,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,7 +39,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
@@ -55,6 +56,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import net.wshmkr.launcher.ui.common.gesture.captureLongPress
+import net.wshmkr.launcher.ui.theme.ContentAlpha
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
@@ -71,6 +73,10 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     val mid = LOOP_PAGE_COUNT / 2
     return mid - mid % pageCount + initialIndex
 }
+
+// The host view overload also writes OPTION_APPWIDGET_SIZES and accounts for padding.
+private fun AppWidgetHostView.applyWidgetSize(widthDp: Int, heightDp: Int) =
+    updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
 
 /** Reads the height in the layout phase so a resize drag never recomposes the stack. */
 private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
@@ -159,7 +165,11 @@ fun WidgetStack(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .border(1.dp, Color.White.copy(alpha = 0.5f), Corners.medium),
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    Corners.medium,
+                                ),
                         )
                         Popup(
                             onDismissRequest = { editing = false },
@@ -214,7 +224,7 @@ private fun WidgetPage(
 ) {
     val context = LocalContext.current
     val widgetView = remember(widgetId) {
-        (viewModel.createWidgetView(context, widgetId) ?: unavailableWidgetView(context)).apply {
+        viewModel.createWidgetView(context, widgetId)?.apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -223,16 +233,30 @@ private fun WidgetPage(
     }
 
     LaunchedEffect(widgetView, widthDp) {
-        if (widthDp <= 0) return@LaunchedEffect
+        if (widgetView == null || widthDp <= 0) return@LaunchedEffect
         snapshotFlow { viewModel.stackHeightDp }
             .debounce(WIDGET_SIZE_DEBOUNCE_MS)
-            .collect { viewModel.applyWidgetSize(widgetView, widthDp, it) }
+            .collect { widgetView.applyWidgetSize(widthDp, it) }
     }
 
-    AndroidView(
-        factory = { widgetView },
-        modifier = Modifier.fillMaxSize(),
-    )
+    if (widgetView == null) {
+        UnavailableWidget()
+    } else {
+        AndroidView(
+            factory = { widgetView },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Composable
+private fun UnavailableWidget() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = "Unable to load widget",
+            modifier = Modifier.padding(Spacing.large),
+        )
+    }
 }
 
 @Composable
@@ -265,7 +289,10 @@ private fun DragHandle(
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(width = 56.dp, height = 5.dp)
-                .background(Color.White.copy(alpha = 0.9f), CircleShape),
+                .background(
+                    MaterialTheme.colorScheme.onSurface,
+                    CircleShape,
+                ),
         )
     }
 }
@@ -282,9 +309,14 @@ private fun PageDashes(
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         val currentPage = pagerState.currentPage % pageCount
+        val dotColor = MaterialTheme.colorScheme.primary
         repeat(pageCount) { index ->
             val color =
-                if (index == currentPage) Color.White else Color.White.copy(alpha = 0.3f)
+                if (index == currentPage) {
+                    dotColor
+                } else {
+                    dotColor.copy(alpha = ContentAlpha.disabled)
+                }
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -292,18 +324,5 @@ private fun PageDashes(
                     .background(color, CircleShape),
             )
         }
-    }
-}
-
-private fun unavailableWidgetView(context: Context): AppWidgetHostView {
-    return AppWidgetHostView(context).apply {
-        addView(
-            TextView(context).apply {
-                text = "Unable to load widget"
-                setTextColor(android.graphics.Color.WHITE)
-                textSize = 16f
-                setPadding(24, 24, 24, 24)
-            }
-        )
     }
 }

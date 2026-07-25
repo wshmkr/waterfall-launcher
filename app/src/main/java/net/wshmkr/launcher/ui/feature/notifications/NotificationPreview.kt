@@ -1,12 +1,12 @@
 package net.wshmkr.launcher.ui.feature.notifications
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -42,7 +42,6 @@ fun NotificationPreview(
             Text(
                 text = it,
                 fontSize = previewFont,
-                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -54,7 +53,7 @@ fun NotificationPreview(
             Text(
                 text = it,
                 fontSize = previewFont,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 lineHeight = previewFont * 1.25f,
                 overflow = TextOverflow.Ellipsis,
@@ -65,7 +64,11 @@ fun NotificationPreview(
 
 // Leaf that owns the age tick — parent siblings don't recompose on time changes.
 @Composable
-private fun NotificationAppTitle(label: String, isHidden: Boolean, notificationTimestamp: Long?) {
+private fun NotificationAppTitle(
+    label: String,
+    isHidden: Boolean,
+    notificationTimestamp: Long?,
+) {
     if (notificationTimestamp == null) {
         AppTitle(label, isHidden)
         return

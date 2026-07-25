@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -21,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.accentSwitchColors
 
 enum class MenuOptionTextSize {
     Small, Medium, Large
@@ -40,7 +41,6 @@ fun MenuOption(
     text: String,
     subtext: String? = null,
     onClick: () -> Unit,
-    color: Color = Color.Black,
     indent: Int = 0,
     endContent: (@Composable () -> Unit)? = null,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
@@ -76,7 +76,6 @@ fun MenuOption(
                 painter = icon,
                 contentDescription = text,
                 modifier = Modifier.size(dimensions.iconSmall),
-                tint = color,
             )
             Spacer(modifier = Modifier.width(Spacing.large))
         }
@@ -86,13 +85,12 @@ fun MenuOption(
             Text(
                 text = text,
                 fontSize = fontSize,
-                color = color,
             )
             subtext?.let {
                 Text(
                     text = subtext,
                     fontSize = subtextSize,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -109,7 +107,6 @@ fun ToggleMenuOption(
     onCheckedChange: (Boolean) -> Unit,
     icon: Painter? = null,
     subtext: String? = null,
-    color: Color = Color.Black,
     indent: Int = 0,
     textSize: MenuOptionTextSize = MenuOptionTextSize.Medium,
     offText: String? = null,
@@ -120,7 +117,6 @@ fun ToggleMenuOption(
         text = text,
         subtext = subtext,
         onClick = { onCheckedChange(!checked) },
-        color = color,
         indent = indent,
         textSize = textSize,
         endContent = {
@@ -142,7 +138,7 @@ fun MenuOptionSwitch(
     offText: String? = null,
     onText: String? = null,
 ) {
-    val defaultColors = SwitchDefaults.colors()
+    val labeled = offText != null && onText != null
     Switch(
         modifier = modifier
             .scale(0.8f)
@@ -160,19 +156,11 @@ fun MenuOptionSwitch(
                         fontSize = 13.sp,
                         lineHeight = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = defaultColors.checkedIconColor
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
         },
-        colors = if (offText != null && onText != null) {
-            SwitchDefaults.colors(
-                uncheckedThumbColor = defaultColors.checkedThumbColor,
-                uncheckedTrackColor = defaultColors.checkedTrackColor,
-                uncheckedBorderColor = defaultColors.checkedBorderColor,
-            )
-        } else {
-            defaultColors
-        }
+        colors = accentSwitchColors(alwaysFilled = labeled),
     )
 }

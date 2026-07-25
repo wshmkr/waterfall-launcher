@@ -4,9 +4,7 @@ import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.graphics.drawable.Drawable
-import android.os.Bundle
 import android.util.Log
-import android.util.SizeF
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -22,7 +20,6 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import net.wshmkr.launcher.model.sectionLetter
@@ -34,7 +31,6 @@ import kotlinx.coroutines.withContext
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
     private val widgetRepository: WidgetRepository,
-    private val userSettingsDataSource: UserSettingsDataSource,
 ) : ViewModel() {
 
     var widgetIds by mutableStateOf<ImmutableList<Int>>(persistentListOf())
@@ -44,9 +40,6 @@ class WidgetViewModel @Inject constructor(
         private set
 
     var managedWidgets by mutableStateOf<ImmutableList<ManagedWidget>>(persistentListOf())
-        private set
-
-    var backgroundUri by mutableStateOf<String?>(null)
         private set
 
     val alphabetLetters: ImmutableList<String> by derivedStateOf {
@@ -93,12 +86,6 @@ class WidgetViewModel @Inject constructor(
         viewModelScope.launch {
             loadWidgetProviders()
         }
-
-        viewModelScope.launch {
-            userSettingsDataSource.backgroundUri.collect {
-                backgroundUri = it
-            }
-        }
     }
 
     fun updateCurrentPage(widgetId: Int) {
@@ -121,14 +108,6 @@ class WidgetViewModel @Inject constructor(
         viewModelScope.launch {
             widgetRepository.setStackHeightDp(current)
         }
-    }
-
-    fun applyWidgetSize(widgetView: AppWidgetHostView, widthDp: Int, heightDp: Int) {
-        // The host view variant also writes OPTION_APPWIDGET_SIZES and accounts for its padding.
-        widgetView.updateAppWidgetSize(
-            Bundle(),
-            listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())),
-        )
     }
 
     fun scrollToLetter(letter: String) {

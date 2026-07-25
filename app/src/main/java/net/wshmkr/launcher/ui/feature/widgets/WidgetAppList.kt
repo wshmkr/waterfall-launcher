@@ -14,7 +14,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.ui.feature.home.SectionHeaderItem
 import net.wshmkr.launcher.ui.theme.LocalDimensions
@@ -42,7 +41,6 @@ fun WidgetAppList(
         if (widgetListItems.isEmpty()) {
             Text(
                 text = "No widget-enabled apps found",
-                color = Color.White,
                 fontSize = LocalDimensions.current.fontLarge,
                 modifier = Modifier.align(Alignment.Center)
             )

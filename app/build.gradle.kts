@@ -49,6 +49,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
+    implementation(libs.material.kolor)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -64,7 +65,7 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.accompanist.drawablepainter)
-    implementation(libs.coil.compose)
+    implementation(libs.coil)
     implementation(libs.kotlinx.collections.immutable)
 
     implementation(libs.hilt.android)
