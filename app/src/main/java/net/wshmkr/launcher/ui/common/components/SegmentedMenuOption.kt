@@ -41,8 +41,10 @@ fun <T> SegmentedMenuOption(
                     selected = option == selected,
                     onClick = { onSelect(option) },
                     shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    // The filled container marks the selection; dropping the icon fits longer labels.
+                    icon = {},
                 ) {
-                    Text(text = optionLabel(option))
+                    Text(text = optionLabel(option), maxLines = 1)
                 }
             }
         }

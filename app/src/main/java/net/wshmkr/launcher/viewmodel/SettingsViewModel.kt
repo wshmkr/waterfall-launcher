@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.HomeTextColor
 import net.wshmkr.launcher.model.HomeWidgetSettings
+import net.wshmkr.launcher.model.PaletteStyle
 import net.wshmkr.launcher.model.ThemeMode
 import javax.inject.Inject
 
@@ -51,6 +52,8 @@ class SettingsViewModel @Inject constructor(
         userSettingsDataSource.themeMode.stateIn(viewModelScope, subscribed, ThemeMode.SYSTEM)
     val homeTextColor: StateFlow<HomeTextColor> =
         userSettingsDataSource.homeTextColor.stateIn(viewModelScope, subscribed, HomeTextColor.AUTO)
+    val paletteStyle: StateFlow<PaletteStyle> =
+        userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.FIDELITY)
 
     init {
         viewModelScope.launch {
@@ -106,5 +109,9 @@ class SettingsViewModel @Inject constructor(
 
     fun setHomeTextColor(color: HomeTextColor) {
         viewModelScope.launch { userSettingsDataSource.setHomeTextColor(color) }
+    }
+
+    fun setPaletteStyle(style: PaletteStyle) {
+        viewModelScope.launch { userSettingsDataSource.setPaletteStyle(style) }
     }
 }

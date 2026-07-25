@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import net.wshmkr.launcher.model.HomeTextColor
 import net.wshmkr.launcher.model.HomeWidgetSettings
+import net.wshmkr.launcher.model.PaletteStyle
 import net.wshmkr.launcher.model.ThemeMode
 import java.util.Locale
 import javax.inject.Inject
@@ -44,6 +45,7 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
         private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_HOME_TEXT_COLOR = stringPreferencesKey("home_text_color")
+        private val KEY_PALETTE_STYLE = stringPreferencesKey("palette_style")
     }
 
     val showClock: Flow<Boolean> = perField(KEY_SHOW_CLOCK) { true }
@@ -78,6 +80,8 @@ class UserSettingsDataSource @Inject constructor(
         dataStore.data.map { ThemeMode.fromName(it[KEY_THEME_MODE]) }.distinctUntilChanged()
     val homeTextColor: Flow<HomeTextColor> =
         dataStore.data.map { HomeTextColor.fromName(it[KEY_HOME_TEXT_COLOR]) }.distinctUntilChanged()
+    val paletteStyle: Flow<PaletteStyle> =
+        dataStore.data.map { PaletteStyle.fromName(it[KEY_PALETTE_STYLE]) }.distinctUntilChanged()
 
     private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
         dataStore.data.map { it[key] ?: default() }.distinctUntilChanged()
@@ -144,6 +148,12 @@ class UserSettingsDataSource @Inject constructor(
     suspend fun setHomeTextColor(color: HomeTextColor) {
         dataStore.edit { preferences ->
             preferences[KEY_HOME_TEXT_COLOR] = color.name
+        }
+    }
+
+    suspend fun setPaletteStyle(style: PaletteStyle) {
+        dataStore.edit { preferences ->
+            preferences[KEY_PALETTE_STYLE] = style.name
         }
     }
 

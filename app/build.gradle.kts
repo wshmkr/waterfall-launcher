@@ -49,6 +49,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
+    implementation(libs.material.kolor)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
