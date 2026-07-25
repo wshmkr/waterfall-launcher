@@ -31,32 +31,34 @@ fun rememberWallpaperColorScheme(
     darkTheme: Boolean,
 ): ColorScheme {
     val context = LocalContext.current
-    val seed = wallpaperColors.seed()
-    // Non-composable builder: calling one per branch would shift the slot table.
-    return remember(seed, paletteStyle, darkTheme, context) {
-        if (seed == null) {
-            systemColorScheme(context, darkTheme)
-        } else {
-            dynamicColorScheme(
-                seedColor = Color(seed),
-                isDark = darkTheme,
-                style = paletteStyle.toKolorStyle(),
-                contrastLevel = CONTRAST,
-            )
-        }
+    val wallpaperSeed = wallpaperColors.seed()
+    return remember(wallpaperSeed, paletteStyle, darkTheme, context) {
+        dynamicColorScheme(
+            // Wallpapers that report no colors still get the chosen palette style, seeded from
+            // whatever the system managed to extract.
+            seedColor = wallpaperSeed ?: systemSeed(context, darkTheme),
+            isDark = darkTheme,
+            style = paletteStyle.toKolorStyle(),
+            contrastLevel = CONTRAST,
+        )
     }
 }
 
-// Drives every color in the app, so content always contrasts with what is behind it.
+// Drives every color in the app, so content always contrasts with what is behind it. The platform
+// measures the wallpaper's own luminance, which its dominant color can contradict — but only fills
+// both hints in when it had a bitmap to measure, so live wallpaper colors still fall back to tone.
 fun wallpaperIsDark(wallpaperColors: WallpaperColors?): Boolean {
-    val seed = wallpaperColors.seed() ?: return true
-    return Hct.fromInt(seed).tone <= DARK_TONE_LIMIT
+    val colors = wallpaperColors ?: return true
+    val hints = colors.colorHints
+    if (hints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT != 0) return false
+    if (hints and WallpaperColors.HINT_SUPPORTS_DARK_THEME != 0) return true
+    return Hct.fromInt(colors.primaryColor.toArgb()).tone <= DARK_TONE_LIMIT
 }
 
-private fun WallpaperColors?.seed(): Int? = this?.primaryColor?.toArgb()
+private fun WallpaperColors?.seed(): Color? = this?.primaryColor?.let { Color(it.toArgb()) }
 
-private fun systemColorScheme(context: Context, darkTheme: Boolean): ColorScheme =
-    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+private fun systemSeed(context: Context, darkTheme: Boolean): Color =
+    if (darkTheme) dynamicDarkColorScheme(context).primary else dynamicLightColorScheme(context).primary
 
 private fun PaletteStyle.toKolorStyle(): KolorPaletteStyle = when (this) {
     PaletteStyle.VIBRANT -> KolorPaletteStyle.Vibrant
