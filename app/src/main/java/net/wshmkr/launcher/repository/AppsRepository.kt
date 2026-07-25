@@ -2,12 +2,14 @@ package net.wshmkr.launcher.repository
 
 import android.app.Application
 import android.content.BroadcastReceiver
+import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
@@ -52,8 +54,10 @@ class AppsRepository @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private val iconSizePx =
-        (maxAppIconSize.value * application.resources.displayMetrics.density).roundToInt()
+    private val iconSizePx
+        get() = (maxAppIconSize.value * application.resources.displayMetrics.density).roundToInt()
+
+    private var iconDensityDpi = application.resources.configuration.densityDpi
 
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
@@ -73,6 +77,17 @@ class AppsRepository @Inject constructor(
         override fun onReceive(context: Context?, intent: Intent?) {
             updateActiveProfiles()
         }
+    }
+
+    // Icons are rasterized for the density at load time, so a display-size change leaves them all stale.
+    private val densityCallbacks = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) {
+            if (newConfig.densityDpi == iconDensityDpi) return
+            iconDensityDpi = newConfig.densityDpi
+            scope.launch { refreshAppIcons(allApps.mapTo(HashSet()) { it.userHandle }) }
+        }
+
+        override fun onLowMemory() = Unit
     }
 
     private val launcherAppsCallback = object : LauncherApps.Callback() {
@@ -106,6 +121,7 @@ class AppsRepository @Inject constructor(
             addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
         }
         application.registerReceiver(profileStateReceiver, filter)
+        application.registerComponentCallbacks(densityCallbacks)
         launcherApps.registerCallback(launcherAppsCallback)
     }
 
@@ -210,8 +226,6 @@ class AppsRepository @Inject constructor(
             width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
             height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
         )
-        // Hints an upload on the render thread now, so the first scroll doesn't pay for it.
-        bitmap.prepareToDraw()
         return BitmapPainter(bitmap.asImageBitmap())
     }
 

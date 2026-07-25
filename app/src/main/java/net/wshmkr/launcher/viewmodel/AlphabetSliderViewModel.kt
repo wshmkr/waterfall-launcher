@@ -44,8 +44,12 @@ class AlphabetSliderViewModel : ViewModel() {
     }
 
     fun setLetters(lettersList: List<String>) {
+        if (letters == lettersList) return
+
         letters = lettersList
-        letterBounds.clear()
+        // Bounds are column geometry keyed by row index, and this runs after the layout pass that
+        // measured them: dropping an index only the next layout can refill leaves touches unmapped.
+        letterBounds.keys.retainAll { it < lettersList.size }
         waveOffsetStates = Array(lettersList.size) { mutableFloatStateOf(0f) }
         activeLetter = null
     }
@@ -120,10 +124,8 @@ class AlphabetSliderViewModel : ViewModel() {
     }
 
     private fun updateActiveLetter(touchY: Float) {
-        if (letterBounds.isEmpty() || letters.isEmpty()) {
-            activeLetter = letters.firstOrNull()
-            return
-        }
+        // Nothing measured yet: leave the selection alone rather than snapping to the first letter.
+        if (letterBounds.isEmpty() || letters.isEmpty()) return
 
         val index = letterBounds.entries
             .map { it.key to (it.value.top + sliderVerticalOffset) }

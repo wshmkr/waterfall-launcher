@@ -36,7 +36,7 @@ import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
-import net.wshmkr.launcher.ui.common.components.animateLetterDimAlpha
+import net.wshmkr.launcher.ui.common.components.rememberLetterAlpha
 import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
 import net.wshmkr.launcher.ui.common.icons.SearchIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
@@ -73,7 +73,7 @@ fun AllAppsView(
         getScrollPosition = viewModel::getScrollPosition,
     )
 
-    val dimAlpha = animateLetterDimAlpha(activeLetter)
+    val letterAlpha = rememberLetterAlpha(activeLetter)
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -108,17 +108,16 @@ fun AllAppsView(
                 ) { item ->
                     when (item) {
                         is AppListItem.SectionHeader -> {
-                            val isActiveLetter = item.letter == activeLetter
                             Spacer(modifier = Modifier.height(Spacing.small))
                             SectionHeaderItem(
                                 letter = item.letter,
-                                alphaProvider = { if (isActiveLetter) 1f else dimAlpha.value },
+                                alphaProvider = { letterAlpha(item.letter) },
                             )
                         }
                         is AppListItem.AppItem -> {
-                            val isActiveLetter = item.sectionLetter == activeLetter
-                            val notifications by viewModel
-                                .notificationsFor(item.appInfo.packageName, item.appInfo.userHandle)
+                            val notifications by remember(item.appInfo.key) {
+                                viewModel.notificationsFor(item.appInfo.packageName, item.appInfo.userHandle)
+                            }
                             AppListItem(
                                 appInfo = item.appInfo,
                                 isActiveUser = item.appInfo.userHandle in activeProfiles,
@@ -126,7 +125,7 @@ fun AllAppsView(
                                 onToggleFavorite = onToggleFavorite,
                                 onToggleHidden = onToggleHidden,
                                 onToggleSuggest = onToggleSuggest,
-                                alphaProvider = { if (isActiveLetter) 1f else dimAlpha.value },
+                                alphaProvider = { letterAlpha(item.sectionLetter) },
                                 notifications = notifications,
                             )
                         }

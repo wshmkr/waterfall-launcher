@@ -133,16 +133,12 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // One collector fans out to per-app states, so a row costs a snapshot read instead of its
-        // own subscription and only the row whose notifications changed is invalidated.
+        // Per-app states so a notification invalidates only its own row.
         viewModelScope.launch {
             notificationRepository.notifications.collect { snapshot ->
                 for ((app, state) in notificationsByApp) {
                     val (packageName, user) = app
-                    val next = snapshot.notificationsFor(packageName, user)
-                    if (state.value != next) {
-                        state.value = next
-                    }
+                    state.value = snapshot.notificationsFor(packageName, user)
                 }
             }
         }
