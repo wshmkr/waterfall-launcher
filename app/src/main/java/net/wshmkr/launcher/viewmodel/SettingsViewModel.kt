@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.PaletteStyle
-import net.wshmkr.launcher.model.ThemeMode
 import javax.inject.Inject
 
 @HiltViewModel
@@ -47,8 +46,6 @@ class SettingsViewModel @Inject constructor(
         userSettingsDataSource.weatherLat.stateIn(viewModelScope, subscribed, null)
     val weatherLon: StateFlow<Double?> =
         userSettingsDataSource.weatherLon.stateIn(viewModelScope, subscribed, null)
-    val themeMode: StateFlow<ThemeMode> =
-        userSettingsDataSource.themeMode.stateIn(viewModelScope, subscribed, ThemeMode.AUTO)
     val paletteStyle: StateFlow<PaletteStyle> =
         userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.VIBRANT)
 
@@ -98,10 +95,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userSettingsDataSource.clearWeatherLocation()
         }
-    }
-
-    fun setThemeMode(mode: ThemeMode) {
-        viewModelScope.launch { userSettingsDataSource.setThemeMode(mode) }
     }
 
     fun setPaletteStyle(style: PaletteStyle) {

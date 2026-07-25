@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.PaletteStyle
-import net.wshmkr.launcher.model.ThemeMode
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,7 +41,6 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_NAME = stringPreferencesKey("weather_location_name")
         private val KEY_WEATHER_LOCATION_LAT = doublePreferencesKey("weather_location_latitude")
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
-        private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
         private val KEY_PALETTE_STYLE = stringPreferencesKey("palette_style")
     }
 
@@ -74,8 +72,6 @@ class UserSettingsDataSource @Inject constructor(
         }
         .distinctUntilChanged()
 
-    val themeMode: Flow<ThemeMode> =
-        dataStore.data.map { ThemeMode.fromName(it[KEY_THEME_MODE]) }.distinctUntilChanged()
     val paletteStyle: Flow<PaletteStyle> =
         dataStore.data.map { PaletteStyle.fromName(it[KEY_PALETTE_STYLE]) }.distinctUntilChanged()
 
@@ -132,12 +128,6 @@ class UserSettingsDataSource @Inject constructor(
             preferences[KEY_WEATHER_LOCATION_NAME] = name
             preferences[KEY_WEATHER_LOCATION_LAT] = latitude
             preferences[KEY_WEATHER_LOCATION_LON] = longitude
-        }
-    }
-
-    suspend fun setThemeMode(mode: ThemeMode) {
-        dataStore.edit { preferences ->
-            preferences[KEY_THEME_MODE] = mode.name
         }
     }
 

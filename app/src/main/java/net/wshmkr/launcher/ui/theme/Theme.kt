@@ -11,20 +11,15 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import net.wshmkr.launcher.model.PaletteStyle
-import net.wshmkr.launcher.model.ThemeMode
 
 @Composable
 fun WaterfallLauncherTheme(
-    themeMode: ThemeMode = ThemeMode.AUTO,
     paletteStyle: PaletteStyle = PaletteStyle.VIBRANT,
     content: @Composable () -> Unit,
 ) {
     val wallpaperColors = rememberSystemWallpaperColors()
-    val darkTheme = when (themeMode) {
-        ThemeMode.AUTO -> wallpaperIsDark(wallpaperColors)
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
+    // Forcing a polarity would leave content illegible over the wallpaper, so it always follows it.
+    val darkTheme = wallpaperIsDark(wallpaperColors)
     val colorScheme = rememberSheetSurfaceScheme(
         rememberWallpaperColorScheme(wallpaperColors, paletteStyle, darkTheme)
     )

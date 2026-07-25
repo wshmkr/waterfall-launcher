@@ -41,9 +41,8 @@ class MainActivity : ComponentActivity() {
         registerScreenOffReceiver()
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
-            val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
             val paletteStyle by settingsViewModel.paletteStyle.collectAsStateWithLifecycle()
-            WaterfallLauncherTheme(themeMode = themeMode, paletteStyle = paletteStyle) {
+            WaterfallLauncherTheme(paletteStyle = paletteStyle) {
                 val navController = rememberNavController()
                 val widgetViewModel: WidgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {
