@@ -127,12 +127,16 @@ class AlphabetSliderViewModel : ViewModel() {
         // Nothing measured yet: leave the selection alone rather than snapping to the first letter.
         if (letterBounds.isEmpty() || letters.isEmpty()) return
 
-        val index = letterBounds.entries
-            .map { it.key to (it.value.top + sliderVerticalOffset) }
-            .filter { it.second <= touchY }
-            .maxByOrNull { it.second }
-            ?.first
-            ?: 0
+        // Runs on every touch move during a scrub, so it walks the bounds instead of mapping them.
+        var index = 0
+        var nearestTopAboveTouch = Float.NEGATIVE_INFINITY
+        for ((letterIndex, bounds) in letterBounds) {
+            val top = bounds.top + sliderVerticalOffset
+            if (top <= touchY && top > nearestTopAboveTouch) {
+                nearestTopAboveTouch = top
+                index = letterIndex
+            }
+        }
 
         if (index < letters.size) {
             activeLetter = letters[index]
