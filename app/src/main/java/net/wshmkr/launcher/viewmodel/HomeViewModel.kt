@@ -1,6 +1,8 @@
 package net.wshmkr.launcher.viewmodel
 
 import android.os.UserHandle
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -28,10 +31,10 @@ import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.TodayEvents
-import net.wshmkr.launcher.model.keyFor
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.CalendarRepository
+import net.wshmkr.launcher.repository.NotificationMap
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import java.util.concurrent.ConcurrentHashMap
@@ -102,8 +105,8 @@ class HomeViewModel @Inject constructor(
     private val _returnHomeEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val returnHomeEvents: SharedFlow<Unit> = _returnHomeEvents.asSharedFlow()
 
-    private val notificationCountCache = ConcurrentHashMap<String, StateFlow<Int>>()
-    private val notificationListCache = ConcurrentHashMap<String, StateFlow<ImmutableList<NotificationInfo>>>()
+    private val notificationsByApp =
+        ConcurrentHashMap<Pair<String, UserHandle>, MutableState<ImmutableList<NotificationInfo>>>()
 
     init {
         viewModelScope.launch {
@@ -130,13 +133,26 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Prune per-package notification caches when apps leave the installed set so long-lived
+        // Per-app states so a notification invalidates only its own row.
+        viewModelScope.launch {
+            notificationRepository.notifications.collect { snapshot ->
+                for ((app, state) in notificationsByApp) {
+                    val (packageName, user) = app
+                    state.value = snapshot.notificationsFor(packageName, user)
+                }
+            }
+        }
+
+        // Prune per-package notification states when apps leave the installed set so long-lived
         // sessions with many install/uninstall churns don't grow the cache unboundedly.
         viewModelScope.launch {
-            snapshotFlow { appsRepository.allApps.mapTo(HashSet(appsRepository.allApps.size)) { it.key } }
-                .collect { liveKeys ->
-                    notificationCountCache.keys.retainAll(liveKeys)
-                    notificationListCache.keys.retainAll(liveKeys)
+            snapshotFlow {
+                appsRepository.allApps.mapTo(HashSet(appsRepository.allApps.size)) {
+                    it.packageName to it.userHandle
+                }
+            }
+                .collect { liveApps ->
+                    notificationsByApp.keys.retainAll(liveApps)
                 }
         }
     }
@@ -179,26 +195,10 @@ class HomeViewModel @Inject constructor(
         appsRepository.updateMostUsedApps()
     }
 
-    fun getAlpha(letter: String): Float {
-        return if (activeLetter == null || letter == activeLetter) 1f else 0.2f
-    }
-
-    // Per-app notification count flow, cached so repeated lookups share the same StateFlow.
-    fun notificationCountFor(packageName: String, user: UserHandle): StateFlow<Int> {
-        val key = keyFor(packageName, user)
-        return notificationCountCache.computeIfAbsent(key) {
-            notificationRepository.countFor(packageName, user)
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    fun notificationsFor(packageName: String, user: UserHandle): State<ImmutableList<NotificationInfo>> =
+        notificationsByApp.computeIfAbsent(packageName to user) {
+            mutableStateOf(notificationRepository.notifications.value.notificationsFor(packageName, user))
         }
-    }
-
-    fun notificationsFor(packageName: String, user: UserHandle): StateFlow<ImmutableList<NotificationInfo>> {
-        val key = keyFor(packageName, user)
-        return notificationListCache.computeIfAbsent(key) {
-            notificationRepository.notificationsFor(packageName, user)
-                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), persistentListOf())
-        }
-    }
 
     private fun buildListItems(apps: List<AppInfo>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()
@@ -251,3 +251,8 @@ class HomeViewModel @Inject constructor(
         return apps
     }
 }
+
+private fun NotificationMap.notificationsFor(
+    packageName: String,
+    user: UserHandle,
+): ImmutableList<NotificationInfo> = this[packageName]?.get(user)?.toImmutableList() ?: persistentListOf()

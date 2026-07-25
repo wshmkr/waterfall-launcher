@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -161,7 +162,9 @@ private fun InvisibleLettersColumn(letters: List<String>) {
             ) {
                 Text(
                     text = letter,
+                    modifier = Modifier.wrapContentHeight(unbounded = true),
                     fontSize = dimensions.fontMedium,
+                    maxLines = 1,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -218,11 +221,14 @@ private fun AnimatedLettersList(
                     },
                 contentAlignment = Alignment.Center,
             ) {
+                // The letter slot is shorter than the text line, so a bounded measure clips the glyph.
                 Text(
                     text = letter,
                     modifier = Modifier
+                        .wrapContentHeight(unbounded = true)
                         .graphicsLayer { translationX = waveAnimatable.value.dp.toPx() },
                     fontSize = dimensions.fontMedium,
+                    maxLines = 1,
                     color = if (letter == activeLetter) {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {

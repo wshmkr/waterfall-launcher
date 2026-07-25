@@ -18,10 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
@@ -43,17 +43,10 @@ fun AppListItem(
     onToggleHidden: (AppInfo) -> Unit,
     onToggleSuggest: (AppInfo) -> Unit,
     onLongClick: ((AppInfo) -> Unit)? = null,
-    targetAlpha: Float = 1f,
-    isActiveLetter: Boolean = false,
+    alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
-
-    val animatedAlpha by animateLetterFilterAlpha(
-        targetAlpha = targetAlpha,
-        isActiveLetter = isActiveLetter,
-        label = "app_item_alpha"
-    )
 
     val inactiveFilter = remember(isActiveUser) {
         if (!isActiveUser) {
@@ -80,7 +73,7 @@ fun AppListItem(
                 }
             )
             .padding(Spacing.small)
-            .alpha(animatedAlpha),
+            .graphicsLayer { this.alpha = alphaProvider() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(

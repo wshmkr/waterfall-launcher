@@ -7,23 +7,31 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 
+// One animation for a whole letter-indexed list: rows read it instead of each animating their own.
 @Composable
-fun animateLetterFilterAlpha(
-    targetAlpha: Float,
-    isActiveLetter: Boolean,
-    label: String = "letter_filter_alpha",
-): State<Float> = animateFloatAsState(
-    targetValue = targetAlpha,
-    animationSpec = if (isActiveLetter || targetAlpha < 1f) {
-        snap()
-    } else {
-        tween(durationMillis = 300)
-    },
-    label = label,
-)
+fun rememberLetterAlpha(activeLetter: String?): (String) -> Float {
+    val dimAlpha = animateFloatAsState(
+        targetValue = if (activeLetter == null) 1f else DIMMED_LETTER_ALPHA,
+        animationSpec = if (activeLetter == null) tween(durationMillis = 300) else snap(),
+        label = "letter_dim_alpha",
+    )
+    // Outlives the scrub so the section jumped to stays opaque instead of fading in from dim on release.
+    // Set from an effect, not composition, so it lands in the same dispatch as the scroll in
+    // rememberLetterIndexedListState — applied during composition it lights the letter a frame early.
+    val opaqueLetter = remember { mutableStateOf(activeLetter) }
+    LaunchedEffect(activeLetter) {
+        if (activeLetter != null) {
+            opaqueLetter.value = activeLetter
+        }
+    }
+
+    return remember(dimAlpha) {
+        { letter: String -> if (letter == opaqueLetter.value) 1f else dimAlpha.value }
+    }
+}
 
 @Composable
 fun rememberLetterIndexedListState(
@@ -43,3 +51,5 @@ fun rememberLetterIndexedListState(
 
     return listState
 }
+
+private const val DIMMED_LETTER_ALPHA = 0.2f

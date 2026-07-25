@@ -2,12 +2,14 @@ package net.wshmkr.launcher.repository
 
 import android.app.Application
 import android.content.BroadcastReceiver
+import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
@@ -25,6 +27,7 @@ import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,9 +38,11 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
+import net.wshmkr.launcher.ui.theme.maxAppIconSize
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
+import kotlin.math.roundToInt
 
 @Singleton
 class AppsRepository @Inject constructor(
@@ -49,6 +54,12 @@ class AppsRepository @Inject constructor(
     private val userManager: UserManager = application.getSystemService(Context.USER_SERVICE) as UserManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val iconSizePx
+        get() = (maxAppIconSize.value * application.resources.displayMetrics.density).roundToInt()
+
+    private var rasterizedDensityDpi = application.resources.configuration.densityDpi
+    private var iconRefreshJob: Job? = null
 
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
@@ -70,13 +81,35 @@ class AppsRepository @Inject constructor(
         }
     }
 
+    // Icons are rasterized for the density at load time, so a display-size change leaves them all stale.
+    private val densityCallbacks = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) = refreshIconsIfDensityChanged()
+
+        override fun onLowMemory() = Unit
+    }
+
+    // Density is recorded after the publish, so a refresh racing loadInstalledApps can't strand stale icons.
+    private fun refreshIconsIfDensityChanged() {
+        val density = application.resources.configuration.densityDpi
+        if (density == rasterizedDensityDpi) return
+
+        iconRefreshJob?.cancel()
+        iconRefreshJob = scope.launch {
+            refreshAppIcons(allApps.mapTo(HashSet()) { it.userHandle })
+            rasterizedDensityDpi = density
+        }
+    }
+
     private val launcherAppsCallback = object : LauncherApps.Callback() {
         override fun onPackageAdded(packageName: String, user: UserHandle) {
             scope.launch { syncPackage(packageName, user) }
         }
 
         override fun onPackageRemoved(packageName: String, user: UserHandle) {
-            removePackage(packageName, user)
+            removeFromAllApps(packageName, user)
+            if (usageEntries.remove(keyFor(packageName, user)) != null) {
+                usageDirty = true
+            }
         }
 
         override fun onPackageChanged(packageName: String, user: UserHandle) {
@@ -101,6 +134,7 @@ class AppsRepository @Inject constructor(
             addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
         }
         application.registerReceiver(profileStateReceiver, filter)
+        application.registerComponentCallbacks(densityCallbacks)
         launcherApps.registerCallback(launcherAppsCallback)
     }
 
@@ -123,6 +157,7 @@ class AppsRepository @Inject constructor(
     }
 
     suspend fun loadInstalledApps() {
+        val density = application.resources.configuration.densityDpi
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() } ?: listOf(Process.myUserHandle())
 
         val apps = withContext(Dispatchers.IO) {
@@ -149,6 +184,7 @@ class AppsRepository @Inject constructor(
             allApps.clear()
             allApps.addAll(apps)
         }
+        rasterizedDensityDpi = density
 
         // Merge disk usage only once per process; in-memory entries stay authoritative afterwards.
         if (!usageLoaded) {
@@ -170,6 +206,8 @@ class AppsRepository @Inject constructor(
             }
             usageLoaded = true
         }
+
+        refreshIconsIfDensityChanged()
     }
 
     private fun buildAppInfo(
@@ -197,9 +235,16 @@ class AppsRepository @Inject constructor(
     }
 
     private fun toBitmapPainter(drawable: Drawable): BitmapPainter {
-        val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
-        val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
-        return BitmapPainter(drawable.toBitmap(width = width, height = height).asImageBitmap())
+        val maxSizePx = iconSizePx
+        val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxSizePx
+        val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxSizePx
+        val scale = minOf(1f, maxSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
+
+        val bitmap = drawable.toBitmap(
+            width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
+            height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
+        )
+        return BitmapPainter(bitmap.asImageBitmap())
     }
 
     private fun buildSearchTokens(label: String) =
@@ -238,13 +283,6 @@ class AppsRepository @Inject constructor(
 
     private fun removeFromAllApps(packageName: String, userHandle: UserHandle) {
         allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
-    }
-
-    private fun removePackage(packageName: String, userHandle: UserHandle) {
-        removeFromAllApps(packageName, userHandle)
-        if (usageEntries.remove(keyFor(packageName, userHandle)) != null) {
-            usageDirty = true
-        }
     }
 
     fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
@@ -376,6 +414,5 @@ class AppsRepository @Inject constructor(
         private const val DECAY_LAMBDA_PER_DAY = 0.05
         private const val FRECENCY_MIN_SCORE = 0.5
         private const val MAX_MOST_USED = 20
-        private const val FALLBACK_ICON_SIZE_PX = 96
     }
 }

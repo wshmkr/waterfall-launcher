@@ -23,21 +23,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
-import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
+import net.wshmkr.launcher.ui.common.components.rememberLetterAlpha
 import net.wshmkr.launcher.ui.common.components.rememberLetterIndexedListState
 import net.wshmkr.launcher.ui.common.icons.SearchIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
@@ -74,11 +73,7 @@ fun AllAppsView(
         getScrollPosition = viewModel::getScrollPosition,
     )
 
-    val alphaByLetter by remember(viewModel) {
-        derivedStateOf {
-            viewModel.alphabetLetters.associateWith { viewModel.getAlpha(it) }
-        }
-    }
+    val letterAlpha = rememberLetterAlpha(activeLetter)
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -116,14 +111,13 @@ fun AllAppsView(
                             Spacer(modifier = Modifier.height(Spacing.small))
                             SectionHeaderItem(
                                 letter = item.letter,
-                                targetAlpha = alphaByLetter[item.letter] ?: 1f,
-                                isActiveLetter = item.letter == activeLetter,
+                                alphaProvider = { letterAlpha(item.letter) },
                             )
                         }
                         is AppListItem.AppItem -> {
-                            val notifications by viewModel
-                                .notificationsFor(item.appInfo.packageName, item.appInfo.userHandle)
-                                .collectAsState()
+                            val notifications by remember(item.appInfo.key) {
+                                viewModel.notificationsFor(item.appInfo.packageName, item.appInfo.userHandle)
+                            }
                             AppListItem(
                                 appInfo = item.appInfo,
                                 isActiveUser = item.appInfo.userHandle in activeProfiles,
@@ -131,8 +125,7 @@ fun AllAppsView(
                                 onToggleFavorite = onToggleFavorite,
                                 onToggleHidden = onToggleHidden,
                                 onToggleSuggest = onToggleSuggest,
-                                targetAlpha = alphaByLetter[item.sectionLetter] ?: 1f,
-                                isActiveLetter = item.sectionLetter == activeLetter,
+                                alphaProvider = { letterAlpha(item.sectionLetter) },
                                 notifications = notifications,
                             )
                         }
@@ -161,12 +154,7 @@ fun AllAppsView(
 }
 
 @Composable
-fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolean) {
-    val animatedAlpha by animateLetterFilterAlpha(
-        targetAlpha = targetAlpha,
-        isActiveLetter = isActiveLetter,
-        label = "section_header_alpha"
-    )
+fun SectionHeaderItem(letter: String, alphaProvider: () -> Float) {
     val dimensions = LocalDimensions.current
 
     Text(
@@ -174,7 +162,7 @@ fun SectionHeaderItem(letter: String, targetAlpha: Float, isActiveLetter: Boolea
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = Spacing.medium, end = Spacing.medium, top = 12.dp, bottom = Spacing.small)
-            .alpha(animatedAlpha),
+            .graphicsLayer { this.alpha = alphaProvider() },
         fontSize = dimensions.fontXLarge,
         fontWeight = FontWeight.Bold,
     )
