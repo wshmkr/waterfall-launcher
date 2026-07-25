@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.feature.notifications
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -56,7 +57,7 @@ fun NotificationPreview(
             Text(
                 text = it,
                 fontSize = previewFont,
-                color = contentColor,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 lineHeight = previewFont * 1.25f,
                 overflow = TextOverflow.Ellipsis,

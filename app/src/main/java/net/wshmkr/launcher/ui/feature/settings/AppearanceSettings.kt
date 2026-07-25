@@ -3,7 +3,6 @@ package net.wshmkr.launcher.ui.feature.settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import net.wshmkr.launcher.model.HomeTextColor
 import net.wshmkr.launcher.model.PaletteStyle
 import net.wshmkr.launcher.model.ThemeMode
 import net.wshmkr.launcher.ui.common.components.SegmentedMenuOption
@@ -13,7 +12,6 @@ import net.wshmkr.launcher.viewmodel.SettingsViewModel
 fun AppearanceSettings(viewModel: SettingsViewModel) {
     SettingsSectionHeader("Appearance")
     ThemeModeRow(viewModel)
-    HomeTextColorRow(viewModel)
     PaletteStyleRow(viewModel)
 }
 
@@ -30,18 +28,6 @@ private fun ThemeModeRow(viewModel: SettingsViewModel) {
 }
 
 @Composable
-private fun HomeTextColorRow(viewModel: SettingsViewModel) {
-    val homeTextColor by viewModel.homeTextColor.collectAsStateWithLifecycle()
-    SegmentedMenuOption(
-        text = "Home text",
-        options = HomeTextColor.entries,
-        selected = homeTextColor,
-        onSelect = viewModel::setHomeTextColor,
-        optionLabel = ::homeTextColorLabel,
-    )
-}
-
-@Composable
 private fun PaletteStyleRow(viewModel: SettingsViewModel) {
     val paletteStyle by viewModel.paletteStyle.collectAsStateWithLifecycle()
     SegmentedMenuOption(
@@ -54,15 +40,9 @@ private fun PaletteStyleRow(viewModel: SettingsViewModel) {
 }
 
 private fun themeModeLabel(mode: ThemeMode): String = when (mode) {
-    ThemeMode.SYSTEM -> "System"
+    ThemeMode.AUTO -> "Auto"
     ThemeMode.LIGHT -> "Light"
     ThemeMode.DARK -> "Dark"
-}
-
-private fun homeTextColorLabel(color: HomeTextColor): String = when (color) {
-    HomeTextColor.AUTO -> "Auto"
-    HomeTextColor.LIGHT -> "Light"
-    HomeTextColor.DARK -> "Dark"
 }
 
 private fun paletteStyleLabel(style: PaletteStyle): String = when (style) {

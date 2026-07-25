@@ -42,13 +42,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val themeMode by settingsViewModel.themeMode.collectAsStateWithLifecycle()
-            val homeTextColor by settingsViewModel.homeTextColor.collectAsStateWithLifecycle()
             val paletteStyle by settingsViewModel.paletteStyle.collectAsStateWithLifecycle()
-            WaterfallLauncherTheme(
-                themeMode = themeMode,
-                homeTextColor = homeTextColor,
-                paletteStyle = paletteStyle,
-            ) {
+            WaterfallLauncherTheme(themeMode = themeMode, paletteStyle = paletteStyle) {
                 val navController = rememberNavController()
                 val widgetViewModel: WidgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {

@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import net.wshmkr.launcher.ui.theme.LocalDimensions
-import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.ui.theme.alphabetBottomLift
 import net.wshmkr.launcher.ui.theme.alphabetHeight
 import net.wshmkr.launcher.viewmodel.AlphabetSliderViewModel
@@ -227,7 +226,7 @@ private fun AnimatedLettersList(
                     color = if (letter == activeLetter) {
                         MaterialTheme.colorScheme.primary
                     } else {
-                        LocalWallpaperContentColors.current.primary
+                        MaterialTheme.colorScheme.onSurface
                     },
                     textAlign = TextAlign.Center
                 )

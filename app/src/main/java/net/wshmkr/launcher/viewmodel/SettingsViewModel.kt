@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
-import net.wshmkr.launcher.model.HomeTextColor
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.PaletteStyle
 import net.wshmkr.launcher.model.ThemeMode
@@ -49,9 +48,7 @@ class SettingsViewModel @Inject constructor(
     val weatherLon: StateFlow<Double?> =
         userSettingsDataSource.weatherLon.stateIn(viewModelScope, subscribed, null)
     val themeMode: StateFlow<ThemeMode> =
-        userSettingsDataSource.themeMode.stateIn(viewModelScope, subscribed, ThemeMode.SYSTEM)
-    val homeTextColor: StateFlow<HomeTextColor> =
-        userSettingsDataSource.homeTextColor.stateIn(viewModelScope, subscribed, HomeTextColor.AUTO)
+        userSettingsDataSource.themeMode.stateIn(viewModelScope, subscribed, ThemeMode.AUTO)
     val paletteStyle: StateFlow<PaletteStyle> =
         userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.FIDELITY)
 
@@ -105,10 +102,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { userSettingsDataSource.setThemeMode(mode) }
-    }
-
-    fun setHomeTextColor(color: HomeTextColor) {
-        viewModelScope.launch { userSettingsDataSource.setHomeTextColor(color) }
     }
 
     fun setPaletteStyle(style: PaletteStyle) {

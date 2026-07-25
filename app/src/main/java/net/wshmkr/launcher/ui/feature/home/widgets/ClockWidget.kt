@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
-import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.formatDate
 import net.wshmkr.launcher.util.formatTime
@@ -70,7 +70,7 @@ fun ClockWidget(
                     Text(
                         text = "•",
                         fontSize = dimensions.fontMedium,
-                        color = LocalWallpaperContentColors.current.primary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
                 }
@@ -101,7 +101,7 @@ private fun ClockTimeText(use24Hour: Boolean, onClick: () -> Unit) {
     Text(
         text = display,
         fontSize = LocalDimensions.current.fontClock,
-        color = LocalWallpaperContentColors.current.primary,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .padding(horizontal = 4.dp)
             .clip(Corners.small)
@@ -118,7 +118,7 @@ private fun ClockDateText(onClick: () -> Unit) {
     Text(
         text = display,
         fontSize = LocalDimensions.current.fontMedium,
-        color = LocalWallpaperContentColors.current.primary,
+        color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .clip(Corners.small)
             .clickable(onClick = onClick)

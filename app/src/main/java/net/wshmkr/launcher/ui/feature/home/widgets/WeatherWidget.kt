@@ -34,7 +34,6 @@ import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
-import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.util.WeatherHelper
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
@@ -130,9 +129,9 @@ private fun WeatherContent(
     onRequestPermission: () -> Unit,
     onRetry: () -> Unit
 ) {
-    val colors = LocalWallpaperContentColors.current
+    val colors = MaterialTheme.colorScheme
     val textStyle = MaterialTheme.typography.bodyMedium.copy(
-        color = colors.primary,
+        color = colors.onSurface,
         fontSize = LocalDimensions.current.fontMedium
     )
 
@@ -145,7 +144,7 @@ private fun WeatherContent(
                 Icon(
                     painter = LocationOnIcon(),
                     contentDescription = "Enable location",
-                    tint = colors.primary,
+                    tint = colors.onSurface,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -165,7 +164,7 @@ private fun WeatherContent(
                 Icon(
                     painter = HelpIcon(),
                     contentDescription = "Weather unavailable, tap to retry",
-                    tint = colors.primary,
+                    tint = colors.onSurface,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -189,7 +188,7 @@ private fun WeatherReadyRow(
     modifier: Modifier,
     textStyle: androidx.compose.ui.text.TextStyle,
 ) {
-    val colors = LocalWallpaperContentColors.current
+    val colors = MaterialTheme.colorScheme
     val now by rememberCurrentLocalTime()
     val isNight = remember(now, state.sunriseTime, state.sunsetTime) {
         WeatherHelper.isNightAt(now, state.sunriseTime, state.sunsetTime)
@@ -205,7 +204,7 @@ private fun WeatherReadyRow(
         Icon(
             painter = if (iconRes == null) CloudOffIcon() else painterResource(iconRes),
             contentDescription = "Weather",
-            tint = colors.primary,
+            tint = colors.onSurface,
             modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
@@ -215,7 +214,7 @@ private fun WeatherReadyRow(
         )
         if (state.isStale) {
             Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "stale", style = textStyle.copy(color = colors.secondary))
+            Text(text = "stale", style = textStyle.copy(color = colors.onSurfaceVariant))
         }
     }
 }

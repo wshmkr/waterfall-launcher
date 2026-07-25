@@ -161,7 +161,7 @@ fun SearchOverlayScaffold(
                             placeholder = {
                                 Text(
                                     text = placeholder,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.outline
                                 )
                             }
                         )

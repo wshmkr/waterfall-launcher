@@ -1,9 +1,6 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
-import android.appwidget.AppWidgetHostView
-import android.content.Context
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -24,6 +21,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,8 +53,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import net.wshmkr.launcher.ui.common.gesture.captureLongPress
+import net.wshmkr.launcher.ui.theme.ContentAlpha
 import net.wshmkr.launcher.ui.theme.Corners
-import net.wshmkr.launcher.ui.theme.LocalWallpaperContentColors
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
@@ -161,7 +160,7 @@ fun WidgetStack(
                                 .fillMaxSize()
                                 .border(
                                     1.dp,
-                                    LocalWallpaperContentColors.current.primary.copy(alpha = 0.5f),
+                                    MaterialTheme.colorScheme.outline,
                                     Corners.medium,
                                 ),
                         )
@@ -218,7 +217,7 @@ private fun WidgetPage(
 ) {
     val context = LocalContext.current
     val widgetView = remember(widgetId) {
-        (viewModel.createWidgetView(context, widgetId) ?: unavailableWidgetView(context)).apply {
+        viewModel.createWidgetView(context, widgetId)?.apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -227,16 +226,31 @@ private fun WidgetPage(
     }
 
     LaunchedEffect(widgetView, widthDp) {
-        if (widthDp <= 0) return@LaunchedEffect
+        if (widgetView == null || widthDp <= 0) return@LaunchedEffect
         snapshotFlow { viewModel.stackHeightDp }
             .debounce(WIDGET_SIZE_DEBOUNCE_MS)
             .collect { viewModel.applyWidgetSize(widgetView, widthDp, it) }
     }
 
-    AndroidView(
-        factory = { widgetView },
-        modifier = Modifier.fillMaxSize(),
-    )
+    if (widgetView == null) {
+        UnavailableWidget()
+    } else {
+        AndroidView(
+            factory = { widgetView },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Composable
+private fun UnavailableWidget() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = "Unable to load widget",
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(Spacing.large),
+        )
+    }
 }
 
 @Composable
@@ -270,7 +284,7 @@ private fun DragHandle(
                 .align(Alignment.Center)
                 .size(width = 56.dp, height = 5.dp)
                 .background(
-                    LocalWallpaperContentColors.current.primary.copy(alpha = 0.9f),
+                    MaterialTheme.colorScheme.onSurface,
                     CircleShape,
                 ),
         )
@@ -289,13 +303,13 @@ private fun PageDashes(
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         val currentPage = pagerState.currentPage % pageCount
-        val dotColors = LocalWallpaperContentColors.current
+        val dotColor = MaterialTheme.colorScheme.primary
         repeat(pageCount) { index ->
             val color =
                 if (index == currentPage) {
-                    dotColors.primary
+                    dotColor
                 } else {
-                    dotColors.primary.copy(alpha = 0.3f)
+                    dotColor.copy(alpha = ContentAlpha.disabled)
                 }
             Box(
                 modifier = Modifier
@@ -304,18 +318,5 @@ private fun PageDashes(
                     .background(color, CircleShape),
             )
         }
-    }
-}
-
-private fun unavailableWidgetView(context: Context): AppWidgetHostView {
-    return AppWidgetHostView(context).apply {
-        addView(
-            TextView(context).apply {
-                text = "Unable to load widget"
-                setTextColor(android.graphics.Color.WHITE)
-                textSize = 16f
-                setPadding(24, 24, 24, 24)
-            }
-        )
     }
 }
