@@ -10,19 +10,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 
+// One animation for a whole letter-indexed list: rows read it instead of each animating their own.
 @Composable
-fun animateLetterFilterAlpha(
-    targetAlpha: Float,
-    isActiveLetter: Boolean,
-    label: String = "letter_filter_alpha",
-): State<Float> = animateFloatAsState(
-    targetValue = targetAlpha,
-    animationSpec = if (isActiveLetter || targetAlpha < 1f) {
-        snap()
-    } else {
-        tween(durationMillis = 300)
-    },
-    label = label,
+fun animateLetterDimAlpha(activeLetter: String?): State<Float> = animateFloatAsState(
+    targetValue = if (activeLetter == null) 1f else DIMMED_LETTER_ALPHA,
+    animationSpec = if (activeLetter == null) tween(durationMillis = 300) else snap(),
+    label = "letter_dim_alpha",
 )
 
 @Composable
@@ -43,3 +36,5 @@ fun rememberLetterIndexedListState(
 
     return listState
 }
+
+private const val DIMMED_LETTER_ALPHA = 0.2f

@@ -110,10 +110,6 @@ class WidgetViewModel @Inject constructor(
         activeLetter = null
     }
 
-    fun getAlpha(letter: String): Float {
-        return if (activeLetter == null || activeLetter == letter) 1f else 0.2f
-    }
-
     fun removeWidget(widgetId: Int) {
         viewModelScope.launch {
             widgetRepository.removeWidget(widgetId)

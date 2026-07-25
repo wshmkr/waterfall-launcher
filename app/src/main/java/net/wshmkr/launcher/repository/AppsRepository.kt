@@ -35,9 +35,11 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
+import net.wshmkr.launcher.ui.theme.maxAppIconSize
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
+import kotlin.math.roundToInt
 
 @Singleton
 class AppsRepository @Inject constructor(
@@ -49,6 +51,9 @@ class AppsRepository @Inject constructor(
     private val userManager: UserManager = application.getSystemService(Context.USER_SERVICE) as UserManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    private val iconSizePx =
+        (maxAppIconSize.value * application.resources.displayMetrics.density).roundToInt()
 
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
@@ -197,9 +202,17 @@ class AppsRepository @Inject constructor(
     }
 
     private fun toBitmapPainter(drawable: Drawable): BitmapPainter {
-        val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
-        val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
-        return BitmapPainter(drawable.toBitmap(width = width, height = height).asImageBitmap())
+        val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
+        val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: FALLBACK_ICON_SIZE_PX
+        val scale = minOf(1f, iconSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
+
+        val bitmap = drawable.toBitmap(
+            width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
+            height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
+        )
+        // Hints an upload on the render thread now, so the first scroll doesn't pay for it.
+        bitmap.prepareToDraw()
+        return BitmapPainter(bitmap.asImageBitmap())
     }
 
     private fun buildSearchTokens(label: String) =

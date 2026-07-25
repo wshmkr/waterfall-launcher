@@ -18,15 +18,8 @@ data class AppInfo(
     val isHidden: Boolean,
     val doNotSuggest: Boolean,
     val isSuggested: Boolean = false,
-    val notifications: ImmutableList<NotificationInfo> = persistentListOf(),
     val searchTokens: ImmutableList<String> = persistentListOf(),
 ) {
-    val mostRecentNotification: NotificationInfo?
-        get() = notifications.maxByOrNull { it.timestamp }
-
-    val hasNotifications: Boolean
-        get() = notifications.isNotEmpty()
-
     val key: String
         get() = keyFor(packageName, userHandle)
 }

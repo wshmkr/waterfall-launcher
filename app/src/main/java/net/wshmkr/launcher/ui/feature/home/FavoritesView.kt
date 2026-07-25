@@ -149,9 +149,7 @@ fun FavoritesView(
                 val isActiveUser = remember(item.userHandle, activeProfiles) {
                     item.userHandle in activeProfiles
                 }
-                val notifications by viewModel
-                    .notificationsFor(item.packageName, item.userHandle)
-                    .collectAsState()
+                val notifications by viewModel.notificationsFor(item.packageName, item.userHandle)
                 AppListItem(
                     appInfo = item,
                     isActiveUser = isActiveUser,

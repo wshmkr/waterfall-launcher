@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import net.wshmkr.launcher.ui.common.components.animateLetterDimAlpha
 import net.wshmkr.launcher.ui.feature.home.SectionHeaderItem
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
@@ -34,6 +35,7 @@ fun WidgetAppList(
     val widgetListItems = viewModel.widgetAppListItems
     // Per-key snapshot map: expanding one provider only invalidates readers of that key.
     val expandedProviders = remember { mutableStateMapOf<String, Boolean>() }
+    val dimAlpha = animateLetterDimAlpha(viewModel.activeLetter)
 
     Box(
         modifier = modifier
@@ -62,17 +64,16 @@ fun WidgetAppList(
                 ) { index, listItem ->
                     when (listItem) {
                         is WidgetAppListItem.SectionHeader -> {
+                            val isActiveLetter = listItem.letter == viewModel.activeLetter
                             Spacer(modifier = Modifier.height(Spacing.small))
                             SectionHeaderItem(
                                 letter = listItem.letter,
-                                targetAlpha = viewModel.getAlpha(listItem.letter),
-                                isActiveLetter = listItem.letter == viewModel.activeLetter
+                                alphaProvider = { if (isActiveLetter) 1f else dimAlpha.value },
                             )
                         }
 
                         is WidgetAppListItem.Provider -> {
                             val isExpanded = expandedProviders[listItem.packageName] == true
-                            val targetAlpha = viewModel.getAlpha(listItem.letter)
                             val isActiveLetter = viewModel.activeLetter == listItem.letter
                             val onProviderClick = remember(listItem.packageName) {
                                 {
@@ -89,8 +90,7 @@ fun WidgetAppList(
                             WidgetProviderGroup(
                                 provider = listItem,
                                 isExpanded = isExpanded,
-                                targetAlpha = targetAlpha,
-                                isActiveLetter = isActiveLetter,
+                                alphaProvider = { if (isActiveLetter) 1f else dimAlpha.value },
                                 onProviderClick = onProviderClick,
                                 onWidgetSelected = onWidgetClick
                             )

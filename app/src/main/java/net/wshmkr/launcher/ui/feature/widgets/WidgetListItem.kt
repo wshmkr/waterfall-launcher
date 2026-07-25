@@ -18,9 +18,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import net.wshmkr.launcher.ui.common.components.animateLetterFilterAlpha
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
@@ -39,15 +38,9 @@ import net.wshmkr.launcher.viewmodel.WidgetOption
 fun WidgetListItem(
     widgetOption: WidgetOption,
     modifier: Modifier = Modifier,
-    targetAlpha: Float = 1f,
-    isActiveLetter: Boolean = false,
+    alphaProvider: () -> Float = { 1f },
     onClick: () -> Unit = {}
 ) {
-    val animatedAlpha by animateLetterFilterAlpha(
-        targetAlpha = targetAlpha,
-        isActiveLetter = isActiveLetter,
-        label = "widget_item_alpha"
-    )
     val context = LocalContext.current
     val densityDpi = context.resources.displayMetrics.densityDpi
     val previewDrawable by produceState<Drawable?>(null, widgetOption.info, densityDpi) {
@@ -65,7 +58,7 @@ fun WidgetListItem(
 
     Column(
         modifier = modifier
-            .alpha(animatedAlpha)
+            .graphicsLayer { this.alpha = alphaProvider() }
             .clip(Corners.small)
             .background(Color.White.copy(alpha = 0.05f))
             .clickable(onClick = onClick)
