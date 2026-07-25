@@ -15,8 +15,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Detects a still long press without blocking taps or swipes below, then consumes the rest
  * of the gesture so children never see a click (interop views get ACTION_CANCEL).
  * Emits press interactions on [interactionSource] so an indication (e.g. ripple) can show the
- * touched area. [onTouchedChange] brackets the whole gesture, including after slop movement
- * ends the press, so an ancestor gesture can defer to it. [enabled] is evaluated at pointer-down.
+ * touched area. [onTouchedChange] brackets the whole gesture, staying true until the last pointer
+ * lifts even once the press itself has ended, so an ancestor gesture can defer to it.
+ * [enabled] is evaluated at pointer-down.
  */
 fun Modifier.captureLongPress(
     interactionSource: MutableInteractionSource,
@@ -54,7 +55,7 @@ fun Modifier.captureLongPress(
 
                 if (movedOutOfSlop != null) {
                     endPress(cancelled = movedOutOfSlop)
-                    if (movedOutOfSlop) awaitAllPointersUp()
+                    awaitAllPointersUp()
                     return@awaitEachGesture
                 }
 
@@ -88,10 +89,9 @@ private suspend fun AwaitPointerEventScope.awaitSlopOrRelease(
     }
 }
 
-/** Drains the gesture without consuming, so [onTouchedChange] stays true until the finger lifts. */
+/** Drains the gesture without consuming, so [onTouchedChange] stays true until the last finger lifts. */
 private suspend fun AwaitPointerEventScope.awaitAllPointersUp() {
-    while (true) {
-        val event = awaitPointerEvent(PointerEventPass.Initial)
-        if (event.changes.none { it.pressed }) return
+    while (currentEvent.changes.any { it.pressed }) {
+        awaitPointerEvent(PointerEventPass.Initial)
     }
 }
