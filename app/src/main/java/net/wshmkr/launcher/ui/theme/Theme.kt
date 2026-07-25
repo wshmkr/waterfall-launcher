@@ -19,7 +19,7 @@ fun WaterfallLauncherTheme(
     content: @Composable () -> Unit,
 ) {
     val wallpaperColors = rememberSystemWallpaperColors()
-    // Forcing a polarity would leave content illegible over the wallpaper, so it always follows it.
+    // A forced polarity would leave content illegible over the wallpaper.
     val darkTheme = remember(wallpaperColors) { wallpaperIsDark(wallpaperColors) }
     val colorScheme = rememberSheetSurfaceScheme(
         rememberWallpaperColorScheme(wallpaperColors, paletteStyle, darkTheme)
@@ -28,22 +28,20 @@ fun WaterfallLauncherTheme(
     val widthDp = LocalConfiguration.current.screenWidthDp
     CompositionLocalProvider(
         LocalDimensions provides dimensionsFor(widthDp),
-        // The app draws straight over the wallpaper with no Surface to set the ambient ink.
+        // No Surface sets the ambient ink, since the app draws straight over the wallpaper.
         LocalContentColor provides colorScheme.onSurface,
     ) {
         MaterialTheme(colorScheme = colorScheme) { content() }
     }
 }
 
-// Material floats dialogs and the search bar a tone above the option sheets. Flattening the role
-// keeps every surface that sits over the wallpaper on one tone, with no per-component overrides.
+// Material floats dialogs a tone above the option sheets; over the wallpaper they should match.
 @Composable
 private fun rememberSheetSurfaceScheme(colorScheme: ColorScheme): ColorScheme =
     remember(colorScheme) {
         colorScheme.copy(surfaceContainerHigh = colorScheme.surfaceContainerLow)
     }
 
-// The bars sit over the wallpaper, so their icons follow the same lightness as app content.
 @Composable
 private fun SystemBarIcons(darkTheme: Boolean) {
     val view = LocalView.current

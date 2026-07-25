@@ -44,7 +44,7 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .verticalScroll(rememberScrollState())
-                // Inside the scroll, so the gutters travel with the content instead of pinning it.
+                // After verticalScroll so the gutters scroll with the content.
                 .padding(vertical = contentGutter)
         ) {
             HomeScreenSettings(

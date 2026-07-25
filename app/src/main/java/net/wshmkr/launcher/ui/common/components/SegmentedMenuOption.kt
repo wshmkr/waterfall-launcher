@@ -48,7 +48,7 @@ fun <T> SegmentedMenuOption(
                     shape = SegmentedButtonDefaults.itemShape(index, options.size),
                     colors = accentSegmentedColors(),
                     contentPadding = SEGMENT_CONTENT_PADDING,
-                    // The filled container marks the selection; dropping the icon fits longer labels.
+                    // The fill already marks the selection, so no icon leaves room for labels.
                     icon = {},
                 ) {
                     Text(text = optionLabel(option), fontSize = dimensions.fontSmall, maxLines = 1)
@@ -58,8 +58,6 @@ fun <T> SegmentedMenuOption(
     }
 }
 
-// Material sizes segments for a toolbar; here they sit in a menu row, matching the scaled switch.
+// Material sizes segments for a toolbar; both shrink them to sit in a menu row.
 private val SEGMENT_HEIGHT = 32.dp
-
-// Material's 8dp text inset outgrows the shorter row, leaving the label off center.
 private val SEGMENT_CONTENT_PADDING = PaddingValues(horizontal = 12.dp, vertical = 4.dp)

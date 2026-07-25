@@ -74,7 +74,7 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     return mid - mid % pageCount + initialIndex
 }
 
-// The host view variant also writes OPTION_APPWIDGET_SIZES and accounts for its padding.
+// The host view overload also writes OPTION_APPWIDGET_SIZES and accounts for padding.
 private fun AppWidgetHostView.applyWidgetSize(widthDp: Int, heightDp: Int) =
     updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
 

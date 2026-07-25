@@ -1,6 +1,5 @@
 package net.wshmkr.launcher.model
 
-// How the wallpaper's seed color is expanded into a Material color scheme.
 enum class PaletteStyle {
     VIBRANT,
     EXPRESSIVE,

@@ -15,15 +15,12 @@ import com.materialkolor.hct.Hct
 import net.wshmkr.launcher.model.PaletteStyle
 import com.materialkolor.PaletteStyle as KolorPaletteStyle
 
-// Tones at or below this are dark enough to need light content on top.
 private const val DARK_TONE_LIMIT = 50.0
 
-// Medium contrast lifts onSurface to tone 100 in dark schemes, matching the maximum contrast
-// of hand-picked white while leaving surface tones — and so the scrim — untouched.
+// Medium lifts onSurface to tone 100 in dark schemes, leaving surface tones — and the scrim — alone.
 private val CONTRAST = Contrast.Medium.value
 
-// The system palette only follows the wallpaper while the user has wallpaper theming enabled,
-// so the scheme is generated from the wallpaper's own seed color instead.
+// The system palette only follows the wallpaper while Material You theming is on, so seed our own.
 @Composable
 fun rememberWallpaperColorScheme(
     wallpaperColors: WallpaperColors?,
@@ -34,8 +31,7 @@ fun rememberWallpaperColorScheme(
     val wallpaperSeed = wallpaperColors.seed()
     return remember(wallpaperSeed, paletteStyle, darkTheme, context) {
         dynamicColorScheme(
-            // Wallpapers that report no colors still get the chosen palette style, seeded from
-            // whatever the system managed to extract.
+            // Wallpapers that report no colors still get the chosen style, seeded from the system.
             seedColor = wallpaperSeed ?: systemSeed(context, darkTheme),
             isDark = darkTheme,
             style = paletteStyle.toKolorStyle(),
@@ -44,9 +40,8 @@ fun rememberWallpaperColorScheme(
     }
 }
 
-// Drives every color in the app, so content always contrasts with what is behind it. The platform
-// measures the wallpaper's own luminance, which its dominant color can contradict — but only fills
-// both hints in when it had a bitmap to measure, so live wallpaper colors still fall back to tone.
+// The hints measure the whole wallpaper, which its dominant color can contradict, but only a
+// bitmap fills both in — live wallpaper colors carry neither and fall through to tone.
 fun wallpaperIsDark(wallpaperColors: WallpaperColors?): Boolean {
     val colors = wallpaperColors ?: return true
     val hints = colors.colorHints

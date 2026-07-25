@@ -21,7 +21,6 @@ fun accentButtonColors(): ButtonColors = ButtonDefaults.buttonColors(
     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
 )
 
-// The thumb carries the accent, so the rail behind it stays on a neutral surface tone.
 // Labeled switches keep their fill while off so the thumb text keeps its contrast.
 @Composable
 fun accentSwitchColors(alwaysFilled: Boolean = false): SwitchColors {
@@ -37,9 +36,7 @@ fun accentSwitchColors(alwaysFilled: Boolean = false): SwitchColors {
     )
 }
 
-// The search bar floats over a scrim tinted like the app surface, so matching that surface would
-// leave it barely visible. Inverting the pair keeps the field legible against its own backdrop.
-// The input field takes its own colors, since the caller owns that slot.
+// The bar floats over a scrim tinted like the surface, so matching it would leave it invisible.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun invertedSearchBarColors(): SearchBarColors = SearchBarDefaults.colors(
@@ -58,8 +55,7 @@ fun invertedSearchInputColors(): TextFieldColors {
         unfocusedLeadingIconColor = colorScheme.inverseOnSurface,
         focusedTrailingIconColor = colorScheme.inverseOnSurface,
         unfocusedTrailingIconColor = colorScheme.inverseOnSurface,
-        // OutlineVariant flips with the scheme like the inverted ink does, landing a step softer
-        // than the query text instead of halfway to the container.
+        // Flips with the scheme like the inverted ink, a step softer than the query text.
         focusedPlaceholderColor = colorScheme.outlineVariant,
         unfocusedPlaceholderColor = colorScheme.outlineVariant,
         focusedContainerColor = colorScheme.inverseSurface,
