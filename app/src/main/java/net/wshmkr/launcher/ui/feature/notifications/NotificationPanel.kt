@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +46,7 @@ import net.wshmkr.launcher.ui.common.icons.CloseIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.theme.sheetDivider
 import net.wshmkr.launcher.util.timeSince
 
 private const val CARD_TEXT_MAX_LINES = 12
@@ -108,7 +109,10 @@ fun NotificationPanel(
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.small))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = Spacing.small),
+                color = sheetDivider(),
+            )
 
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
@@ -120,7 +124,10 @@ fun NotificationPanel(
                         onDismissNotification = onDismissNotification,
                     )
                     if (index < ordered.lastIndex) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.small))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = Spacing.small),
+                            color = sheetDivider(),
+                        )
                     }
                 }
             }
@@ -172,7 +179,7 @@ private fun NotificationCard(
                 Text(
                     text = it,
                     fontSize = dimensions.fontCaption,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -180,7 +187,7 @@ private fun NotificationCard(
             Text(
                 text = timeSince(notification.timestamp),
                 fontSize = dimensions.fontCaption,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (notification.actions.isNotEmpty()) {
                 NotificationActions(notification.actions)
@@ -191,7 +198,7 @@ private fun NotificationCard(
                 painter = CloseIcon(),
                 contentDescription = "Dismiss notification",
                 modifier = Modifier.size(dimensions.iconSmall),
-                tint = Color.Gray,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
