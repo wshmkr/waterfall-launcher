@@ -29,9 +29,10 @@ fun WaterfallLauncherTheme(
         dynamicLightColorScheme(context)
     }
     val widthDp = LocalConfiguration.current.screenWidthDp
+    val contentColors = rememberWallpaperContentColors(homeTextColor)
     CompositionLocalProvider(
         LocalDimensions provides dimensionsFor(widthDp),
-        LocalWallpaperContentColors provides rememberWallpaperContentColors(homeTextColor),
+        LocalWallpaperContentColors provides contentColors,
     ) {
         MaterialTheme(colorScheme = colorScheme) { content() }
     }

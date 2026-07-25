@@ -34,19 +34,27 @@ private val DarkContent = contentColors(dark = true)
 val LocalWallpaperContentColors = staticCompositionLocalOf { LightContent }
 
 @Composable
-fun rememberWallpaperContentColors(homeTextColor: HomeTextColor): WallpaperContentColors =
-    when (homeTextColor) {
+fun rememberWallpaperContentColors(homeTextColor: HomeTextColor): WallpaperContentColors {
+    // Must stay unconditional: calling this in only one branch shifts the caller's slot table
+    // when the setting changes, which corrupts the composition instead of recomposing it.
+    val wallpaperIsLight = wallpaperIsLight(tracking = homeTextColor == HomeTextColor.AUTO)
+    return when (homeTextColor) {
         HomeTextColor.LIGHT -> LightContent
         HomeTextColor.DARK -> DarkContent
-        HomeTextColor.AUTO -> if (wallpaperIsLight()) DarkContent else LightContent
+        HomeTextColor.AUTO -> if (wallpaperIsLight) DarkContent else LightContent
     }
+}
 
 @Composable
-private fun wallpaperIsLight(): Boolean {
+private fun wallpaperIsLight(tracking: Boolean): Boolean {
     val context = LocalContext.current
     val wallpaperManager = remember(context) { WallpaperManager.getInstance(context) }
-    var isLight by remember { mutableStateOf(wallpaperManager.systemWallpaperIsLight()) }
-    DisposableEffect(wallpaperManager) {
+    var isLight by remember {
+        mutableStateOf(tracking && wallpaperManager.systemWallpaperIsLight())
+    }
+    DisposableEffect(wallpaperManager, tracking) {
+        if (!tracking) return@DisposableEffect onDispose { }
+        isLight = wallpaperManager.systemWallpaperIsLight()
         val listener = WallpaperManager.OnColorsChangedListener { colors, which ->
             if (which and WallpaperManager.FLAG_SYSTEM != 0) {
                 isLight = colors?.isLight() ?: false
