@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -17,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.launcherScrim
@@ -29,11 +31,13 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val dimensions = LocalDimensions.current
+    val contentGutter = calculateCenteredContentTopPadding()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(launcherScrim())
+            .systemBarsPadding()
             .padding(horizontal = dimensions.pagePadding)
     ) {
         Column(
@@ -41,6 +45,8 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .verticalScroll(rememberScrollState())
+                // Inside the scroll, so the gutters travel with the content instead of pinning it.
+                .padding(vertical = contentGutter)
         ) {
             HomeScreenSettings(
                 context = context,
