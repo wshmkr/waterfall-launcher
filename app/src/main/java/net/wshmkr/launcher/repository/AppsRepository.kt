@@ -106,7 +106,10 @@ class AppsRepository @Inject constructor(
         }
 
         override fun onPackageRemoved(packageName: String, user: UserHandle) {
-            removePackage(packageName, user)
+            removeFromAllApps(packageName, user)
+            if (usageEntries.remove(keyFor(packageName, user)) != null) {
+                usageDirty = true
+            }
         }
 
         override fun onPackageChanged(packageName: String, user: UserHandle) {
@@ -280,13 +283,6 @@ class AppsRepository @Inject constructor(
 
     private fun removeFromAllApps(packageName: String, userHandle: UserHandle) {
         allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
-    }
-
-    private fun removePackage(packageName: String, userHandle: UserHandle) {
-        removeFromAllApps(packageName, userHandle)
-        if (usageEntries.remove(keyFor(packageName, userHandle)) != null) {
-            usageDirty = true
-        }
     }
 
     fun recordAppLaunch(packageName: String, userHandle: UserHandle) {
