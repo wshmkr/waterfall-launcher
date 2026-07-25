@@ -30,7 +30,11 @@ class WidgetDataSource @Inject constructor(
     companion object {
         private val WIDGETS_KEY = stringPreferencesKey("widgets")
         private val KEY_STACK_LAST_WIDGET = intPreferencesKey("widget_stack_last_widget")
+        private val KEY_STACK_HEIGHT_DP = intPreferencesKey("widget_stack_height_dp")
         const val MAX_WIDGETS = 10
+        const val MIN_STACK_HEIGHT_DP = 64
+        const val DEFAULT_STACK_HEIGHT_DP = 144
+        const val MAX_STACK_HEIGHT_DP = 400
     }
 
     suspend fun getLastPageWidgetId(): Int? {
@@ -39,6 +43,10 @@ class WidgetDataSource @Inject constructor(
 
     suspend fun getWidgetIds(): List<Int> {
         return decode(readPreferences()[WIDGETS_KEY])
+    }
+
+    suspend fun getStackHeightDp(): Int {
+        return readPreferences()[KEY_STACK_HEIGHT_DP] ?: DEFAULT_STACK_HEIGHT_DP
     }
 
     private suspend fun readPreferences(): Preferences =
@@ -56,6 +64,10 @@ class WidgetDataSource @Inject constructor(
 
     suspend fun setLastPageWidgetId(widgetId: Int) {
         dataStore.edit { it[KEY_STACK_LAST_WIDGET] = widgetId }
+    }
+
+    suspend fun setStackHeightDp(dp: Int) {
+        dataStore.edit { it[KEY_STACK_HEIGHT_DP] = dp }
     }
 
     private suspend fun updateWidgets(transform: (List<Int>) -> List<Int>) {
