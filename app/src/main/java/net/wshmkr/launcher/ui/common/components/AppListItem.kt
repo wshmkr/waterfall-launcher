@@ -32,7 +32,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
-import net.wshmkr.launcher.ui.common.icons.ArrowDropDownIcon
+import net.wshmkr.launcher.ui.common.icons.ChevronRightIcon
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPanel
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.ui.theme.Corners
@@ -103,11 +103,11 @@ fun AppListItem(
         }
         if (notifications.isNotEmpty()) {
             Icon(
-                painter = ArrowDropDownIcon(),
+                painter = ChevronRightIcon(),
                 contentDescription = "Show notifications",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
-                    .size(dimensions.iconMedium)
+                    .size(dimensions.iconLarge)
                     .clip(CircleShape)
                     .clickable { showNotificationPanel = true }
                     .padding(Spacing.small),
