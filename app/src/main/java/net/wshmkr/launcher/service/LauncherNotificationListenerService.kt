@@ -48,7 +48,8 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         _isConnected.value = true
         val active = activeNotifications?.toList() ?: emptyList()
         notificationRepository.reset(
-            active.map(::extractNotification).filter { !it.isOngoing && !it.isMedia }
+            active.map(::extractNotification)
+                .filter { !it.isOngoing && !it.isMedia && it.hasContent }
         )
         playingKeys.clear()
         mediaRankingRepository.resetNotifications(
@@ -103,9 +104,18 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         }
 
         val notification = extractNotification(statusBarNotification)
-        if (!notification.isOngoing) {
-            notificationRepository.addNotification(notification)
+        // A repost can strip a notification to nothing or turn it ongoing. Drop whatever we already
+        // hold for it, otherwise the row keeps rendering content the app has moved on from.
+        if (notification.isOngoing || !notification.hasContent) {
+            notificationRepository.removeNotification(
+                statusBarNotification.packageName,
+                statusBarNotification.id,
+                statusBarNotification.user,
+            )
+            return
         }
+
+        notificationRepository.addNotification(notification)
     }
 
     // Sampling on each repost catches play transitions even while the launcher UI isn't running.

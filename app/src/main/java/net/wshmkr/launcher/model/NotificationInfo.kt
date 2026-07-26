@@ -25,7 +25,11 @@ data class NotificationInfo(
     val cancelsOnOpen: Boolean = false,
     val groupKey: String? = null,
     val isGroupSummary: Boolean = false,
-)
+) {
+    // Rows render title and text; with neither there is nothing to read but the app name and age.
+    val hasContent: Boolean
+        get() = !title.isNullOrBlank() || !text.isNullOrBlank()
+}
 
 @Immutable
 data class NotificationAction(
