@@ -260,4 +260,13 @@ class HomeViewModel @Inject constructor(
 private fun NotificationMap.notificationsFor(
     packageName: String,
     user: UserHandle,
-): ImmutableList<NotificationInfo> = this[packageName]?.get(user)?.toImmutableList() ?: persistentListOf()
+): ImmutableList<NotificationInfo> =
+    this[packageName]?.get(user)?.withoutRedundantSummaries()?.toImmutableList() ?: persistentListOf()
+
+// A group summary restates the children posted alongside it, so showing both duplicates every row.
+// One left without children still carries the only copy of its content, so it stays.
+private fun List<NotificationInfo>.withoutRedundantSummaries(): List<NotificationInfo> {
+    if (none { it.isGroupSummary }) return this
+    val groupsWithChildren = filterNot { it.isGroupSummary }.mapNotNullTo(HashSet()) { it.groupKey }
+    return filterNot { it.isGroupSummary && it.groupKey in groupsWithChildren }
+}

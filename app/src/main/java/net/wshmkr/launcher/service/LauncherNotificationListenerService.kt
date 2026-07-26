@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.NotificationAction
+import net.wshmkr.launcher.model.ReplyInput
 import net.wshmkr.launcher.repository.MediaNotification
 import net.wshmkr.launcher.repository.MediaRankingRepository
 import net.wshmkr.launcher.repository.NotificationRepository
@@ -145,15 +146,11 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
         extractMessageText(extras)?.let { text = it }
 
-        val actions = notification.actions?.mapNotNull { action ->
-            action.title?.toString()?.let { title ->
-                NotificationAction(
-                    title = title,
-                    actionIntent = action.actionIntent,
-                    remoteInputs = action.remoteInputs?.toList()?.toImmutableList() ?: persistentListOf(),
-                )
-            }
-        }?.toImmutableList() ?: persistentListOf()
+        // Contextual actions trail the app's own buttons, matching how the shade ranks them.
+        val actions = notification.actions
+            ?.mapNotNull { it.toNotificationAction() }
+            ?.sortedBy { it.isContextual }
+            ?.toImmutableList() ?: persistentListOf()
 
         val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
         val isMedia = sbn.mediaSessionToken() != null
@@ -170,7 +167,37 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             actions = actions,
             contentIntent = notification.contentIntent,
             isOngoing = isOngoing,
-            isMedia = isMedia
+            isMedia = isMedia,
+            isClearable = sbn.isClearable,
+            cancelsOnOpen = (notification.flags and Notification.FLAG_AUTO_CANCEL) != 0,
+            groupKey = sbn.groupKey,
+            isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0,
+        )
+    }
+
+    private fun Notification.Action.toNotificationAction(): NotificationAction? {
+        val label = title?.toString()?.takeIf { it.isNotBlank() } ?: return null
+        // A null intent renders a button that can never do anything.
+        val intent = actionIntent ?: return null
+        val inputs = remoteInputs?.toList().orEmpty()
+        val fillable = inputs.firstOrNull { it.allowFreeFormInput || !it.choices.isNullOrEmpty() }
+        // Every input wants data we can't produce, so firing this bare would send an empty reply.
+        if (inputs.isNotEmpty() && fillable == null) return null
+
+        return NotificationAction(
+            title = label,
+            actionIntent = intent,
+            remoteInputs = inputs.toImmutableList(),
+            reply = fillable?.let { input ->
+                ReplyInput(
+                    resultKey = input.resultKey,
+                    hint = input.label?.toString(),
+                    choices = input.choices?.map { it.toString() }?.toImmutableList()
+                        ?: persistentListOf(),
+                    allowsFreeFormInput = input.allowFreeFormInput,
+                )
+            },
+            isContextual = isContextual,
         )
     }
 

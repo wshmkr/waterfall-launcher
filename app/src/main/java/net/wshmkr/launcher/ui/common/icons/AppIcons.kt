@@ -56,6 +56,9 @@ fun ScheduleIcon() = painterResource(id = R.drawable.icon_schedule)
 fun SearchIcon() = painterResource(id = R.drawable.icon_search)
 
 @Composable
+fun SendIcon() = painterResource(id = R.drawable.icon_send)
+
+@Composable
 fun SettingsIcon() = painterResource(id = R.drawable.icon_settings)
 
 @Composable
