@@ -7,10 +7,15 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +44,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -137,16 +143,14 @@ fun NotificationPanel(
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
+                // Keyed so a card's dismissal state follows its notification rather than its slot.
                 ordered.forEachIndexed { index, notification ->
-                    NotificationCard(
-                        notification = notification,
-                        onOpen = onDismiss,
-                        onDismissNotification = onDismissNotification,
-                    )
-                    if (index < ordered.lastIndex) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = Spacing.small),
-                            color = sheetDivider(),
+                    key(notification.key) {
+                        NotificationCard(
+                            notification = notification,
+                            hasDividerAbove = index > 0,
+                            onOpen = onDismiss,
+                            onDismissNotification = onDismissNotification,
                         )
                     }
                 }
@@ -158,10 +162,51 @@ fun NotificationPanel(
 }
 
 @Composable
-private fun NotificationCard(
+private fun ColumnScope.NotificationCard(
     notification: NotificationInfo,
+    hasDividerAbove: Boolean,
     onOpen: () -> Unit,
     onDismissNotification: (String) -> Unit,
+) {
+    val visibleState = remember { MutableTransitionState(true) }
+
+    // Cancel only once the card has collapsed, so the rows below don't jump up mid-animation.
+    LaunchedEffect(visibleState.isIdle) {
+        if (visibleState.isIdle && !visibleState.currentState) {
+            onDismissNotification(notification.key)
+        }
+    }
+
+    AnimatedVisibility(
+        visibleState = visibleState,
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        Column {
+            if (hasDividerAbove) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = Spacing.small),
+                    color = sheetDivider(),
+                )
+            }
+            NotificationCardContent(
+                notification = notification,
+                // Opening closes the sheet, which would cancel the exit animation before it
+                // could dismiss, so this path cancels directly.
+                onOpened = {
+                    if (notification.cancelsOnOpen) onDismissNotification(notification.key)
+                    onOpen()
+                },
+                onDismiss = { visibleState.targetState = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationCardContent(
+    notification: NotificationInfo,
+    onOpened: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
     val dimensions = LocalDimensions.current
@@ -173,10 +218,7 @@ private fun NotificationCard(
             .clickable {
                 // The shade applies FLAG_AUTO_CANCEL itself; firing the intent from a listener
                 // doesn't, so the notification would linger after opening the app.
-                if (sendPendingIntent(context, notification.contentIntent)) {
-                    if (notification.cancelsOnOpen) onDismissNotification(notification.key)
-                    onOpen()
-                }
+                if (sendPendingIntent(context, notification.contentIntent)) onOpened()
             }
             .padding(Spacing.small),
         verticalAlignment = Alignment.Top,
@@ -231,7 +273,7 @@ private fun NotificationCard(
             }
         }
         if (notification.isClearable) {
-            IconButton(onClick = { onDismissNotification(notification.key) }) {
+            IconButton(onClick = onDismiss) {
                 Icon(
                     painter = CloseIcon(),
                     contentDescription = "Dismiss notification",
