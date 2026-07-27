@@ -111,7 +111,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         if (notification.isOngoing || !notification.hasContent) {
             notificationRepository.removeNotification(
                 statusBarNotification.packageName,
-                statusBarNotification.id,
+                statusBarNotification.key,
                 statusBarNotification.user,
             )
             return
@@ -138,13 +138,13 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         sbn?.let { statusBarNotification ->
-            val packageName = statusBarNotification.packageName
-            val notificationId = statusBarNotification.id
-            val userHandle = statusBarNotification.user
-
             playingKeys.remove(statusBarNotification.key)
             mediaRankingRepository.onRemoved(statusBarNotification.key)
-            notificationRepository.removeNotification(packageName, notificationId, userHandle)
+            notificationRepository.removeNotification(
+                statusBarNotification.packageName,
+                statusBarNotification.key,
+                statusBarNotification.user,
+            )
         }
     }
 
@@ -176,7 +176,6 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
         return NotificationInfo(
             key = sbn.key,
-            id = sbn.id,
             packageName = sbn.packageName,
             userHandle = sbn.user,
             title = title,

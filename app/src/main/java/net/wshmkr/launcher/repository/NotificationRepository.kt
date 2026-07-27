@@ -24,7 +24,7 @@ class NotificationRepository @Inject constructor() {
             val userNotifications =
                 packageNotifications[notification.userHandle]?.toMutableList() ?: mutableListOf()
 
-            userNotifications.removeAll { it.id == notification.id }
+            userNotifications.removeAll { it.key == notification.key }
             userNotifications.add(notification)
 
             packageNotifications[notification.userHandle] = userNotifications
@@ -35,12 +35,12 @@ class NotificationRepository @Inject constructor() {
         }
     }
 
-    fun removeNotification(packageName: String, notificationId: Int, userHandle: UserHandle) {
+    fun removeNotification(packageName: String, key: String, userHandle: UserHandle) {
         _notifications.update { current ->
             val packageNotifications = current[packageName]?.toMutableMap() ?: return@update current
             val userNotifications = packageNotifications[userHandle]?.toMutableList() ?: return@update current
 
-            userNotifications.removeAll { it.id == notificationId }
+            userNotifications.removeAll { it.key == key }
 
             if (userNotifications.isEmpty()) {
                 packageNotifications.remove(userHandle)
@@ -57,20 +57,20 @@ class NotificationRepository @Inject constructor() {
 
     fun reset(seed: Iterable<NotificationInfo>) {
         val seedList = seed.toList()
-        val seedKeys = seedList.mapTo(HashSet()) { Triple(it.packageName, it.userHandle, it.id) }
+        val seedKeys = seedList.mapTo(HashSet()) { it.key }
         _notifications.update { existing ->
             val next = mutableMapOf<String, MutableMap<UserHandle, MutableList<NotificationInfo>>>()
             for (notification in seedList) {
                 val userMap = next.getOrPut(notification.packageName) { mutableMapOf() }
                 val list = userMap.getOrPut(notification.userHandle) { mutableListOf() }
-                list.removeAll { it.id == notification.id }
+                list.removeAll { it.key == notification.key }
                 list.add(notification)
             }
             // Preserve entries added concurrently between seed capture and this update.
             for ((packageName, userMap) in existing) {
                 for ((userHandle, notifications) in userMap) {
                     for (notification in notifications) {
-                        if (Triple(packageName, userHandle, notification.id) !in seedKeys) {
+                        if (notification.key !in seedKeys) {
                             val destUsers = next.getOrPut(packageName) { mutableMapOf() }
                             val destList = destUsers.getOrPut(userHandle) { mutableListOf() }
                             destList.add(notification)

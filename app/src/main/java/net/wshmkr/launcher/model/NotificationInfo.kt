@@ -10,7 +10,6 @@ import kotlinx.collections.immutable.persistentListOf
 @Immutable
 data class NotificationInfo(
     val key: String,
-    val id: Int,
     val packageName: String,
     val userHandle: UserHandle,
     val title: String? = null,
