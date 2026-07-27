@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationAction
+import net.wshmkr.launcher.model.NotificationDetail
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.ReplyInput
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
@@ -62,8 +63,6 @@ import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.sheetDivider
 import net.wshmkr.launcher.util.timeSince
-
-private const val CARD_TEXT_MAX_LINES = 12
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,12 +191,25 @@ private fun NotificationCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            notification.text?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
+            // `text` is the collapsed one-liner restating the detail, so only one of them shows.
+            when (val detail = notification.detail) {
+                null -> notification.text?.takeIf { it.isNotBlank() }?.let {
+                    Text(text = it, fontSize = dimensions.fontSmall)
+                }
+
+                is NotificationDetail.Conversation -> ConversationDetail(detail)
+
+                is NotificationDetail.Lines -> Column(
+                    verticalArrangement = Arrangement.spacedBy(Spacing.small)
+                ) {
+                    detail.lines.forEach { line ->
+                        Text(text = line, fontSize = dimensions.fontSmall)
+                    }
+                }
+
+                is NotificationDetail.LongText -> Text(
+                    text = detail.text,
                     fontSize = dimensions.fontSmall,
-                    maxLines = CARD_TEXT_MAX_LINES,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
             notification.subText?.takeIf { it.isNotBlank() }?.let {
@@ -226,6 +238,34 @@ private fun NotificationCard(
                     modifier = Modifier.size(dimensions.iconSmall),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConversationDetail(conversation: NotificationDetail.Conversation) {
+    val dimensions = LocalDimensions.current
+
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
+        conversation.messages.forEach { message ->
+            Column {
+                // In a one-to-one thread the other party is already the notification title, so
+                // only their name in a group, and yours, are worth spelling out.
+                val speaker = when {
+                    message.sender == null -> "You"
+                    conversation.isGroup -> message.sender
+                    else -> null
+                }
+                speaker?.let {
+                    Text(
+                        text = it,
+                        fontSize = dimensions.fontCaption,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(text = message.text, fontSize = dimensions.fontSmall)
             }
         }
     }

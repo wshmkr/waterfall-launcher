@@ -4,7 +4,6 @@ import android.app.Notification
 import android.media.session.MediaController
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
-import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import kotlinx.collections.immutable.persistentListOf
@@ -12,8 +11,11 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.core.app.NotificationCompat
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.NotificationAction
+import net.wshmkr.launcher.model.NotificationDetail
+import net.wshmkr.launcher.model.NotificationMessage
 import net.wshmkr.launcher.model.ReplyInput
 import net.wshmkr.launcher.repository.MediaNotification
 import net.wshmkr.launcher.repository.MediaRankingRepository
@@ -154,7 +156,14 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         var text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
 
-        extractMessageText(extras)?.let { text = it }
+        val detail = notification.extractDetail()
+        when {
+            // A conversation's newest message beats EXTRA_TEXT, which apps often leave stale.
+            detail is NotificationDetail.Conversation ->
+                detail.messages.lastOrNull()?.let { text = it.text }
+            // Styled notifications don't always set a collapsed line, and the row preview needs one.
+            text.isNullOrBlank() -> text = detail?.collapsedText()
+        }
 
         // Contextual actions trail the app's own buttons, matching how the shade ranks them.
         val actions = notification.actions
@@ -182,6 +191,51 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             cancelsOnOpen = (notification.flags and Notification.FLAG_AUTO_CANCEL) != 0,
             groupKey = sbn.groupKey,
             isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0,
+            detail = detail,
+        )
+    }
+
+    private fun NotificationDetail.collapsedText(): String? = when (this) {
+        is NotificationDetail.Conversation -> messages.lastOrNull()?.text
+        is NotificationDetail.Lines -> lines.firstOrNull()
+        is NotificationDetail.LongText -> text
+    }
+
+    // The expanded content the shade shows, whichever style the app used to supply it.
+    private fun Notification.extractDetail(): NotificationDetail? {
+        extractConversation()?.let { return it }
+
+        extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+            ?.mapNotNull { line -> line?.toString()?.takeIf { it.isNotBlank() } }
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { return NotificationDetail.Lines(it.toImmutableList()) }
+
+        extras.getCharSequence(Notification.EXTRA_BIG_TEXT)
+            ?.toString()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return NotificationDetail.LongText(it) }
+
+        return null
+    }
+
+    private fun Notification.extractConversation(): NotificationDetail.Conversation? {
+        val style = NotificationCompat.MessagingStyle
+            .extractMessagingStyleFromNotification(this) ?: return null
+        // Historic messages precede the live ones, so together they read in order.
+        val messages = (style.historicMessages + style.messages).mapNotNull { message ->
+            message.text?.toString()?.takeIf { it.isNotBlank() }?.let { body ->
+                NotificationMessage(
+                    text = body,
+                    sender = message.person?.name?.toString(),
+                    timestamp = message.timestamp,
+                )
+            }
+        }
+        if (messages.isEmpty()) return null
+
+        return NotificationDetail.Conversation(
+            messages = messages.toImmutableList(),
+            isGroup = style.isGroupConversation,
         )
     }
 
@@ -214,22 +268,4 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     private fun StatusBarNotification.mediaSessionToken(): MediaSession.Token? =
         notification.extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
 
-    private fun extractMessageText(extras: Bundle): String? {
-        if (!extras.containsKey(Notification.EXTRA_MESSAGES)) {
-            return null
-        }
-
-        val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES, Bundle::class.java)
-
-        if (!messages.isNullOrEmpty()) {
-            val lastMessageBundle = messages.last() as Bundle
-            val lastMessageText = lastMessageBundle.getCharSequence("text")
-
-            if (!lastMessageText.isNullOrBlank()) {
-                return lastMessageText.toString()
-            }
-        }
-
-        return null
-    }
 }
