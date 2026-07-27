@@ -47,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationAction
 import net.wshmkr.launcher.model.NotificationDetail
@@ -81,6 +83,7 @@ fun NotificationPanel(
 ) {
     val sheetState = rememberModalBottomSheetState()
     val dimensions = LocalDimensions.current
+    val scope = rememberCoroutineScope()
 
     // Dismissals flow back through the repository, emptying this list; close when nothing remains.
     LaunchedEffect(notifications.isEmpty()) {
@@ -129,7 +132,17 @@ fun NotificationPanel(
                     modifier = Modifier.weight(1f),
                 )
                 if (clearableKeys.isNotEmpty()) {
-                    TextButton(onClick = { onClearAll(clearableKeys) }) {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                // Slide out with the list intact; clearing first empties the sheet
+                                // before it has moved, so it reads as vanishing rather than closing.
+                                sheetState.hide()
+                                onClearAll(clearableKeys)
+                                onDismiss()
+                            }
+                        }
+                    ) {
                         Text("Clear all")
                     }
                 }
