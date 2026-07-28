@@ -1,12 +1,22 @@
 package net.wshmkr.launcher.ui.feature.notifications
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
@@ -29,35 +39,55 @@ fun NotificationPreview(
 ) {
     val notification = remember(notifications) { notifications.maxByOrNull { it.timestamp } }
 
+    // Hold the last notification through the exit so the lines have something to draw while they
+    // collapse. Clearing it once the transition settles takes the age suffix with it.
+    var retained by remember { mutableStateOf(notification) }
+    if (notification != null) retained = notification
+
+    val visibleState = remember { MutableTransitionState(notification != null) }
+    visibleState.targetState = notification != null
+
+    LaunchedEffect(visibleState.isIdle) {
+        if (visibleState.isIdle && !visibleState.currentState) retained = null
+    }
+
     NotificationAppTitle(
         label = label,
         isHidden = isHidden,
-        notificationTimestamp = notification?.timestamp,
+        notificationTimestamp = retained?.timestamp,
     )
 
     val previewFont = LocalDimensions.current.fontCaption
 
-    notification?.title?.let {
-        if (it.isNotBlank()) {
-            Text(
-                text = it,
-                fontSize = previewFont,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
+    AnimatedVisibility(
+        visibleState = visibleState,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        Column {
+            retained?.title?.let {
+                if (it.isNotBlank()) {
+                    Text(
+                        text = it,
+                        fontSize = previewFont,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
 
-    notification?.text?.let {
-        if (it.isNotBlank()) {
-            Text(
-                text = it,
-                fontSize = previewFont,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                lineHeight = previewFont * 1.25f,
-                overflow = TextOverflow.Ellipsis,
-            )
+            retained?.text?.let {
+                if (it.isNotBlank()) {
+                    Text(
+                        text = it,
+                        fontSize = previewFont,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        lineHeight = previewFont * 1.25f,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }

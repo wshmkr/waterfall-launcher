@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.common.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -95,13 +96,11 @@ fun AppListItem(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            if (notifications.isNotEmpty()) {
-                NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
-            } else {
-                AppTitle(appInfo.label, appInfo.isHidden)
-            }
+            // Falls back to the plain title on its own, and animates the notification lines away
+            // rather than letting a branch here swap them out mid-flight.
+            NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
         }
-        if (notifications.isNotEmpty()) {
+        AnimatedVisibility(visible = notifications.isNotEmpty()) {
             Icon(
                 painter = ChevronRightIcon(),
                 contentDescription = "Show notifications",
