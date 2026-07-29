@@ -37,7 +37,7 @@ fun NotificationPreview(
     isHidden: Boolean,
     notifications: ImmutableList<NotificationInfo>,
 ) {
-    val notification = remember(notifications) { notifications.maxByOrNull { it.timestamp } }
+    val notification = notifications.firstOrNull()
 
     // Hold the last notification through the exit so the lines have something to draw while they
     // collapse. Clearing it once the transition settles takes the age suffix with it.
@@ -65,28 +65,24 @@ fun NotificationPreview(
         exit = fadeOut() + shrinkVertically(),
     ) {
         Column {
-            retained?.title?.let {
-                if (it.isNotBlank()) {
-                    Text(
-                        text = it,
-                        fontSize = previewFont,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            retained?.title?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    fontSize = previewFont,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
 
-            retained?.text?.let {
-                if (it.isNotBlank()) {
-                    Text(
-                        text = it,
-                        fontSize = previewFont,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        lineHeight = previewFont * 1.25f,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            retained?.text?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    fontSize = previewFont,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    lineHeight = previewFont * 1.25f,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }

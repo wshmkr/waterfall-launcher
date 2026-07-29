@@ -37,7 +37,7 @@ import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.repository.NotificationMap
 import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
-import net.wshmkr.launcher.util.NotificationActionHelper
+import net.wshmkr.launcher.util.NotificationPanelHelper
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
@@ -201,9 +201,9 @@ class HomeViewModel @Inject constructor(
             mutableStateOf(notificationRepository.notifications.value.notificationsFor(packageName, user))
         }
 
-    fun dismissNotification(key: String) = NotificationActionHelper.dismiss(key)
+    fun dismissNotification(key: String) = NotificationPanelHelper.dismissNotifications(listOf(key))
 
-    fun clearNotifications(keys: List<String>) = NotificationActionHelper.dismissAll(keys)
+    fun clearNotifications(keys: List<String>) = NotificationPanelHelper.dismissNotifications(keys)
 
     private fun buildListItems(apps: List<AppInfo>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()
@@ -257,11 +257,16 @@ class HomeViewModel @Inject constructor(
     }
 }
 
+// Newest first, so the row preview and the panel both read the head of one ordering.
 private fun NotificationMap.notificationsFor(
     packageName: String,
     user: UserHandle,
 ): ImmutableList<NotificationInfo> =
-    this[packageName]?.get(user)?.withoutRedundantSummaries()?.toImmutableList() ?: persistentListOf()
+    this[packageName]?.get(user)
+        ?.withoutRedundantSummaries()
+        ?.sortedByDescending { it.timestamp }
+        ?.toImmutableList()
+        ?: persistentListOf()
 
 // A group summary restates the children posted alongside it, so showing both duplicates every row.
 // One left without children still carries the only copy of its content, so it stays.

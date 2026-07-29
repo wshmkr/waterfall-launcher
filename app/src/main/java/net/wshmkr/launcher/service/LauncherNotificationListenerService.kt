@@ -50,8 +50,9 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         _isConnected.value = true
         val active = activeNotifications?.toList() ?: emptyList()
         notificationRepository.reset(
-            active.map(::extractNotification)
-                .filter { !it.isOngoing && !it.isMedia && it.hasContent }
+            active.filter { it.isRowCandidate() }
+                .map(::extractNotification)
+                .filter { it.hasContent }
         )
         playingKeys.clear()
         mediaRankingRepository.resetNotifications(
@@ -78,21 +79,6 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         if (instance == this) instance = null
     }
 
-    fun dismiss(key: String) {
-        try {
-            cancelNotification(key)
-        } catch (ignored: Exception) {
-        }
-    }
-
-    fun dismissAll(keys: List<String>) {
-        if (keys.isEmpty()) return
-        try {
-            cancelNotifications(keys.toTypedArray())
-        } catch (ignored: Exception) {
-        }
-    }
-
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         val statusBarNotification = sbn ?: return
         val token = statusBarNotification.mediaSessionToken()
@@ -105,10 +91,13 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        val notification = extractNotification(statusBarNotification)
         // A repost can strip a notification to nothing or turn it ongoing. Drop whatever we already
         // hold for it, otherwise the row keeps rendering content the app has moved on from.
-        if (notification.isOngoing || !notification.hasContent) {
+        val notification = statusBarNotification
+            .takeIf { it.isRowCandidate() }
+            ?.let(::extractNotification)
+            ?.takeIf { it.hasContent }
+        if (notification == null) {
             notificationRepository.removeNotification(
                 statusBarNotification.packageName,
                 statusBarNotification.key,
@@ -157,22 +146,17 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
 
         val detail = notification.extractDetail()
-        when {
-            // A conversation's newest message beats EXTRA_TEXT, which apps often leave stale.
-            detail is NotificationDetail.Conversation ->
-                detail.messages.lastOrNull()?.let { text = it.text }
-            // Styled notifications don't always set a collapsed line, and the row preview needs one.
-            text.isNullOrBlank() -> text = detail?.collapsedText()
+        // A conversation's newest message beats EXTRA_TEXT, which apps often leave stale, and
+        // styled notifications don't always set a collapsed line the row preview needs.
+        if (detail is NotificationDetail.Conversation || text.isNullOrBlank()) {
+            text = detail?.collapsedText()
         }
 
         // Contextual actions trail the app's own buttons, matching how the shade ranks them.
         val actions = notification.actions
-            ?.mapNotNull { it.toNotificationAction() }
             ?.sortedBy { it.isContextual }
+            ?.mapNotNull { it.toNotificationAction() }
             ?.toImmutableList() ?: persistentListOf()
-
-        val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
-        val isMedia = sbn.mediaSessionToken() != null
 
         return NotificationInfo(
             key = sbn.key,
@@ -184,8 +168,6 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             timestamp = sbn.postTime,
             actions = actions,
             contentIntent = notification.contentIntent,
-            isOngoing = isOngoing,
-            isMedia = isMedia,
             isClearable = sbn.isClearable,
             cancelsOnOpen = (notification.flags and Notification.FLAG_AUTO_CANCEL) != 0,
             groupKey = sbn.groupKey,
@@ -194,9 +176,10 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         )
     }
 
-    private fun NotificationDetail.collapsedText(): String? = when (this) {
-        is NotificationDetail.Conversation -> messages.lastOrNull()?.text
-        is NotificationDetail.Lines -> lines.firstOrNull()
+    // Every detail is built with at least one line, so there is always something to collapse to.
+    private fun NotificationDetail.collapsedText(): String = when (this) {
+        is NotificationDetail.Conversation -> messages.last().text
+        is NotificationDetail.Lines -> lines.first()
         is NotificationDetail.LongText -> text
     }
 
@@ -226,7 +209,6 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                 NotificationMessage(
                     text = body,
                     sender = message.person?.name?.toString(),
-                    timestamp = message.timestamp,
                 )
             }
         }
@@ -250,7 +232,6 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         return NotificationAction(
             title = label,
             actionIntent = intent,
-            remoteInputs = inputs.toImmutableList(),
             reply = fillable?.let { input ->
                 ReplyInput(
                     resultKey = input.resultKey,
@@ -260,9 +241,12 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                     allowsFreeFormInput = input.allowFreeFormInput,
                 )
             },
-            isContextual = isContextual,
         )
     }
+
+    // Ongoing and media notifications belong to other surfaces, so the rows never track them.
+    private fun StatusBarNotification.isRowCandidate(): Boolean =
+        (notification.flags and Notification.FLAG_ONGOING_EVENT) == 0 && mediaSessionToken() == null
 
     private fun StatusBarNotification.mediaSessionToken(): MediaSession.Token? =
         notification.extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)

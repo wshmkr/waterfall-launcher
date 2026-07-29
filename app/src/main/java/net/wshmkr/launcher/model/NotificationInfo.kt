@@ -1,7 +1,6 @@
 package net.wshmkr.launcher.model
 
 import android.app.PendingIntent
-import android.app.RemoteInput
 import android.os.UserHandle
 import androidx.compose.runtime.Immutable
 import kotlinx.collections.immutable.ImmutableList
@@ -18,8 +17,6 @@ data class NotificationInfo(
     val timestamp: Long = System.currentTimeMillis(),
     val actions: ImmutableList<NotificationAction> = persistentListOf(),
     val contentIntent: PendingIntent? = null,
-    val isOngoing: Boolean = false,
-    val isMedia: Boolean = false,
     val isClearable: Boolean = true,
     val cancelsOnOpen: Boolean = false,
     val groupKey: String? = null,
@@ -54,16 +51,13 @@ sealed interface NotificationDetail {
 data class NotificationMessage(
     val text: String,
     val sender: String? = null,
-    val timestamp: Long = 0L,
 )
 
 @Immutable
 data class NotificationAction(
     val title: String,
     val actionIntent: PendingIntent,
-    val remoteInputs: ImmutableList<RemoteInput> = persistentListOf(),
     val reply: ReplyInput? = null,
-    val isContextual: Boolean = false,
 )
 
 // The one input a reply action expects us to fill. Actions whose inputs only accept data

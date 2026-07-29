@@ -1,30 +1,18 @@
 package net.wshmkr.launcher.ui.feature.notifications
 
-import android.app.ActivityOptions
-import android.app.PendingIntent
-import android.app.RemoteInput
-import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.os.Bundle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -35,7 +23,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
@@ -56,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.AppInfo
@@ -64,12 +50,15 @@ import net.wshmkr.launcher.model.NotificationAction
 import net.wshmkr.launcher.model.NotificationDetail
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.ReplyInput
+import net.wshmkr.launcher.ui.common.components.AppSheet
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
 import net.wshmkr.launcher.ui.common.icons.SendIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.sheetDivider
+import net.wshmkr.launcher.util.sendPendingIntent
+import net.wshmkr.launcher.util.sendReply
 import net.wshmkr.launcher.util.timeSince
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,7 +71,6 @@ fun NotificationPanel(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
-    val dimensions = LocalDimensions.current
     val scope = rememberCoroutineScope()
 
     // Dismissals flow back through the repository, emptying this list; close when nothing remains.
@@ -93,89 +81,56 @@ fun NotificationPanel(
         }
     }
 
-    val ordered = remember(notifications) { notifications.sortedByDescending { it.timestamp } }
     // Ongoing and no-clear notifications reject cancelNotification, so never offer to clear them.
-    val clearableKeys = remember(ordered) { ordered.filter { it.isClearable }.map { it.key } }
+    val clearableKeys = remember(notifications) {
+        notifications.filter { it.isClearable }.map { it.key }
+    }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
+    AppSheet(
+        appInfo = appInfo,
+        onDismiss = onDismiss,
+        // The sheet has its own window, so the activity's adjustResize doesn't reach the reply
+        // field; without this the keyboard covers it.
+        modifier = Modifier.imePadding(),
         sheetState = sheetState,
-        dragHandle = null,
+        headerAction = {
+            if (clearableKeys.isNotEmpty()) {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            // Slide out with the list intact; clearing first empties the sheet
+                            // before it has moved, so it reads as vanishing rather than closing.
+                            sheetState.hide()
+                            onClearAll(clearableKeys)
+                            onDismiss()
+                        }
+                    }
+                ) {
+                    Text("Clear all")
+                }
+            }
+        },
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                // The sheet has its own window, so the activity's adjustResize doesn't reach the
-                // reply field; without this the keyboard covers it.
-                .imePadding()
-                .padding(horizontal = Spacing.medium)
-                .padding(top = 18.dp)
+            modifier = Modifier.verticalScroll(rememberScrollState())
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(Spacing.small),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    painter = appInfo.icon,
-                    contentDescription = appInfo.label,
-                    modifier = Modifier.size(dimensions.iconLarge)
-                )
-                Spacer(modifier = Modifier.width(Spacing.medium))
-                Text(
-                    text = appInfo.label,
-                    fontSize = dimensions.fontXLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                if (clearableKeys.isNotEmpty()) {
-                    TextButton(
-                        onClick = {
-                            scope.launch {
-                                // Slide out with the list intact; clearing first empties the sheet
-                                // before it has moved, so it reads as vanishing rather than closing.
-                                sheetState.hide()
-                                onClearAll(clearableKeys)
-                                onDismiss()
-                            }
-                        }
-                    ) {
-                        Text("Clear all")
-                    }
+            // Keyed so a card's dismissal state follows its notification rather than its slot.
+            notifications.forEachIndexed { index, notification ->
+                key(notification.key) {
+                    NotificationCard(
+                        notification = notification,
+                        hasDividerAbove = index > 0,
+                        onOpen = onDismiss,
+                        onDismissNotification = onDismissNotification,
+                    )
                 }
             }
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = Spacing.small),
-                color = sheetDivider(),
-            )
-
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
-                // Keyed so a card's dismissal state follows its notification rather than its slot.
-                ordered.forEachIndexed { index, notification ->
-                    key(notification.key) {
-                        NotificationCard(
-                            notification = notification,
-                            hasDividerAbove = index > 0,
-                            onOpen = onDismiss,
-                            onDismissNotification = onDismissNotification,
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(Spacing.small))
         }
     }
 }
 
 @Composable
-private fun ColumnScope.NotificationCard(
+private fun NotificationCard(
     notification: NotificationInfo,
     hasDividerAbove: Boolean,
     onOpen: () -> Unit,
@@ -347,15 +302,15 @@ private fun NotificationActions(actions: ImmutableList<NotificationAction>) {
         }
     }
 
-    activeReply?.let { action ->
-        action.reply?.let { reply ->
-            ReplyComposer(
-                reply = reply,
-                onSend = { response, fromChoice ->
-                    if (sendReply(context, action, response, fromChoice)) activeReply = null
-                },
-            )
-        }
+    val action = activeReply
+    val reply = action?.reply
+    if (action != null && reply != null) {
+        ReplyComposer(
+            reply = reply,
+            onSend = { response, fromChoice ->
+                if (sendReply(context, action, response, fromChoice)) activeReply = null
+            },
+        )
     }
 }
 
@@ -406,51 +361,5 @@ private fun ReplyComposer(
                 }
             },
         )
-    }
-}
-
-// Reply actions read their result out of the fill-in intent. Firing one bare leaves the app with
-// no results bundle, which is why an unfilled reply either no-ops or posts an empty message.
-private fun sendReply(
-    context: Context,
-    action: NotificationAction,
-    response: String,
-    fromChoice: Boolean,
-): Boolean {
-    val reply = action.reply ?: return false
-    val results = Bundle().apply { putCharSequence(reply.resultKey, response) }
-    val fillInIntent = Intent().apply {
-        addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
-        RemoteInput.addResultsToIntent(action.remoteInputs.toTypedArray(), this, results)
-        RemoteInput.setResultsSource(
-            this,
-            if (fromChoice) RemoteInput.SOURCE_CHOICE else RemoteInput.SOURCE_FREE_FORM_INPUT,
-        )
-    }
-    return sendPendingIntent(context, action.actionIntent, fillInIntent)
-}
-
-// Fires a captured PendingIntent, allowing background activity starts (API 34+) since the
-// launcher usually isn't the top app. Returns false when the intent is null or already cancelled.
-internal fun sendPendingIntent(
-    context: Context,
-    pendingIntent: PendingIntent?,
-    fillInIntent: Intent? = null,
-): Boolean {
-    if (pendingIntent == null) return false
-    return try {
-        val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ActivityOptions.makeBasic()
-                .setPendingIntentBackgroundActivityStartMode(
-                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                )
-                .toBundle()
-        } else {
-            null
-        }
-        pendingIntent.send(context, 0, fillInIntent, null, null, null, options)
-        true
-    } catch (e: Exception) {
-        false
     }
 }

@@ -37,20 +37,19 @@ class NotificationRepository @Inject constructor() {
 
     fun removeNotification(packageName: String, key: String, userHandle: UserHandle) {
         _notifications.update { current ->
-            val packageNotifications = current[packageName]?.toMutableMap() ?: return@update current
-            val userNotifications = packageNotifications[userHandle]?.toMutableList() ?: return@update current
+            val packageNotifications = current[packageName] ?: return@update current
+            val userNotifications = packageNotifications[userHandle] ?: return@update current
+            // Notifications the rows never held are removed on every repost; don't rebuild for them.
+            if (userNotifications.none { it.key == key }) return@update current
 
-            userNotifications.removeAll { it.key == key }
-
-            if (userNotifications.isEmpty()) {
-                packageNotifications.remove(userHandle)
-            } else {
-                packageNotifications[userHandle] = userNotifications
-            }
+            val remaining = userNotifications.filterNot { it.key == key }
+            val nextUsers = packageNotifications.toMutableMap()
+            if (remaining.isEmpty()) nextUsers.remove(userHandle)
+            else nextUsers[userHandle] = remaining
 
             current.toMutableMap().apply {
-                if (packageNotifications.isEmpty()) remove(packageName)
-                else put(packageName, packageNotifications)
+                if (nextUsers.isEmpty()) remove(packageName)
+                else put(packageName, nextUsers)
             }
         }
     }
