@@ -52,7 +52,7 @@ fun AppListItem(
     onLongClick: ((AppInfo) -> Unit)? = null,
     alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
-    onClearNotifications: (List<String>) -> Unit = {},
+    onClearNotifications: (List<NotificationInfo>) -> Unit = {},
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showNotificationPanel by remember { mutableStateOf(false) }

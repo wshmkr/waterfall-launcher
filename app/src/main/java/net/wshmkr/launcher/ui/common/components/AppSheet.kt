@@ -68,7 +68,7 @@ fun AppSheet(
                 ) {
                     Image(
                         painter = appInfo.icon,
-                        contentDescription = appInfo.label,
+                        contentDescription = null,
                         modifier = Modifier.size(dimensions.iconLarge)
                     )
                     Spacer(modifier = Modifier.width(Spacing.medium))

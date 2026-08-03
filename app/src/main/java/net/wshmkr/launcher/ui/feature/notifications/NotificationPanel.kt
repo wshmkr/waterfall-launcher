@@ -68,7 +68,7 @@ import net.wshmkr.launcher.util.timeSince
 fun NotificationPanel(
     appInfo: AppInfo,
     notifications: ImmutableList<NotificationInfo>,
-    onClearNotifications: (List<String>) -> Unit,
+    onClearNotifications: (List<NotificationInfo>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
@@ -83,9 +83,7 @@ fun NotificationPanel(
     }
 
     // Ongoing and no-clear notifications reject cancelNotification, so never offer to clear them.
-    val clearableKeys = remember(notifications) {
-        notifications.filter { it.isClearable }.map { it.key }
-    }
+    val clearable = remember(notifications) { notifications.filter { it.isClearable } }
 
     AppSheet(
         appInfo = appInfo,
@@ -94,7 +92,7 @@ fun NotificationPanel(
         modifier = Modifier.imePadding(),
         sheetState = sheetState,
         headerAction = {
-            if (clearableKeys.isNotEmpty()) {
+            if (clearable.isNotEmpty()) {
                 TextButton(
                     onClick = {
                         scope.launch {
@@ -103,7 +101,7 @@ fun NotificationPanel(
                             try {
                                 sheetState.hide()
                             } finally {
-                                onClearNotifications(clearableKeys)
+                                onClearNotifications(clearable)
                                 onDismiss()
                             }
                         }
@@ -128,7 +126,7 @@ fun NotificationPanel(
                         notification = notification,
                         hasDividerAbove = hasVisibleCardAbove,
                         onOpen = onDismiss,
-                        onDismissNotification = { onClearNotifications(listOf(notification.key)) },
+                        onDismissNotification = { onClearNotifications(listOf(notification)) },
                         onDismissStarted = {
                             dismissedTimestamps[notification.key] = notification.timestamp
                         },
@@ -216,7 +214,7 @@ private fun NotificationCardContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(Corners.small)
-                    .clickable {
+                    .clickable(enabled = notification.contentIntent != null) {
                         // The shade applies FLAG_AUTO_CANCEL itself; a listener firing it doesn't.
                         if (sendPendingIntent(context, notification.contentIntent)) onOpened()
                     }
