@@ -3,7 +3,6 @@ package net.wshmkr.launcher.ui.common.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
@@ -52,8 +52,7 @@ fun AppListItem(
     onLongClick: ((AppInfo) -> Unit)? = null,
     alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
-    onDismissNotification: (String) -> Unit = {},
-    onClearAll: (List<String>) -> Unit = {},
+    onClearNotifications: (List<String>) -> Unit = {},
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showNotificationPanel by remember { mutableStateOf(false) }
@@ -108,7 +107,15 @@ fun AppListItem(
                 modifier = Modifier
                     .size(dimensions.iconLarge)
                     .clip(CircleShape)
-                    .clickable { showNotificationPanel = true }
+                    // Consumes the gesture, so the row's long-press has to be repeated here.
+                    .combinedClickable(
+                        role = Role.Button,
+                        onClick = { showNotificationPanel = true },
+                        onLongClick = {
+                            onLongClick?.invoke(appInfo)
+                            showBottomSheet = true
+                        },
+                    )
                     .padding(Spacing.small),
             )
         }
@@ -128,8 +135,7 @@ fun AppListItem(
         NotificationPanel(
             appInfo = appInfo,
             notifications = notifications,
-            onDismissNotification = onDismissNotification,
-            onClearAll = onClearAll,
+            onClearNotifications = onClearNotifications,
             onDismiss = { showNotificationPanel = false },
         )
     }

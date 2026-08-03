@@ -88,6 +88,12 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                 MediaNotification(statusBarNotification.packageName, statusBarNotification.postTime),
             )
             recordPlaybackActivity(statusBarNotification.key, statusBarNotification.packageName, token)
+            // A tracked row reposted as media would otherwise linger with its pre-media content.
+            notificationRepository.removeNotification(
+                statusBarNotification.packageName,
+                statusBarNotification.key,
+                statusBarNotification.user,
+            )
             return
         }
 
@@ -173,8 +179,14 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             groupKey = sbn.groupKey,
             isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0,
             detail = detail,
+            hasCustomView = notification.hasCustomView(),
         )
     }
+
+    // The deprecated fields are still where custom layouts land, whichever builder set them.
+    @Suppress("DEPRECATION")
+    private fun Notification.hasCustomView(): Boolean =
+        contentView != null || bigContentView != null
 
     // Every detail is built with at least one line, so there is always something to collapse to.
     private fun NotificationDetail.collapsedText(): String = when (this) {

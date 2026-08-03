@@ -201,9 +201,22 @@ class HomeViewModel @Inject constructor(
             mutableStateOf(notificationRepository.notifications.value.notificationsFor(packageName, user))
         }
 
-    fun dismissNotification(key: String) = NotificationPanelHelper.dismissNotifications(listOf(key))
+    fun clearNotifications(keys: List<String>) =
+        NotificationPanelHelper.dismissNotifications(keys + orphanedSummaryKeys(keys))
 
-    fun clearNotifications(keys: List<String>) = NotificationPanelHelper.dismissNotifications(keys)
+    // A summary the panel hid behind its children resurfaces alone once they are all cleared.
+    private fun orphanedSummaryKeys(keys: List<String>): List<String> {
+        val cleared = keys.toHashSet()
+        val groups = notificationRepository.notifications.value
+            .values.flatMap { byUser -> byUser.values.flatten() }
+            .filter { it.groupKey != null }
+            .groupBy { it.groupKey }
+        return groups.values.mapNotNull { group ->
+            val (summaries, children) = group.partition { it.isGroupSummary }
+            if (children.isEmpty() || children.any { it.key !in cleared }) return@mapNotNull null
+            summaries.firstOrNull { it.isClearable && it.key !in cleared }?.key
+        }
+    }
 
     private fun buildListItems(apps: List<AppInfo>): List<AppListItem> {
         val items = mutableListOf<AppListItem>()

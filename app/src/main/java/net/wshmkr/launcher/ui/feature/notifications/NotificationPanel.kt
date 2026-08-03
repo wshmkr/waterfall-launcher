@@ -29,9 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,8 +68,7 @@ import net.wshmkr.launcher.util.timeSince
 fun NotificationPanel(
     appInfo: AppInfo,
     notifications: ImmutableList<NotificationInfo>,
-    onDismissNotification: (String) -> Unit,
-    onClearAll: (List<String>) -> Unit,
+    onClearNotifications: (List<String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
@@ -100,9 +101,13 @@ fun NotificationPanel(
                         scope.launch {
                             // Slide out with the list intact; clearing first empties the sheet
                             // before it has moved, so it reads as vanishing rather than closing.
-                            sheetState.hide()
-                            onClearAll(clearableKeys)
-                            onDismiss()
+                            // A scrim tap cancels the hide, so clear from `finally` regardless.
+                            try {
+                                sheetState.hide()
+                            } finally {
+                                onClearNotifications(clearableKeys)
+                                onDismiss()
+                            }
                         }
                     }
                 ) {
@@ -114,14 +119,22 @@ fun NotificationPanel(
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState())
         ) {
+            // Timestamps rather than a set of keys, so a repost under a key revives its card.
+            val dismissedTimestamps = remember { mutableStateMapOf<String, Long>() }
             // Keyed so a card's dismissal state follows its notification rather than its slot.
             notifications.forEachIndexed { index, notification ->
                 key(notification.key) {
+                    val hasVisibleCardAbove = notifications.take(index).any {
+                        dismissedTimestamps[it.key] != it.timestamp
+                    }
                     NotificationCard(
                         notification = notification,
-                        hasDividerAbove = index > 0,
+                        hasDividerAbove = hasVisibleCardAbove,
                         onOpen = onDismiss,
-                        onDismissNotification = onDismissNotification,
+                        onDismissNotification = { onClearNotifications(listOf(notification.key)) },
+                        onDismissStarted = {
+                            dismissedTimestamps[notification.key] = notification.timestamp
+                        },
                     )
                 }
             }
@@ -134,15 +147,28 @@ private fun NotificationCard(
     notification: NotificationInfo,
     hasDividerAbove: Boolean,
     onOpen: () -> Unit,
-    onDismissNotification: (String) -> Unit,
+    onDismissNotification: () -> Unit,
+    onDismissStarted: () -> Unit,
 ) {
-    val visibleState = remember { MutableTransitionState(true) }
+    // Keyed on the timestamp so a repost of a key whose cancel didn't stick shows a card again.
+    val visibleState = remember(notification.timestamp) { MutableTransitionState(true) }
+    val dismissSent = remember(notification.timestamp) { mutableStateOf(false) }
+
+    fun sendDismissOnce() {
+        if (!dismissSent.value) {
+            dismissSent.value = true
+            onDismissNotification()
+        }
+    }
 
     // Cancel only once the card has collapsed, so the rows below don't jump up mid-animation.
     LaunchedEffect(visibleState.isIdle) {
-        if (visibleState.isIdle && !visibleState.currentState) {
-            onDismissNotification(notification.key)
-        }
+        if (visibleState.isIdle && !visibleState.currentState) sendDismissOnce()
+    }
+
+    // Closing the sheet disposes this card before it reaches idle; the dismissal must still land.
+    DisposableEffect(notification.timestamp) {
+        onDispose { if (!visibleState.targetState) sendDismissOnce() }
     }
 
     AnimatedVisibility(
@@ -161,10 +187,13 @@ private fun NotificationCard(
                 // Opening closes the sheet, which would cancel the exit animation before it
                 // could dismiss, so this path cancels directly.
                 onOpened = {
-                    if (notification.cancelsOnOpen) onDismissNotification(notification.key)
+                    if (notification.cancelsOnOpen) sendDismissOnce()
                     onOpen()
                 },
-                onDismiss = { visibleState.targetState = false },
+                onDismiss = {
+                    onDismissStarted()
+                    visibleState.targetState = false
+                },
             )
         }
     }
@@ -182,60 +211,66 @@ private fun NotificationCardContent(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(Corners.small)
-            .clickable {
-                // The shade applies FLAG_AUTO_CANCEL itself; firing the intent from a listener
-                // doesn't, so the notification would linger after opening the app.
-                if (sendPendingIntent(context, notification.contentIntent)) onOpened()
-            }
             .padding(Spacing.small),
         verticalAlignment = Alignment.Top,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            notification.title?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    fontSize = dimensions.fontMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            // `text` is the collapsed one-liner restating the detail, so only one of them shows.
-            when (val detail = notification.detail) {
-                null -> notification.text?.takeIf { it.isNotBlank() }?.let {
-                    Text(text = it, fontSize = dimensions.fontSmall)
-                }
-
-                is NotificationDetail.Conversation -> ConversationDetail(detail)
-
-                is NotificationDetail.Lines -> Column(
-                    verticalArrangement = Arrangement.spacedBy(Spacing.small)
-                ) {
-                    detail.lines.forEach { line ->
-                        Text(text = line, fontSize = dimensions.fontSmall)
+            // Scoped to the text, so taps around the actions and the reply composer don't open it.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(Corners.small)
+                    .clickable {
+                        // The shade applies FLAG_AUTO_CANCEL itself; firing the intent from a
+                        // listener doesn't, so the notification would linger after opening the app.
+                        if (sendPendingIntent(context, notification.contentIntent)) onOpened()
                     }
+            ) {
+                notification.title?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        fontSize = dimensions.fontMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
+                // `text` is the collapsed one-liner restating the detail, so only one of them shows.
+                when (val detail = notification.detail) {
+                    null -> notification.text?.takeIf { it.isNotBlank() }?.let {
+                        Text(text = it, fontSize = dimensions.fontSmall)
+                    }
 
-                is NotificationDetail.LongText -> Text(
-                    text = detail.text,
-                    fontSize = dimensions.fontSmall,
-                )
-            }
-            notification.subText?.takeIf { it.isNotBlank() }?.let {
+                    is NotificationDetail.Conversation -> ConversationDetail(detail)
+
+                    is NotificationDetail.Lines -> Column(
+                        verticalArrangement = Arrangement.spacedBy(Spacing.small)
+                    ) {
+                        detail.lines.forEach { line ->
+                            Text(text = line, fontSize = dimensions.fontSmall)
+                        }
+                    }
+
+                    is NotificationDetail.LongText -> Text(
+                        text = detail.text,
+                        fontSize = dimensions.fontSmall,
+                    )
+                }
+                notification.subText?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        fontSize = dimensions.fontCaption,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Text(
-                    text = it,
+                    text = timeSince(notification.timestamp),
                     fontSize = dimensions.fontCaption,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                text = timeSince(notification.timestamp),
-                fontSize = dimensions.fontCaption,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             if (notification.actions.isNotEmpty()) {
                 NotificationActions(notification.actions)
             }

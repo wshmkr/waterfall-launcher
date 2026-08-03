@@ -22,10 +22,12 @@ data class NotificationInfo(
     val groupKey: String? = null,
     val isGroupSummary: Boolean = false,
     val detail: NotificationDetail? = null,
+    val hasCustomView: Boolean = false,
 ) {
     // Rows render title and text; with neither there is nothing to read but the app name and age.
+    // A custom view is unreadable to us but still means the app posted something worth showing.
     val hasContent: Boolean
-        get() = !title.isNullOrBlank() || !text.isNullOrBlank() || detail != null
+        get() = !title.isNullOrBlank() || !text.isNullOrBlank() || detail != null || hasCustomView
 }
 
 // What the shade would reveal on expand. A notification uses at most one of these styles, and
