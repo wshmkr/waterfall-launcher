@@ -1,14 +1,19 @@
 package net.wshmkr.launcher.ui.common.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,43 +51,49 @@ fun AppSheet(
         sheetState = sheetState,
         dragHandle = null,
     ) {
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = Spacing.medium)
-                .padding(top = 18.dp)
-        ) {
-            Row(
-                modifier = Modifier
+        // Cap the sheet below the status bar: past it, the sheet's position-aware inset padding
+        // feeds back into its own expanded anchor and it rapidly oscillates between heights.
+        BoxWithConstraints {
+            val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+            Column(
+                modifier = modifier
                     .fillMaxWidth()
-                    .padding(Spacing.small),
-                verticalAlignment = Alignment.CenterVertically
+                    .heightIn(max = maxHeight - topInset)
+                    .padding(horizontal = Spacing.medium)
+                    .padding(top = 18.dp)
             ) {
-                Image(
-                    painter = appInfo.icon,
-                    contentDescription = appInfo.label,
-                    modifier = Modifier.size(dimensions.iconLarge)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(Spacing.small),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = appInfo.icon,
+                        contentDescription = appInfo.label,
+                        modifier = Modifier.size(dimensions.iconLarge)
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.medium))
+                    Text(
+                        text = appInfo.label,
+                        fontSize = dimensions.fontXLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    headerAction()
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = Spacing.small),
+                    color = sheetDivider(),
                 )
-                Spacer(modifier = Modifier.width(Spacing.medium))
-                Text(
-                    text = appInfo.label,
-                    fontSize = dimensions.fontXLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                headerAction()
+
+                content()
+
+                Spacer(modifier = Modifier.height(Spacing.small))
             }
-
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = Spacing.small),
-                color = sheetDivider(),
-            )
-
-            content()
-
-            Spacer(modifier = Modifier.height(Spacing.small))
         }
     }
 }
