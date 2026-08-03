@@ -33,7 +33,6 @@ import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.sheetDivider
 
-// Bottom sheet headed by the app it acts on — icon, label, and an optional action beside them.
 @ExperimentalMaterial3Api
 @Composable
 fun AppSheet(
@@ -51,8 +50,7 @@ fun AppSheet(
         sheetState = sheetState,
         dragHandle = null,
     ) {
-        // Cap the sheet below the status bar: past it, the sheet's position-aware inset padding
-        // feeds back into its own expanded anchor and it rapidly oscillates between heights.
+        // Uncapped, the sheet's inset padding feeds its own expanded anchor and it oscillates.
         BoxWithConstraints {
             val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
             Column(

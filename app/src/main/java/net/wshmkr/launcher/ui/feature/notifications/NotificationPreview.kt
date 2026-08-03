@@ -39,8 +39,7 @@ fun NotificationPreview(
 ) {
     val notification = notifications.firstOrNull()
 
-    // Hold the last notification through the exit so the lines have something to draw while they
-    // collapse. Clearing it once the transition settles takes the age suffix with it.
+    // Held through the exit so the lines have something to draw while they collapse.
     var retained by remember { mutableStateOf(notification) }
     if (notification != null) retained = notification
 

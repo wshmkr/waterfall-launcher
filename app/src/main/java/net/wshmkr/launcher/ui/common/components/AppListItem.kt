@@ -95,8 +95,7 @@ fun AppListItem(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            // Falls back to the plain title on its own, and animates the notification lines away
-            // rather than letting a branch here swap them out mid-flight.
+            // Called unconditionally so it can animate the lines away rather than cut them off.
             NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
         }
         AnimatedVisibility(visible = notifications.isNotEmpty()) {

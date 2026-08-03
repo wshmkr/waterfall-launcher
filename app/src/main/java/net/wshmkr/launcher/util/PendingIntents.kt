@@ -9,8 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import net.wshmkr.launcher.model.NotificationAction
 
-// Fires a captured PendingIntent, allowing background activity starts (API 34+) since the
-// launcher usually isn't the top app. Returns false when the intent is null or already cancelled.
+// Background activity starts are allowed explicitly (API 34+) as the launcher isn't the top app.
 fun sendPendingIntent(
     context: Context,
     pendingIntent: PendingIntent?,
@@ -34,8 +33,7 @@ fun sendPendingIntent(
     }
 }
 
-// Reply actions read their result out of the fill-in intent. Firing one bare leaves the app with
-// no results bundle, which is why an unfilled reply either no-ops or posts an empty message.
+// Reply actions read their result out of the fill-in intent; fired bare they post nothing.
 fun sendReply(
     context: Context,
     action: NotificationAction,
@@ -46,8 +44,7 @@ fun sendReply(
     val results = Bundle().apply { putCharSequence(reply.resultKey, response) }
     val fillInIntent = Intent().apply {
         addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
-        // Only the result key is read back out, so rebuilding the input here keeps RemoteInput —
-        // which compares by identity — out of the model, where it would break notification equality.
+        // Rebuilt here to keep RemoteInput, which compares by identity, out of the model.
         RemoteInput.addResultsToIntent(
             arrayOf(RemoteInput.Builder(reply.resultKey).build()),
             this,

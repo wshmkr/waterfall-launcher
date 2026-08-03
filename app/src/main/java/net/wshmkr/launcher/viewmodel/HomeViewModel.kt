@@ -281,8 +281,7 @@ private fun NotificationMap.notificationsFor(
         ?.toImmutableList()
         ?: persistentListOf()
 
-// A group summary restates the children posted alongside it, so showing both duplicates every row.
-// One left without children still carries the only copy of its content, so it stays.
+// A summary restates the children posted alongside it, but alone it holds the only copy.
 private fun List<NotificationInfo>.withoutRedundantSummaries(): List<NotificationInfo> {
     if (none { it.isGroupSummary }) return this
     val groupsWithChildren = filterNot { it.isGroupSummary }.mapNotNullTo(HashSet()) { it.groupKey }

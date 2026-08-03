@@ -24,14 +24,12 @@ data class NotificationInfo(
     val detail: NotificationDetail? = null,
     val hasCustomView: Boolean = false,
 ) {
-    // Rows render title and text; with neither there is nothing to read but the app name and age.
     // A custom view is unreadable to us but still means the app posted something worth showing.
     val hasContent: Boolean
         get() = !title.isNullOrBlank() || !text.isNullOrBlank() || detail != null || hasCustomView
 }
 
-// What the shade would reveal on expand. A notification uses at most one of these styles, and
-// `text` only ever holds the collapsed one-liner that restates it.
+// What the shade would reveal on expand. A notification uses at most one of these styles.
 @Immutable
 sealed interface NotificationDetail {
 
@@ -62,8 +60,7 @@ data class NotificationAction(
     val reply: ReplyInput? = null,
 )
 
-// The one input a reply action expects us to fill. Actions whose inputs only accept data
-// (images, stickers) can't be satisfied from the panel and are dropped during extraction.
+// The one input a reply action expects us to fill.
 @Immutable
 data class ReplyInput(
     val resultKey: String,

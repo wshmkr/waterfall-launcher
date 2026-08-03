@@ -90,8 +90,7 @@ fun NotificationPanel(
     AppSheet(
         appInfo = appInfo,
         onDismiss = onDismiss,
-        // The sheet has its own window, so the activity's adjustResize doesn't reach the reply
-        // field; without this the keyboard covers it.
+        // The sheet has its own window, so the activity's adjustResize never reaches the reply field.
         modifier = Modifier.imePadding(),
         sheetState = sheetState,
         headerAction = {
@@ -99,9 +98,8 @@ fun NotificationPanel(
                 TextButton(
                     onClick = {
                         scope.launch {
-                            // Slide out with the list intact; clearing first empties the sheet
-                            // before it has moved, so it reads as vanishing rather than closing.
-                            // A scrim tap cancels the hide, so clear from `finally` regardless.
+                            // Slide out with the list intact, so it reads as closing rather than
+                            // vanishing. A scrim tap cancels the hide, so clear from `finally`.
                             try {
                                 sheetState.hide()
                             } finally {
@@ -121,7 +119,6 @@ fun NotificationPanel(
         ) {
             // Timestamps rather than a set of keys, so a repost under a key revives its card.
             val dismissedTimestamps = remember { mutableStateMapOf<String, Long>() }
-            // Keyed so a card's dismissal state follows its notification rather than its slot.
             notifications.forEachIndexed { index, notification ->
                 key(notification.key) {
                     val hasVisibleCardAbove = notifications.take(index).any {
@@ -184,8 +181,7 @@ private fun NotificationCard(
             }
             NotificationCardContent(
                 notification = notification,
-                // Opening closes the sheet, which would cancel the exit animation before it
-                // could dismiss, so this path cancels directly.
+                // Opening closes the sheet, cancelling the exit animation that would dismiss.
                 onOpened = {
                     if (notification.cancelsOnOpen) sendDismissOnce()
                     onOpen()
@@ -221,8 +217,7 @@ private fun NotificationCardContent(
                     .fillMaxWidth()
                     .clip(Corners.small)
                     .clickable {
-                        // The shade applies FLAG_AUTO_CANCEL itself; firing the intent from a
-                        // listener doesn't, so the notification would linger after opening the app.
+                        // The shade applies FLAG_AUTO_CANCEL itself; a listener firing it doesn't.
                         if (sendPendingIntent(context, notification.contentIntent)) onOpened()
                     }
             ) {
@@ -295,8 +290,7 @@ private fun ConversationDetail(conversation: NotificationDetail.Conversation) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
         conversation.messages.forEach { message ->
             Column {
-                // In a one-to-one thread the other party is already the notification title, so
-                // only their name in a group, and yours, are worth spelling out.
+                // In a one-to-one thread the other party is already the notification title.
                 val speaker = when {
                     message.sender == null -> "You"
                     conversation.isGroup -> message.sender

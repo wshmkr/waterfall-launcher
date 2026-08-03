@@ -97,8 +97,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        // A repost can strip a notification to nothing or turn it ongoing. Drop whatever we already
-        // hold for it, otherwise the row keeps rendering content the app has moved on from.
+        // A repost can strip a notification to nothing or turn it ongoing, so drop what we hold.
         val notification = statusBarNotification
             .takeIf { it.isRowCandidate() }
             ?.let(::extractNotification)
@@ -152,8 +151,7 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
 
         val detail = notification.extractDetail()
-        // A conversation's newest message beats EXTRA_TEXT, which apps often leave stale, and
-        // styled notifications don't always set a collapsed line the row preview needs.
+        // Apps often leave EXTRA_TEXT stale, or unset on a styled notification the preview needs.
         if (detail is NotificationDetail.Conversation || text.isNullOrBlank()) {
             text = detail?.collapsedText()
         }
@@ -195,7 +193,6 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         is NotificationDetail.LongText -> text
     }
 
-    // The expanded content the shade shows, whichever style the app used to supply it.
     private fun Notification.extractDetail(): NotificationDetail? {
         extractConversation()?.let { return it }
 
