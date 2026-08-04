@@ -23,6 +23,9 @@ fun CalendarTodayIcon() = painterResource(id = R.drawable.icon_calendar_today)
 fun CheckIcon() = painterResource(id = R.drawable.icon_check)
 
 @Composable
+fun ChevronRightIcon() = painterResource(id = R.drawable.icon_chevron_right)
+
+@Composable
 fun CloseIcon() = painterResource(id = R.drawable.icon_close)
 
 @Composable
@@ -54,6 +57,9 @@ fun ScheduleIcon() = painterResource(id = R.drawable.icon_schedule)
 
 @Composable
 fun SearchIcon() = painterResource(id = R.drawable.icon_search)
+
+@Composable
+fun SendIcon() = painterResource(id = R.drawable.icon_send)
 
 @Composable
 fun SettingsIcon() = painterResource(id = R.drawable.icon_settings)

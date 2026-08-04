@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.ui.common.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
@@ -10,6 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,12 +26,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
+import net.wshmkr.launcher.ui.common.icons.ChevronRightIcon
+import net.wshmkr.launcher.ui.feature.notifications.NotificationPanel
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
@@ -45,8 +52,10 @@ fun AppListItem(
     onLongClick: ((AppInfo) -> Unit)? = null,
     alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
+    onClearNotifications: (List<NotificationInfo>) -> Unit = {},
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showNotificationPanel by remember { mutableStateOf(false) }
 
     val inactiveFilter = remember(isActiveUser) {
         if (!isActiveUser) {
@@ -86,11 +95,28 @@ fun AppListItem(
         Column(
             modifier = Modifier.weight(1f)
         ) {
-            if (notifications.isNotEmpty()) {
-                NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
-            } else {
-                AppTitle(appInfo.label, appInfo.isHidden)
-            }
+            // Called unconditionally so it can animate the lines away rather than cut them off.
+            NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
+        }
+        AnimatedVisibility(visible = notifications.isNotEmpty()) {
+            Icon(
+                painter = ChevronRightIcon(),
+                contentDescription = "Show notifications",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier
+                    .size(dimensions.iconLarge)
+                    .clip(CircleShape)
+                    // Consumes the gesture, so the row's long-press has to be repeated here.
+                    .combinedClickable(
+                        role = Role.Button,
+                        onClick = { showNotificationPanel = true },
+                        onLongClick = {
+                            onLongClick?.invoke(appInfo)
+                            showBottomSheet = true
+                        },
+                    )
+                    .padding(Spacing.small),
+            )
         }
     }
 
@@ -101,6 +127,15 @@ fun AppListItem(
             onToggleFavorite = onToggleFavorite,
             onToggleHidden = onToggleHidden,
             onToggleSuggest = onToggleSuggest,
+        )
+    }
+
+    if (showNotificationPanel) {
+        NotificationPanel(
+            appInfo = appInfo,
+            notifications = notifications,
+            onClearNotifications = onClearNotifications,
+            onDismiss = { showNotificationPanel = false },
         )
     }
 }

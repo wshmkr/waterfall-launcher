@@ -4,7 +4,6 @@ import android.app.Notification
 import android.media.session.MediaController
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
-import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import kotlinx.collections.immutable.persistentListOf
@@ -12,8 +11,12 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.core.app.NotificationCompat
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.NotificationAction
+import net.wshmkr.launcher.model.NotificationDetail
+import net.wshmkr.launcher.model.NotificationMessage
+import net.wshmkr.launcher.model.ReplyInput
 import net.wshmkr.launcher.repository.MediaNotification
 import net.wshmkr.launcher.repository.MediaRankingRepository
 import net.wshmkr.launcher.repository.NotificationRepository
@@ -26,6 +29,11 @@ class LauncherNotificationListenerService : NotificationListenerService() {
     companion object {
         private val _isConnected = MutableStateFlow(false)
         val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+
+        @Volatile
+        private var instance: LauncherNotificationListenerService? = null
+
+        fun getInstance(): LauncherNotificationListenerService? = instance
     }
 
     @Inject
@@ -38,10 +46,13 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        instance = this
         _isConnected.value = true
         val active = activeNotifications?.toList() ?: emptyList()
         notificationRepository.reset(
-            active.map(::extractNotification).filter { !it.isOngoing && !it.isMedia }
+            active.filter { it.isRowCandidate() }
+                .map(::extractNotification)
+                .filter { it.hasContent }
         )
         playingKeys.clear()
         mediaRankingRepository.resetNotifications(
@@ -56,10 +67,16 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        if (instance == this) instance = null
         _isConnected.value = false
         notificationRepository.clearAll()
         playingKeys.clear()
         mediaRankingRepository.resetNotifications(emptyMap())
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) instance = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -71,13 +88,30 @@ class LauncherNotificationListenerService : NotificationListenerService() {
                 MediaNotification(statusBarNotification.packageName, statusBarNotification.postTime),
             )
             recordPlaybackActivity(statusBarNotification.key, statusBarNotification.packageName, token)
+            // A tracked row reposted as media would otherwise linger with its pre-media content.
+            notificationRepository.removeNotification(
+                statusBarNotification.packageName,
+                statusBarNotification.key,
+                statusBarNotification.user,
+            )
             return
         }
 
-        val notification = extractNotification(statusBarNotification)
-        if (!notification.isOngoing) {
-            notificationRepository.addNotification(notification)
+        // A repost can strip a notification to nothing or turn it ongoing, so drop what we hold.
+        val notification = statusBarNotification
+            .takeIf { it.isRowCandidate() }
+            ?.let(::extractNotification)
+            ?.takeIf { it.hasContent }
+        if (notification == null) {
+            notificationRepository.removeNotification(
+                statusBarNotification.packageName,
+                statusBarNotification.key,
+                statusBarNotification.user,
+            )
+            return
         }
+
+        notificationRepository.addNotification(notification)
     }
 
     // Sampling on each repost catches play transitions even while the launcher UI isn't running.
@@ -98,13 +132,13 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         sbn?.let { statusBarNotification ->
-            val packageName = statusBarNotification.packageName
-            val notificationId = statusBarNotification.id
-            val userHandle = statusBarNotification.user
-
             playingKeys.remove(statusBarNotification.key)
             mediaRankingRepository.onRemoved(statusBarNotification.key)
-            notificationRepository.removeNotification(packageName, notificationId, userHandle)
+            notificationRepository.removeNotification(
+                statusBarNotification.packageName,
+                statusBarNotification.key,
+                statusBarNotification.user,
+            )
         }
     }
 
@@ -116,22 +150,20 @@ class LauncherNotificationListenerService : NotificationListenerService() {
         var text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
 
-        extractMessageText(extras)?.let { text = it }
+        val detail = notification.extractDetail()
+        // Apps often leave EXTRA_TEXT stale, or unset on a styled notification the preview needs.
+        if (detail is NotificationDetail.Conversation || text.isNullOrBlank()) {
+            text = detail?.collapsedText()
+        }
 
-        val actions = notification.actions?.mapNotNull { action ->
-            action.title?.toString()?.let { title ->
-                NotificationAction(
-                    title = title,
-                    actionIntent = action.actionIntent
-                )
-            }
-        }?.toImmutableList() ?: persistentListOf()
-        
-        val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0
-        val isMedia = sbn.mediaSessionToken() != null
+        // Contextual actions trail the app's own buttons, matching how the shade ranks them.
+        val actions = notification.actions
+            ?.sortedBy { it.isContextual }
+            ?.mapNotNull { it.toNotificationAction() }
+            ?.toImmutableList() ?: persistentListOf()
 
         return NotificationInfo(
-            id = sbn.id,
+            key = sbn.key,
             packageName = sbn.packageName,
             userHandle = sbn.user,
             title = title,
@@ -140,30 +172,92 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             timestamp = sbn.postTime,
             actions = actions,
             contentIntent = notification.contentIntent,
-            isOngoing = isOngoing,
-            isMedia = isMedia
+            isClearable = sbn.isClearable,
+            cancelsOnOpen = (notification.flags and Notification.FLAG_AUTO_CANCEL) != 0,
+            groupKey = sbn.groupKey,
+            isGroupSummary = (notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0,
+            detail = detail,
+            hasCustomView = notification.hasCustomView(),
         )
     }
+
+    // The deprecated fields are still where custom layouts land, whichever builder set them.
+    @Suppress("DEPRECATION")
+    private fun Notification.hasCustomView(): Boolean =
+        contentView != null || bigContentView != null
+
+    // Every detail is built with at least one line, so there is always something to collapse to.
+    private fun NotificationDetail.collapsedText(): String = when (this) {
+        is NotificationDetail.Conversation -> messages.last().text
+        is NotificationDetail.Lines -> lines.first()
+        is NotificationDetail.LongText -> text
+    }
+
+    private fun Notification.extractDetail(): NotificationDetail? {
+        extractConversation()?.let { return it }
+
+        extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+            ?.mapNotNull { line -> line?.toString()?.takeIf { it.isNotBlank() } }
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { return NotificationDetail.Lines(it.toImmutableList()) }
+
+        extras.getCharSequence(Notification.EXTRA_BIG_TEXT)
+            ?.toString()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return NotificationDetail.LongText(it) }
+
+        return null
+    }
+
+    private fun Notification.extractConversation(): NotificationDetail.Conversation? {
+        val style = NotificationCompat.MessagingStyle
+            .extractMessagingStyleFromNotification(this) ?: return null
+        // Historic messages precede the live ones, so together they read in order.
+        val messages = (style.historicMessages + style.messages).mapNotNull { message ->
+            message.text?.toString()?.takeIf { it.isNotBlank() }?.let { body ->
+                NotificationMessage(
+                    text = body,
+                    sender = message.person?.name?.toString(),
+                )
+            }
+        }
+        if (messages.isEmpty()) return null
+
+        return NotificationDetail.Conversation(
+            messages = messages.toImmutableList(),
+            isGroup = style.isGroupConversation,
+        )
+    }
+
+    private fun Notification.Action.toNotificationAction(): NotificationAction? {
+        val label = title?.toString()?.takeIf { it.isNotBlank() } ?: return null
+        // A null intent renders a button that can never do anything.
+        val intent = actionIntent ?: return null
+        val inputs = remoteInputs?.toList().orEmpty()
+        val fillable = inputs.firstOrNull { it.allowFreeFormInput || !it.choices.isNullOrEmpty() }
+        // Every input wants data we can't produce, so firing this bare would send an empty reply.
+        if (inputs.isNotEmpty() && fillable == null) return null
+
+        return NotificationAction(
+            title = label,
+            actionIntent = intent,
+            reply = fillable?.let { input ->
+                ReplyInput(
+                    resultKey = input.resultKey,
+                    hint = input.label?.toString(),
+                    choices = input.choices?.map { it.toString() }?.toImmutableList()
+                        ?: persistentListOf(),
+                    allowsFreeFormInput = input.allowFreeFormInput,
+                )
+            },
+        )
+    }
+
+    // Ongoing and media notifications belong to other surfaces, so the rows never track them.
+    private fun StatusBarNotification.isRowCandidate(): Boolean =
+        (notification.flags and Notification.FLAG_ONGOING_EVENT) == 0 && mediaSessionToken() == null
 
     private fun StatusBarNotification.mediaSessionToken(): MediaSession.Token? =
         notification.extras.getParcelable(Notification.EXTRA_MEDIA_SESSION, MediaSession.Token::class.java)
 
-    private fun extractMessageText(extras: Bundle): String? {
-        if (!extras.containsKey(Notification.EXTRA_MESSAGES)) {
-            return null
-        }
-
-        val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES, Bundle::class.java)
-
-        if (!messages.isNullOrEmpty()) {
-            val lastMessageBundle = messages.last() as Bundle
-            val lastMessageText = lastMessageBundle.getCharSequence("text")
-
-            if (!lastMessageText.isNullOrBlank()) {
-                return lastMessageText.toString()
-            }
-        }
-
-        return null
-    }
 }
