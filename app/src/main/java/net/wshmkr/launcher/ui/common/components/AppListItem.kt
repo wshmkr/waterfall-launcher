@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,11 +32,13 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.common.icons.ChevronRightIcon
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPanel
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
+import net.wshmkr.launcher.ui.feature.notifications.NotificationSwipeBox
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
@@ -56,6 +59,19 @@ fun AppListItem(
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showNotificationPanel by remember { mutableStateOf(false) }
+    var dismissing by remember { mutableStateOf<NotificationInfo?>(null) }
+
+    // Hides a swiped notification until the system callback lands, so the preview has already
+    // swapped to the next one by the time the row settles back.
+    val visibleNotifications = remember(notifications, dismissing) {
+        val pending = dismissing ?: return@remember notifications
+        notifications.filterNot { it.matches(pending) }.toImmutableList()
+    }
+
+    LaunchedEffect(notifications) {
+        val pending = dismissing
+        if (pending != null && notifications.none { it.matches(pending) }) dismissing = null
+    }
 
     val inactiveFilter = remember(isActiveUser) {
         if (!isActiveUser) {
@@ -69,54 +85,70 @@ fun AppListItem(
 
     val dimensions = LocalDimensions.current
 
-    Row(
+    NotificationSwipeBox(
+        // Keyed off the unfiltered list so clearing the last notification doesn't drop the swipe
+        // anchors out from under the row while it is still animating home.
+        canSwipe = notifications.isNotEmpty(),
+        canDismiss = (visibleNotifications.firstOrNull() ?: dismissing)?.isClearable == true,
+        onExpand = { showNotificationPanel = true },
+        onDismissNotification = {
+            visibleNotifications.firstOrNull()?.let {
+                dismissing = it
+                onClearNotifications(listOf(it))
+            }
+        },
         modifier = Modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
             .clip(Corners.small)
-            .combinedClickable(
-                onClick = { onClick(appInfo) },
-                onLongClick = {
-                    onLongClick?.invoke(appInfo)
-                    showBottomSheet = true
-                }
-            )
-            .padding(Spacing.small)
             .graphicsLayer { this.alpha = alphaProvider() },
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = appInfo.icon,
-            contentDescription = appInfo.label,
-            modifier = Modifier.size(dimensions.iconLarge),
-            colorFilter = inactiveFilter
-        )
-        Spacer(modifier = Modifier.width(dimensions.iconGap))
-        Column(
-            modifier = Modifier.weight(1f)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { onClick(appInfo) },
+                    onLongClick = {
+                        onLongClick?.invoke(appInfo)
+                        showBottomSheet = true
+                    }
+                )
+                .padding(Spacing.small),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Called unconditionally so it can animate the lines away rather than cut them off.
-            NotificationPreview(appInfo.label, appInfo.isHidden, notifications)
-        }
-        AnimatedVisibility(visible = notifications.isNotEmpty()) {
-            Icon(
-                painter = ChevronRightIcon(),
-                contentDescription = "Show notifications",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .size(dimensions.iconLarge)
-                    .clip(CircleShape)
-                    // Consumes the gesture, so the row's long-press has to be repeated here.
-                    .combinedClickable(
-                        role = Role.Button,
-                        onClick = { showNotificationPanel = true },
-                        onLongClick = {
-                            onLongClick?.invoke(appInfo)
-                            showBottomSheet = true
-                        },
-                    )
-                    .padding(Spacing.small),
+            Image(
+                painter = appInfo.icon,
+                contentDescription = appInfo.label,
+                modifier = Modifier.size(dimensions.iconLarge),
+                colorFilter = inactiveFilter
             )
+            Spacer(modifier = Modifier.width(dimensions.iconGap))
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Called unconditionally so it can animate the lines away rather than cut them off.
+                NotificationPreview(appInfo.label, appInfo.isHidden, visibleNotifications)
+            }
+            AnimatedVisibility(visible = visibleNotifications.isNotEmpty()) {
+                Icon(
+                    painter = ChevronRightIcon(),
+                    contentDescription = "Show notifications",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .size(dimensions.iconLarge)
+                        .clip(CircleShape)
+                        // Consumes the gesture, so the row's long-press has to be repeated here.
+                        .combinedClickable(
+                            role = Role.Button,
+                            onClick = { showNotificationPanel = true },
+                            onLongClick = {
+                                onLongClick?.invoke(appInfo)
+                                showBottomSheet = true
+                            },
+                        )
+                        .padding(Spacing.small),
+                )
+            }
         }
     }
 
@@ -133,17 +165,22 @@ fun AppListItem(
     if (showNotificationPanel) {
         NotificationPanel(
             appInfo = appInfo,
-            notifications = notifications,
+            notifications = visibleNotifications,
             onClearNotifications = onClearNotifications,
             onDismiss = { showNotificationPanel = false },
         )
     }
 }
 
+// A repost reuses the key, so the timestamp is what tells the two apart.
+private fun NotificationInfo.matches(other: NotificationInfo) =
+    key == other.key && timestamp == other.timestamp
+
 @Composable
-fun AppTitle(title: String, isHidden: Boolean) {
+fun AppTitle(title: String, isHidden: Boolean, modifier: Modifier = Modifier) {
     Text(
         text = title,
+        modifier = modifier,
         fontSize = LocalDimensions.current.fontMedium,
         maxLines = 1,
         fontStyle = if (isHidden) FontStyle.Italic else FontStyle.Normal,

@@ -6,18 +6,26 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -54,6 +62,7 @@ fun NotificationPreview(
         label = label,
         isHidden = isHidden,
         notificationTimestamp = retained?.timestamp,
+        count = notifications.size,
     )
 
     val previewFont = LocalDimensions.current.fontCaption
@@ -93,6 +102,7 @@ private fun NotificationAppTitle(
     label: String,
     isHidden: Boolean,
     notificationTimestamp: Long?,
+    count: Int,
 ) {
     if (notificationTimestamp == null) {
         AppTitle(label, isHidden)
@@ -102,8 +112,38 @@ private fun NotificationAppTitle(
     val display = remember(label, notificationTimestamp, currentTime) {
         "$label · ${timeSince(notificationTimestamp)}"
     }
-    AppTitle(display, isHidden)
+
+    // A single notification is already spelled out below the title, so the count only earns its
+    // place once something is stacked behind the preview.
+    val stacked = count > 1
+    var retainedCount by remember { mutableIntStateOf(count) }
+    if (stacked) retainedCount = count
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        AppTitle(display, isHidden, Modifier.weight(1f, fill = false))
+        AnimatedVisibility(visible = stacked) {
+            NotificationCountBadge(retainedCount)
+        }
+    }
 }
+
+@Composable
+private fun NotificationCountBadge(count: Int) {
+    Text(
+        text = count.toString(),
+        fontSize = LocalDimensions.current.fontCaption,
+        color = MaterialTheme.colorScheme.onSecondaryContainer,
+        maxLines = 1,
+        modifier = Modifier
+            .padding(start = BADGE_GAP)
+            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+            .padding(horizontal = BADGE_HORIZONTAL_PADDING, vertical = BADGE_VERTICAL_PADDING),
+    )
+}
+
+private val BADGE_GAP = 6.dp
+private val BADGE_HORIZONTAL_PADDING = 6.dp
+private val BADGE_VERTICAL_PADDING = 1.dp
 
 // Cadence matches the age bucket — fresh notifications tick often, week-old ones rarely.
 @Composable
