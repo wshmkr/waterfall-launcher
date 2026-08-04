@@ -10,6 +10,7 @@ import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.common.components.AlphabetSlider
 import net.wshmkr.launcher.ui.common.components.AppLauncher
 import net.wshmkr.launcher.ui.feature.search.SearchOverlay
+import net.wshmkr.launcher.ui.theme.OverWallpaper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 
 
@@ -29,31 +30,33 @@ fun HomeScreen(
     val onLetterSelected = remember(viewModel) { viewModel::scrollToLetter }
     val onSelectionCleared = remember(viewModel) { { viewModel.deselectLetter() } }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (viewModel.showSearchOverlay) {
-            SearchOverlay(onDismiss = onSearchDismiss)
-        } else {
-            if (viewModel.showingFavorites) {
-                FavoritesView(
-                    navController = navController,
-                    viewModel = viewModel,
-                )
+    OverWallpaper {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (viewModel.showSearchOverlay) {
+                SearchOverlay(onDismiss = onSearchDismiss)
             } else {
-                AllAppsView(
-                    viewModel = viewModel,
-                )
-            }
+                if (viewModel.showingFavorites) {
+                    FavoritesView(
+                        navController = navController,
+                        viewModel = viewModel,
+                    )
+                } else {
+                    AllAppsView(
+                        viewModel = viewModel,
+                    )
+                }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                AlphabetSlider(
-                    letters = viewModel.alphabetLetters,
-                    onLetterSelected = onLetterSelected,
-                    onSelectionCleared = onSelectionCleared,
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    AlphabetSlider(
+                        letters = viewModel.alphabetLetters,
+                        onLetterSelected = onLetterSelected,
+                        onSelectionCleared = onSelectionCleared,
+                    )
+                }
             }
         }
     }

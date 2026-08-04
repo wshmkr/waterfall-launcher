@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import net.wshmkr.launcher.ui.common.components.AccentButton
+import net.wshmkr.launcher.ui.theme.OnOpaqueSurface
 
 @Composable
 fun PermissionSettingsDialog(
@@ -13,25 +14,27 @@ fun PermissionSettingsDialog(
     onDismiss: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(text = title)
-        },
-        text = {
-            Text(text = message)
-        },
-        confirmButton = {
-            AccentButton(onClick = onOpenSettings) {
-                Text("Open Settings")
+    OnOpaqueSurface {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(text = title)
+            },
+            text = {
+                Text(text = message)
+            },
+            confirmButton = {
+                AccentButton(onClick = onOpenSettings) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
+        )
+    }
 }
 
 @Composable

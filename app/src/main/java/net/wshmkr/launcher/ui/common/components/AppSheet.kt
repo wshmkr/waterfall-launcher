@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.OnOpaqueSurface
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.sheetDivider
 
@@ -53,44 +54,46 @@ fun AppSheet(
         // Uncapped, the sheet's inset padding feeds its own expanded anchor and it oscillates.
         BoxWithConstraints {
             val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
-            Column(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .heightIn(max = maxHeight - topInset)
-                    .padding(horizontal = Spacing.medium)
-                    .padding(top = 18.dp)
-            ) {
-                Row(
-                    modifier = Modifier
+            OnOpaqueSurface {
+                Column(
+                    modifier = modifier
                         .fillMaxWidth()
-                        .padding(Spacing.small),
-                    verticalAlignment = Alignment.CenterVertically
+                        .heightIn(max = maxHeight - topInset)
+                        .padding(horizontal = Spacing.medium)
+                        .padding(top = 18.dp)
                 ) {
-                    Image(
-                        painter = appInfo.icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(dimensions.iconLarge)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(Spacing.small),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = appInfo.icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(dimensions.iconLarge)
+                        )
+                        Spacer(modifier = Modifier.width(Spacing.medium))
+                        Text(
+                            text = appInfo.label,
+                            fontSize = dimensions.fontXLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        headerAction()
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = Spacing.small),
+                        color = sheetDivider(),
                     )
-                    Spacer(modifier = Modifier.width(Spacing.medium))
-                    Text(
-                        text = appInfo.label,
-                        fontSize = dimensions.fontXLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    headerAction()
+
+                    content()
+
+                    Spacer(modifier = Modifier.height(Spacing.small))
                 }
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = Spacing.small),
-                    color = sheetDivider(),
-                )
-
-                content()
-
-                Spacer(modifier = Modifier.height(Spacing.small))
             }
         }
     }

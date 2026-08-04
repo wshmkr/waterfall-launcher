@@ -3,6 +3,7 @@ package net.wshmkr.launcher.ui.theme
 import android.app.Activity
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -11,11 +12,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import net.wshmkr.launcher.model.LauncherFont
 import net.wshmkr.launcher.model.PaletteStyle
 
 @Composable
 fun WaterfallLauncherTheme(
     paletteStyle: PaletteStyle,
+    launcherFont: LauncherFont = LauncherFont.Bundled,
     content: @Composable () -> Unit,
 ) {
     val wallpaperColors = rememberSystemWallpaperColors()
@@ -26,12 +29,19 @@ fun WaterfallLauncherTheme(
     )
     SystemBarIcons(darkTheme)
     val widthDp = LocalConfiguration.current.screenWidthDp
+    val fontFamily = rememberFontFamily(launcherFont)
     CompositionLocalProvider(
         LocalDimensions provides dimensionsFor(widthDp),
         // No Surface sets the ambient ink, since the app draws straight over the wallpaper.
         LocalContentColor provides colorScheme.onSurface,
+        // Material only styles its own components, so bare Text calls need the family here.
+        // Copied rather than rebuilt, to keep Material's own line height and font padding.
+        LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = fontFamily),
     ) {
-        MaterialTheme(colorScheme = colorScheme) { content() }
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = rememberLauncherTypography(fontFamily),
+        ) { content() }
     }
 }
 
