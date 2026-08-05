@@ -15,6 +15,7 @@ import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.icons.CheckIcon
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
 import net.wshmkr.launcher.ui.common.icons.DeleteIcon
+import net.wshmkr.launcher.ui.common.icons.DragIndicatorIcon
 import net.wshmkr.launcher.ui.common.icons.InfoIcon
 import net.wshmkr.launcher.ui.common.icons.StarFilledIcon
 import net.wshmkr.launcher.ui.common.icons.StarIcon
@@ -31,6 +32,7 @@ fun AppOptionsMenu(
     onToggleFavorite: (AppInfo) -> Unit,
     onToggleHidden: (AppInfo) -> Unit,
     onToggleSuggest: (AppInfo) -> Unit,
+    onReorderFavorites: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val dimensions = LocalDimensions.current
@@ -68,6 +70,16 @@ fun AppOptionsMenu(
                     onDismiss()
                 }
             )
+            if (onReorderFavorites != null) {
+                MenuOption(
+                    icon = DragIndicatorIcon(),
+                    text = "Reorder favorites",
+                    onClick = {
+                        onReorderFavorites()
+                        onDismiss()
+                    }
+                )
+            }
         } else {
             MenuOption(
                 icon = StarFilledIcon(),

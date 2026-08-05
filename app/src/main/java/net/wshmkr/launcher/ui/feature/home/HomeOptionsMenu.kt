@@ -17,6 +17,7 @@ import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
 import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
+import net.wshmkr.launcher.ui.common.icons.DragIndicatorIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
@@ -32,6 +33,7 @@ import net.wshmkr.launcher.viewmodel.SettingsViewModel
 fun HomeOptionsMenu(
     navController: NavController,
     onDismiss: () -> Unit,
+    onReorderFavorites: (() -> Unit)? = null,
     settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val sheetState = rememberModalBottomSheetState()
@@ -98,6 +100,17 @@ fun HomeOptionsMenu(
                 text = "Manage widgets",
                 onClick = onOpenWidgets,
             )
+
+            if (onReorderFavorites != null) {
+                MenuOption(
+                    icon = DragIndicatorIcon(),
+                    text = "Reorder favorites",
+                    onClick = {
+                        onReorderFavorites()
+                        onDismiss()
+                    },
+                )
+            }
 
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 12.dp),

@@ -99,6 +99,9 @@ class HomeViewModel @Inject constructor(
     var showingFavorites by mutableStateOf(true)
         private set
 
+    var favoritesReordering by mutableStateOf(false)
+        private set
+
     var showSearchOverlay by mutableStateOf(false)
 
     private var observedStop = false
@@ -173,6 +176,31 @@ class HomeViewModel @Inject constructor(
         activeLetter = null
     }
 
+    fun startFavoritesReorder() {
+        favoritesReordering = true
+    }
+
+    fun endFavoritesReorder() {
+        favoritesReordering = false
+        commitFavoritesOrder()
+    }
+
+    // Keys rather than list indices: suggestions and the widgets above them share the same list,
+    // and an unknown key is exactly the case that must not move.
+    fun moveFavorite(fromKey: String, toKey: String) {
+        val keys = appsRepository.favorites.toMutableList()
+        val from = keys.indexOf(fromKey)
+        val to = keys.indexOf(toKey)
+        if (from == -1 || to == -1 || from == to) return
+
+        keys.add(to, keys.removeAt(from))
+        appsRepository.previewFavorites(keys)
+    }
+
+    private fun commitFavoritesOrder() {
+        viewModelScope.launch { appsRepository.commitFavorites() }
+    }
+
     fun navigateToFavorites() {
         activeLetter = null
         showingFavorites = true
@@ -242,14 +270,14 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun buildFavoriteAppsList(): List<AppInfo> {
-        val apps = mutableListOf<AppInfo>()
-
-        apps.addAll(appsRepository.allApps.filter { it.isFavorite })
+        val installedByKey = appsRepository.allApps.associateBy { it.key }
+        // Uninstalled or temporarily unavailable apps drop out but keep their stored position.
+        val apps = appsRepository.favorites.mapNotNullTo(mutableListOf()) { installedByKey[it] }
 
         if (apps.size < HOME_SCREEN_APPS) {
             val remainingSlots = HOME_SCREEN_APPS - apps.size
             val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { usageKey ->
-                appsRepository.allApps.find { it.key == usageKey }
+                installedByKey[usageKey]
             }
             val suggestions =
                 mostUsedApps
