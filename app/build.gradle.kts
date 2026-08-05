@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.accompanist.drawablepainter)
     implementation(libs.coil)
     implementation(libs.kotlinx.collections.immutable)
+    implementation(libs.reorderable)
 
     implementation(libs.hilt.android)
     implementation(libs.play.services.location)

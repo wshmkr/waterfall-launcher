@@ -49,10 +49,14 @@ fun AppListItem(
     onToggleFavorite: (AppInfo) -> Unit,
     onToggleHidden: (AppInfo) -> Unit,
     onToggleSuggest: (AppInfo) -> Unit,
+    modifier: Modifier = Modifier,
     onLongClick: ((AppInfo) -> Unit)? = null,
     alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
     onClearNotifications: (List<NotificationInfo>) -> Unit = {},
+    onReorderFavorites: (() -> Unit)? = null,
+    clickEnabled: Boolean = true,
+    dragHandle: (@Composable () -> Unit)? = null,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showNotificationPanel by remember { mutableStateOf(false) }
@@ -70,11 +74,12 @@ fun AppListItem(
     val dimensions = LocalDimensions.current
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
             .clip(Corners.small)
             .combinedClickable(
+                enabled = clickEnabled,
                 onClick = { onClick(appInfo) },
                 onLongClick = {
                     onLongClick?.invoke(appInfo)
@@ -108,6 +113,7 @@ fun AppListItem(
                     .clip(CircleShape)
                     // Consumes the gesture, so the row's long-press has to be repeated here.
                     .combinedClickable(
+                        enabled = clickEnabled,
                         role = Role.Button,
                         onClick = { showNotificationPanel = true },
                         onLongClick = {
@@ -118,6 +124,7 @@ fun AppListItem(
                     .padding(Spacing.small),
             )
         }
+        dragHandle?.invoke()
     }
 
     if (showBottomSheet) {
@@ -127,6 +134,7 @@ fun AppListItem(
             onToggleFavorite = onToggleFavorite,
             onToggleHidden = onToggleHidden,
             onToggleSuggest = onToggleSuggest,
+            onReorderFavorites = onReorderFavorites,
         )
     }
 

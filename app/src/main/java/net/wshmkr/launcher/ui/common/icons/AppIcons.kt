@@ -32,6 +32,9 @@ fun CloseIcon() = painterResource(id = R.drawable.icon_close)
 fun DeleteIcon() = painterResource(id = R.drawable.icon_delete)
 
 @Composable
+fun DragIndicatorIcon() = painterResource(id = R.drawable.icon_drag_indicator)
+
+@Composable
 fun HelpIcon() = painterResource(id = R.drawable.icon_help)
 
 @Composable

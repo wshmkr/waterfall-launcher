@@ -15,12 +15,17 @@ import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.core.graphics.drawable.toBitmap
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentSet
@@ -63,6 +68,11 @@ class AppsRepository @Inject constructor(
 
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
+
+    var favorites: ImmutableList<String> by mutableStateOf(persistentListOf())
+        private set
+
+    private var persistedFavorites: ImmutableList<String> = persistentListOf()
 
     private val usageEntries = mutableMapOf<String, UsageEntry>()
     private var usageLoaded = false
@@ -160,11 +170,13 @@ class AppsRepository @Inject constructor(
         val density = application.resources.configuration.densityDpi
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() } ?: listOf(Process.myUserHandle())
 
+        val storedFavorites = appPreferencesDataSource.getFavorites()
+        val favoriteKeys = storedFavorites.toHashSet()
+
         val apps = withContext(Dispatchers.IO) {
             val seen = mutableSetOf<Pair<String, UserHandle>>()
             buildList {
                 for (userHandle in userHandles) {
-                    val favorites = appPreferencesDataSource.favorites.get(userHandle)
                     val hidden = appPreferencesDataSource.hidden.get(userHandle)
                     val doNotSuggest = appPreferencesDataSource.doNotSuggest.get(userHandle)
 
@@ -173,7 +185,7 @@ class AppsRepository @Inject constructor(
                     for (activity in activities) {
                         val appPackageName = activity.componentName.packageName
                         if (seen.add(appPackageName to userHandle) && appPackageName != application.packageName) {
-                            add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
+                            add(buildAppInfo(activity, userHandle, favoriteKeys, hidden, doNotSuggest))
                         }
                     }
                 }
@@ -181,6 +193,8 @@ class AppsRepository @Inject constructor(
         }
 
         Snapshot.withMutableSnapshot {
+            favorites = storedFavorites
+            persistedFavorites = storedFavorites
             allApps.clear()
             allApps.addAll(apps)
         }
@@ -213,7 +227,7 @@ class AppsRepository @Inject constructor(
     private fun buildAppInfo(
         activity: LauncherActivityInfo,
         userHandle: UserHandle,
-        favorites: Set<String>,
+        favoriteKeys: Set<String>,
         hidden: Set<String>,
         doNotSuggest: Set<String>,
     ): AppInfo {
@@ -227,7 +241,7 @@ class AppsRepository @Inject constructor(
             icon = toBitmapPainter(activity.getBadgedIcon(0)),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
-            isFavorite = favorites.contains(appPackageName),
+            isFavorite = keyFor(appPackageName, userHandle) in favoriteKeys,
             isHidden = hidden.contains(appPackageName),
             doNotSuggest = doNotSuggest.contains(appPackageName),
             searchTokens = buildSearchTokens(label),
@@ -266,7 +280,7 @@ class AppsRepository @Inject constructor(
             buildAppInfo(
                 activity = activity,
                 userHandle = userHandle,
-                favorites = appPreferencesDataSource.favorites.get(userHandle),
+                favoriteKeys = favorites.toHashSet(),
                 hidden = appPreferencesDataSource.hidden.get(userHandle),
                 doNotSuggest = appPreferencesDataSource.doNotSuggest.get(userHandle),
             )
@@ -370,9 +384,34 @@ class AppsRepository @Inject constructor(
     }
 
     suspend fun toggleFavorite(packageName: String, userHandle: UserHandle) {
-        togglePackageFlag(packageName, userHandle, appPreferencesDataSource.favorites,
-            isSet = { it.isFavorite },
-            withFlag = { app, value -> app.copy(isFavorite = value) })
+        val index = allApps.indexOfFirst { it.packageName == packageName && it.userHandle == userHandle }
+        if (index == -1) return
+
+        val app = allApps[index]
+        val pinned = !app.isFavorite
+        val updated = if (pinned) favorites + app.key else favorites - app.key
+
+        Snapshot.withMutableSnapshot {
+            favorites = updated.toImmutableList()
+            allApps[index] = app.copy(isFavorite = pinned)
+        }
+        persistFavorites()
+    }
+
+    // Applied in memory only, so a drag never waits on a disk write.
+    fun previewFavorites(appKeys: List<String>) {
+        favorites = appKeys.toImmutableList()
+    }
+
+    suspend fun commitFavorites() {
+        if (favorites == persistedFavorites) return
+        persistFavorites()
+    }
+
+    private suspend fun persistFavorites() {
+        val snapshot = favorites
+        appPreferencesDataSource.setFavorites(snapshot)
+        persistedFavorites = snapshot
     }
 
     suspend fun toggleHidden(packageName: String, userHandle: UserHandle) {
