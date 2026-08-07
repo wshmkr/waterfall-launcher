@@ -1,8 +1,12 @@
 package net.wshmkr.launcher.ui.feature.notifications
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
@@ -11,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,12 +31,18 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.NotificationInfo
+import net.wshmkr.launcher.ui.common.icons.ArrowLeftAltIcon
+import net.wshmkr.launcher.ui.common.icons.ArrowRightAltIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import kotlin.math.abs
@@ -39,8 +50,10 @@ import kotlin.math.min
 
 private const val COMMIT_FRACTION = 0.4f
 
-private const val EXPAND_LABEL = "Expand →"
-private const val DISMISS_LABEL = "← Dismiss"
+private val ARROW_GAP = 4.dp
+
+private const val EXPAND_LABEL = "Expand"
+private const val DISMISS_LABEL = "Dismiss"
 private const val UNCLEARABLE_LABEL = "Can't dismiss"
 
 @Composable
@@ -98,13 +111,24 @@ fun NotificationSwipeBox(
 }
 
 // Rows are transparent over the wallpaper, so only the strip the row has vacated may be painted —
-// everything here reads the offset in the draw phase, which also keeps a drag off the recomposer.
+// the geometry is read in the draw phase, which keeps a drag off the recomposer.
 @Composable
 private fun SwipeActionBackground(swipeState: SwipeToDismissBoxState, canDismiss: Boolean) {
-    val expandColor = MaterialTheme.colorScheme.secondaryContainer
-    val dismissColor = when {
-        canDismiss -> MaterialTheme.colorScheme.errorContainer
+    // Only the sign of the offset picks the action, so it flips at most once per gesture — cheap
+    // enough to drive the label from composition rather than show both and clip one away.
+    val dismissing by remember(swipeState) {
+        derivedStateOf { swipeState.offsetOrZero() < 0f }
+    }
+
+    val fill = when {
+        !dismissing -> MaterialTheme.colorScheme.primary
+        canDismiss -> MaterialTheme.colorScheme.error
         else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = when {
+        !dismissing -> MaterialTheme.colorScheme.onPrimary
+        canDismiss -> MaterialTheme.colorScheme.onError
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Box(
@@ -118,7 +142,7 @@ private fun SwipeActionBackground(swipeState: SwipeToDismissBoxState, canDismiss
                 val left = revealedLeft(offset)
                 val width = revealedWidth(offset)
                 drawRect(
-                    color = if (offset > 0f) expandColor else dismissColor,
+                    color = fill,
                     topLeft = Offset(left, 0f),
                     size = Size(width, size.height),
                 )
@@ -127,32 +151,42 @@ private fun SwipeActionBackground(swipeState: SwipeToDismissBoxState, canDismiss
                 }
             }
     ) {
-        SwipeActionLabel(
-            text = EXPAND_LABEL,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.align(Alignment.CenterStart),
-        )
-        SwipeActionLabel(
-            text = if (canDismiss) DISMISS_LABEL else UNCLEARABLE_LABEL,
-            color = when {
-                canDismiss -> MaterialTheme.colorScheme.onErrorContainer
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.align(Alignment.CenterEnd),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ARROW_GAP),
+            // Anchored to the edge rather than the row, so it is uncovered in place as the row travels.
+            modifier = Modifier
+                .align(if (dismissing) Alignment.CenterEnd else Alignment.CenterStart)
+                .padding(horizontal = Spacing.medium),
+        ) {
+            // The arrow points the way the row is travelling, so it stays put under RTL.
+            if (dismissing && canDismiss) SwipeActionArrow(ArrowLeftAltIcon(), contentColor)
+            Text(
+                text = when {
+                    !dismissing -> EXPAND_LABEL
+                    canDismiss -> DISMISS_LABEL
+                    else -> UNCLEARABLE_LABEL
+                },
+                color = contentColor,
+                fontSize = LocalDimensions.current.fontMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Clip,
+            )
+            if (!dismissing) SwipeActionArrow(ArrowRightAltIcon(), contentColor)
+        }
     }
 }
 
-// Anchored to the edge rather than to the row, so it is uncovered in place as the row travels.
+// Sized off the label so it tracks both the dimension profile and the system font scale.
 @Composable
-private fun SwipeActionLabel(text: String, color: Color, modifier: Modifier) {
-    Text(
-        text = text,
-        color = color,
-        fontSize = LocalDimensions.current.fontCaption,
-        maxLines = 1,
-        overflow = TextOverflow.Clip,
-        modifier = modifier.padding(horizontal = Spacing.medium),
+private fun SwipeActionArrow(painter: Painter, color: Color) {
+    val size = with(LocalDensity.current) { LocalDimensions.current.fontMedium.toDp() }
+    Icon(
+        painter = painter,
+        contentDescription = null,
+        tint = color,
+        modifier = Modifier.size(size),
     )
 }
 

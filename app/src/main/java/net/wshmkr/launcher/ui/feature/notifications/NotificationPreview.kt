@@ -6,11 +6,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -109,41 +105,24 @@ private fun NotificationAppTitle(
         return
     }
     val currentTime by rememberNotificationAgeTicker(notificationTimestamp)
-    val display = remember(label, notificationTimestamp, currentTime) {
-        "$label · ${timeSince(notificationTimestamp)}"
-    }
 
-    // A single notification is already spelled out below the title, so the count only earns its
-    // place once something is stacked behind the preview.
-    val stacked = count > 1
+    // Held alongside the retained timestamp so the title doesn't drop the count mid-collapse.
     var retainedCount by remember { mutableIntStateOf(count) }
-    if (stacked) retainedCount = count
+    if (count > 0) retainedCount = count
 
+    val suffix = remember(retainedCount, notificationTimestamp, currentTime) {
+        // A single notification is already spelled out below the title, so the count only earns
+        // its place once something is stacked behind the preview.
+        val stack = if (retainedCount > 1) " ($retainedCount)" else ""
+        "$stack · ${timeSince(notificationTimestamp)}"
+    }
+
+    // Only the name is weighted, so a long one ellipsizes into the space the suffix leaves behind.
     Row(verticalAlignment = Alignment.CenterVertically) {
-        AppTitle(display, isHidden, Modifier.weight(1f, fill = false))
-        AnimatedVisibility(visible = stacked) {
-            NotificationCountBadge(retainedCount)
-        }
+        AppTitle(label, isHidden, Modifier.weight(1f, fill = false))
+        AppTitle(suffix, isHidden)
     }
 }
-
-@Composable
-private fun NotificationCountBadge(count: Int) {
-    Text(
-        text = count.toString(),
-        fontSize = LocalDimensions.current.fontCaption,
-        color = MaterialTheme.colorScheme.onSecondaryContainer,
-        maxLines = 1,
-        modifier = Modifier
-            .padding(start = BADGE_GAP)
-            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
-            .padding(horizontal = BADGE_HORIZONTAL_PADDING, vertical = BADGE_VERTICAL_PADDING),
-    )
-}
-
-private val BADGE_GAP = 6.dp
-private val BADGE_HORIZONTAL_PADDING = 6.dp
-private val BADGE_VERTICAL_PADDING = 1.dp
 
 // Cadence matches the age bucket — fresh notifications tick often, week-old ones rarely.
 @Composable
