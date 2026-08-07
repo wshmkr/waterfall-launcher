@@ -89,7 +89,7 @@ fun NotificationSwipeBox(
     var rowWidth by remember { mutableIntStateOf(0) }
     val movedRight by remember { derivedStateOf { travel > 0f } }
 
-    // Taken at commit rather than at release, so a repost landing mid-gesture is never cancelled.
+    // Armed past the threshold rather than at release, so a mid-gesture repost is never the target.
     val latestTarget by rememberUpdatedState(swipeTarget)
     var armedTarget by remember { mutableStateOf<NotificationInfo?>(null) }
 
@@ -126,10 +126,13 @@ fun NotificationSwipeBox(
             .draggable(
                 state = dragState,
                 orientation = Orientation.Horizontal,
-                // Stays on through the settle so it isn't cut short by the last dismissal.
-                enabled = swipeTarget != null || armedTarget != null,
+                // Held for the whole gesture: disabling mid-drag tears the node down with no
+                // onDragStopped, stranding the row off-centre.
+                enabled = swipeTarget != null || gesturing,
                 onDragStarted = {
                     settle?.cancel()
+                    // A settle cancelled above the threshold never re-crosses it, so arm here.
+                    armedTarget = latestTarget.takeIf { abs(travel) >= commitPx }
                     gesturing = true
                     dragging = true
                 },
