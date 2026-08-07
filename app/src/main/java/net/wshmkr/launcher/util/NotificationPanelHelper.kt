@@ -13,8 +13,7 @@ object NotificationPanelHelper {
         return service?.expandNotificationPanel() ?: false
     }
 
-    // False when the cancel never reached the listener, so a caller hiding these optimistically
-    // knows not to: rebinding the service leaves a window where there is nothing to cancel with.
+    // False when the listener was unreachable, so callers can avoid hiding what is still posted.
     fun dismissNotifications(keys: List<String>): Boolean {
         if (keys.isEmpty()) return false
         val service = LauncherNotificationListenerService.getInstance() ?: return false

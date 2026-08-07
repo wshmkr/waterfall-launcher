@@ -201,8 +201,7 @@ class HomeViewModel @Inject constructor(
             mutableStateOf(notificationRepository.notifications.value.notificationsFor(packageName, user))
         }
 
-    // Reports whether the cancel was actually sent, so a caller can hold off on hiding what is
-    // still live — a repost the guard below rejects never reaches the listener either.
+    // False when nothing was sent, including when the guard below rejects every instance.
     fun clearNotifications(dismissed: List<NotificationInfo>): Boolean {
         val current = notificationRepository.notifications.value
         // Dismissals land after their exit animation, by which point a repost can have taken over

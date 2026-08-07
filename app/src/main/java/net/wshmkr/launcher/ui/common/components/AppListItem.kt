@@ -56,8 +56,7 @@ fun AppListItem(
     var showNotificationPanel by remember { mutableStateOf(false) }
     var pendingDismissals by remember { mutableStateOf(emptyList<NotificationInfo>()) }
 
-    // Hides swiped notifications until the system callback lands, so the preview has already
-    // swapped to the next one by the time the row settles back.
+    // Hidden until the system callback lands, so the preview has swapped before the row settles.
     val visibleNotifications = remember(notifications, pendingDismissals) {
         if (pendingDismissals.isEmpty()) return@remember notifications
         notifications
@@ -83,7 +82,7 @@ fun AppListItem(
 
     val dimensions = LocalDimensions.current
 
-    // The chevron consumes the gesture, so the row's long press has to be repeated on it.
+    // Shared because the chevron consumes its own gesture and has to repeat the row's long press.
     val openOptions = {
         onLongClick?.invoke(appInfo)
         showBottomSheet = true

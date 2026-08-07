@@ -36,7 +36,7 @@ import net.wshmkr.launcher.util.ONE_MINUTE
 import net.wshmkr.launcher.util.ONE_WEEK
 import net.wshmkr.launcher.util.timeSince
 
-// Preferred call shape — stable params so the composable stays skippable.
+// Stable params throughout, so the composable stays skippable for every row in the list.
 @Composable
 fun NotificationPreview(
     label: String,
@@ -50,8 +50,7 @@ fun NotificationPreview(
     var retained by remember { mutableStateOf(notification) }
     if (notification != null) retained = notification
 
-    // Separate states because the two blocks animate in different places in the layout; both are
-    // driven by the same signal, so they stay in step.
+    // One state can't back two AnimatedVisibility, and these sit in different parts of the layout.
     val titleState = remember { MutableTransitionState(notification != null) }
     val bodyState = remember { MutableTransitionState(notification != null) }
     titleState.targetState = notification != null
@@ -63,8 +62,7 @@ fun NotificationPreview(
 
     val previewFont = LocalDimensions.current.fontCaption
 
-    // Trailing content spans both title lines, so it has room for a touch target without
-    // stretching either of them on its own.
+    // Trailing content spans both title lines, so a touch target fits without stretching either.
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f, fill = false)) {
             NotificationAppTitle(
@@ -91,7 +89,7 @@ fun NotificationPreview(
                 }
             }
         }
-        // Driven here so it leaves on the same signal and the same axis as the suffix beside it.
+        // Driven here so it leaves on the same axis as the suffix beside it.
         AnimatedVisibility(
             visible = notification != null,
             enter = fadeIn() + expandHorizontally(),
@@ -139,8 +137,7 @@ private fun NotificationAppTitle(
     if (count > 0) retainedCount = count
 
     val suffix = remember(retainedCount, notificationTimestamp, currentTime) {
-        // A single notification is already spelled out below the title, so the count only earns
-        // its place once something is stacked behind the preview.
+        // One notification is already spelled out below, so a count only earns its place stacked.
         val stack = if (retainedCount > 1) " ($retainedCount)" else ""
         "$stack · ${timeSince(notificationTimestamp)}"
     }

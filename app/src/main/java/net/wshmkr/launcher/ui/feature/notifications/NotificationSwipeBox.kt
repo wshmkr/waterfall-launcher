@@ -58,16 +58,14 @@ import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import kotlin.math.abs
 
-// Far enough that a scroll or a brush past the row can't reach it, short enough that the gesture
-// is over almost as soon as it has started.
+// Short enough to feel immediate, far enough that a scroll can't trip it.
 private val COMMIT_DISTANCE = 64.dp
 
-// The platform spec for settling a drag.
 private val SETTLE_SPEC = AnchoredDraggableDefaults.SnapAnimationSpec
 
 private val ROW_SHAPE = Corners.small
 
-// Material's dragged state layer. Raise it if the row doesn't read as picked up.
+// Material's dragged state layer alpha.
 private const val DRAG_TINT_ALPHA = 0.12f
 
 private val ARROW_GAP = 4.dp
@@ -91,8 +89,7 @@ fun NotificationSwipeBox(
     var rowWidth by remember { mutableIntStateOf(0) }
     val movedRight by remember { derivedStateOf { travel > 0f } }
 
-    // Taken the moment the gesture commits rather than when it is released, so a repost arriving
-    // under the finger is never what gets cancelled.
+    // Taken at commit rather than at release, so a repost landing mid-gesture is never cancelled.
     val latestTarget by rememberUpdatedState(swipeTarget)
     var armedTarget by remember { mutableStateOf<NotificationInfo?>(null) }
 
@@ -108,9 +105,8 @@ fun NotificationSwipeBox(
     val settleScope = rememberCoroutineScope()
     var settle by remember { mutableStateOf<Job?>(null) }
 
-    // Painted rather than routed through an Indication: the row's own ripple never surfaces once
-    // draggable has taken the pointer from its clickable. A press has to register at once, so only
-    // the release is animated.
+    // A drag cancels the clickable's ripple, so the tint is painted here instead. A press has to
+    // land at once, so only the release animates.
     var dragging by remember { mutableStateOf(false) }
     val tint = animateFloatAsState(
         targetValue = if (dragging) DRAG_TINT_ALPHA else 0f,
@@ -119,14 +115,12 @@ fun NotificationSwipeBox(
     )
     val dragTint = MaterialTheme.colorScheme.onSurface
 
-    // Nothing of the underlay is visible at rest, and composing it costs two vector painters and a
-    // text layout, so notification rows only pay for it while one is actually being dragged.
+    // None of the underlay shows at rest, so rows only pay to compose it mid-gesture.
     var gesturing by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
-            // Owned here rather than by the caller, so the underlay cuts the row out at the same
-            // radius the row is clipped to.
+            // Owned here, not by the caller, so the underlay cuts at the radius it clips to.
             .clip(ROW_SHAPE)
             .onSizeChanged { rowWidth = it.width }
             .draggable(
@@ -223,8 +217,7 @@ private fun SwipeActionBackground(
                     if (offset == 0f) return@onDrawWithContent
                     outline.rewind()
                     outline.addPath(atRest, Offset(offset, 0f))
-                    // Everything the row still covers is left alone, so its corners read as the
-                    // edge of something lying on top rather than as a straight cut.
+                    // The row's own corners cut the fill, so it reads as something on top.
                     clipPath(outline, ClipOp.Difference) {
                         drawRect(fill)
                         this@onDrawWithContent.drawContent()
@@ -235,13 +228,11 @@ private fun SwipeActionBackground(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(ARROW_GAP),
-            // Pinned to the edge the row uncovers, which is a physical side rather than a relative
-            // one — the strip is wherever the finger went.
+            // Pinned to the physical side the row uncovered, not a layout-relative one.
             modifier = Modifier
                 .align(if (movedRight) AbsoluteAlignment.CenterLeft else AbsoluteAlignment.CenterRight)
                 .padding(horizontal = Spacing.medium),
         ) {
-            // Points the way the row is travelling, which is a physical direction under RTL too.
             if (!movedRight) SwipeActionArrow(ArrowLeftAltIcon(), contentColor)
             Text(
                 text = when {
@@ -260,7 +251,7 @@ private fun SwipeActionBackground(
     }
 }
 
-// Sized off the label so it tracks both the dimension profile and the system font scale.
+// Sized in sp so it tracks the system font scale along with the label.
 @Composable
 private fun SwipeActionArrow(painter: Painter, color: Color) {
     val size = with(LocalDensity.current) { LocalDimensions.current.fontMedium.toDp() }
