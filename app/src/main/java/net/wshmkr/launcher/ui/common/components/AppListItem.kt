@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,7 +41,6 @@ import net.wshmkr.launcher.ui.common.icons.ChevronRightIcon
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPanel
 import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.ui.feature.notifications.NotificationSwipeBox
-import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 
@@ -99,8 +99,12 @@ fun AppListItem(
 
     val dimensions = LocalDimensions.current
 
+    // Shared with the swipe box so a drag reads as a press on the row it is dragging.
+    val pressSource = remember { MutableInteractionSource() }
+
     NotificationSwipeBox(
         swipeTarget = visibleNotifications.firstOrNull(),
+        interactionSource = pressSource,
         onExpand = { showNotificationPanel = true },
         onDismissNotification = {
             pendingDismissals = pendingDismissals + it
@@ -109,13 +113,15 @@ fun AppListItem(
         modifier = Modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
-            .clip(Corners.small)
             .graphicsLayer { this.alpha = alphaProvider() },
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
+                    interactionSource = pressSource,
+                    // The swipe box draws it, so it survives the drag taking over the pointer.
+                    indication = null,
                     onClick = { onClick(appInfo) },
                     onLongClick = {
                         onLongClick?.invoke(appInfo)
