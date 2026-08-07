@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,7 +22,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
@@ -99,12 +96,8 @@ fun AppListItem(
 
     val dimensions = LocalDimensions.current
 
-    // Shared with the swipe box so a drag reads as a press on the row it is dragging.
-    val pressSource = remember { MutableInteractionSource() }
-
     NotificationSwipeBox(
         swipeTarget = visibleNotifications.firstOrNull(),
-        interactionSource = pressSource,
         onExpand = { showNotificationPanel = true },
         onDismissNotification = {
             pendingDismissals = pendingDismissals + it
@@ -119,9 +112,6 @@ fun AppListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    interactionSource = pressSource,
-                    // The swipe box draws it, so it survives the drag taking over the pointer.
-                    indication = null,
                     onClick = { onClick(appInfo) },
                     onLongClick = {
                         onLongClick?.invoke(appInfo)
@@ -142,26 +132,34 @@ fun AppListItem(
                 modifier = Modifier.weight(1f)
             ) {
                 // Called unconditionally so it can animate the lines away rather than cut them off.
-                NotificationPreview(appInfo.label, appInfo.isHidden, visibleNotifications)
-            }
-            AnimatedVisibility(visible = visibleNotifications.isNotEmpty()) {
-                Icon(
-                    painter = ChevronRightIcon(),
-                    contentDescription = "Show notifications",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .size(dimensions.iconLarge)
-                        .clip(CircleShape)
-                        // Consumes the gesture, so the row's long-press has to be repeated here.
-                        .combinedClickable(
-                            role = Role.Button,
-                            onClick = { showNotificationPanel = true },
-                            onLongClick = {
-                                onLongClick?.invoke(appInfo)
-                                showBottomSheet = true
-                            },
-                        )
-                        .padding(Spacing.small),
+                NotificationPreview(
+                    label = appInfo.label,
+                    isHidden = appInfo.isHidden,
+                    notifications = visibleNotifications,
+                    trailing = {
+                        AnimatedVisibility(visible = visibleNotifications.isNotEmpty()) {
+                            Icon(
+                                painter = ChevronRightIcon(),
+                                contentDescription = "Show notifications",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier
+                                    .padding(start = Spacing.small)
+                                    .size(dimensions.iconLarge)
+                                    // Consumes the gesture, so the row's long-press is repeated here.
+                                    .combinedClickable(
+                                        interactionSource = null,
+                                        indication = null,
+                                        role = Role.Button,
+                                        onClick = { showNotificationPanel = true },
+                                        onLongClick = {
+                                            onLongClick?.invoke(appInfo)
+                                            showBottomSheet = true
+                                        },
+                                    )
+                                    .padding(Spacing.small),
+                            )
+                        }
+                    },
                 )
             }
         }

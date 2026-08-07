@@ -42,6 +42,7 @@ fun NotificationPreview(
     label: String,
     isHidden: Boolean,
     notifications: ImmutableList<NotificationInfo>,
+    trailing: @Composable () -> Unit = {},
 ) {
     val notification = notifications.firstOrNull()
 
@@ -49,49 +50,64 @@ fun NotificationPreview(
     var retained by remember { mutableStateOf(notification) }
     if (notification != null) retained = notification
 
-    val visibleState = remember { MutableTransitionState(notification != null) }
-    visibleState.targetState = notification != null
+    // Separate states because the two blocks animate in different places in the layout; both are
+    // driven by the same signal, so they stay in step.
+    val titleState = remember { MutableTransitionState(notification != null) }
+    val bodyState = remember { MutableTransitionState(notification != null) }
+    titleState.targetState = notification != null
+    bodyState.targetState = notification != null
 
-    LaunchedEffect(visibleState.isIdle) {
-        if (visibleState.isIdle && !visibleState.currentState) retained = null
+    LaunchedEffect(titleState.isIdle, bodyState.isIdle) {
+        if (titleState.isIdle && bodyState.isIdle && !titleState.currentState) retained = null
     }
-
-    NotificationAppTitle(
-        label = label,
-        isHidden = isHidden,
-        notificationTimestamp = retained?.timestamp,
-        count = notifications.size,
-        // Live rather than retained, so the suffix leaves on the same frame the lines start to.
-        hasNotification = notification != null,
-    )
 
     val previewFont = LocalDimensions.current.fontCaption
 
+    // The chevron spans both title lines, so it has room for a touch target without stretching
+    // either of them on its own.
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.weight(1f, fill = false)) {
+            NotificationAppTitle(
+                label = label,
+                isHidden = isHidden,
+                notificationTimestamp = retained?.timestamp,
+                count = notifications.size,
+                // Live rather than retained, so the suffix leaves as the lines start to.
+                hasNotification = notification != null,
+            )
+
+            AnimatedVisibility(
+                visibleState = titleState,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                retained?.title?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        fontSize = previewFont,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        trailing()
+    }
+
     AnimatedVisibility(
-        visibleState = visibleState,
+        visibleState = bodyState,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
-        Column {
-            retained?.title?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    fontSize = previewFont,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-
-            retained?.text?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    fontSize = previewFont,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    lineHeight = previewFont * 1.25f,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+        retained?.text?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                text = it,
+                fontSize = previewFont,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                lineHeight = previewFont * 1.25f,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

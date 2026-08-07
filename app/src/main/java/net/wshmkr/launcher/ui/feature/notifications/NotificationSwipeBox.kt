@@ -1,14 +1,10 @@
 package net.wshmkr.launcher.ui.feature.notifications
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.indication
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -64,10 +59,14 @@ import kotlin.math.roundToInt
 // is over almost as soon as it has started.
 private val COMMIT_DISTANCE = 64.dp
 
-// The action has already run by the time the row lets go, so this is only tidying up after it.
-private const val RETURN_MS = 220
+// The platform spec for settling a drag, and what SwipeToDismissBox's own reset() used before this
+// took the gesture over.
+private val SETTLE_SPEC = AnchoredDraggableDefaults.SnapAnimationSpec
 
 private val ROW_SHAPE = Corners.small
+
+// Material's dragged state layer. Raise it if the row doesn't read as picked up.
+private const val DRAG_TINT_ALPHA = 0.12f
 
 private val ARROW_GAP = 4.dp
 
@@ -78,7 +77,6 @@ private const val UNCLEARABLE_LABEL = "Can't dismiss"
 @Composable
 fun NotificationSwipeBox(
     swipeTarget: NotificationInfo?,
-    interactionSource: MutableInteractionSource,
     onExpand: () -> Unit,
     onDismissNotification: (NotificationInfo) -> Unit,
     modifier: Modifier = Modifier,
@@ -108,9 +106,10 @@ fun NotificationSwipeBox(
     val settleScope = rememberCoroutineScope()
     var settle by remember { mutableStateOf<Job?>(null) }
 
-    // draggable's own interactionSource reports a DragInteraction, which renders as the dragged
-    // state layer rather than a press, so the row is held pressed explicitly instead.
-    var press by remember { mutableStateOf<PressInteraction.Press?>(null) }
+    // Painted rather than routed through an Indication: the row's own ripple never surfaces once
+    // draggable has taken the pointer from its clickable.
+    var tintAlpha by remember { mutableFloatStateOf(0f) }
+    val dragTint = MaterialTheme.colorScheme.onSurface
 
     Box(
         modifier = modifier
@@ -123,16 +122,12 @@ fun NotificationSwipeBox(
                 orientation = Orientation.Horizontal,
                 // Stays on through the settle so it isn't cut short by the last dismissal.
                 enabled = swipeTarget != null || armedTarget != null,
-                onDragStarted = { startedPosition ->
+                onDragStarted = {
                     settle?.cancel()
-                    press = PressInteraction.Press(startedPosition)
-                        .also { interactionSource.tryEmit(it) }
+                    tintAlpha = DRAG_TINT_ALPHA
                 },
-                // Also reached when the gesture is cancelled, so the press can't stay latched.
+                // Also reached when the gesture is cancelled, so the tint can't stay latched.
                 onDragStopped = {
-                    press?.let { interactionSource.tryEmit(PressInteraction.Release(it)) }
-                    press = null
-
                     val towardsRight = travel > 0f
                     val committed = abs(travel) >= commitPx
                     if (committed) {
@@ -143,7 +138,14 @@ fun NotificationSwipeBox(
                         }
                     }
                     settle = settleScope.launch {
-                        animate(travel, 0f, animationSpec = tween(RETURN_MS, easing = FastOutSlowInEasing)) { value, _ ->
+                        // Same spec, so the highlight lifts exactly as the row comes to rest
+                        // rather than cutting out the moment the finger leaves.
+                        launch {
+                            animate(tintAlpha, 0f, animationSpec = SETTLE_SPEC) { value, _ ->
+                                tintAlpha = value
+                            }
+                        }
+                        animate(travel, 0f, animationSpec = SETTLE_SPEC) { value, _ ->
                             travel = value
                         }
                         armedTarget = null
@@ -164,9 +166,15 @@ fun NotificationSwipeBox(
         Box(
             modifier = Modifier
                 .horizontalTravel { travel }
-                // Carried by the row rather than by its clickable, which is cancelled the moment
-                // the drag takes the pointer — this keeps it lit for the whole gesture.
-                .indication(interactionSource, ripple()),
+                .drawWithContent {
+                    drawContent()
+                    if (tintAlpha <= 0f) return@drawWithContent
+                    drawRoundRect(
+                        color = dragTint,
+                        cornerRadius = CornerRadius(ROW_SHAPE.topStart.toPx(size, this)),
+                        alpha = tintAlpha,
+                    )
+                },
         ) {
             content()
         }
