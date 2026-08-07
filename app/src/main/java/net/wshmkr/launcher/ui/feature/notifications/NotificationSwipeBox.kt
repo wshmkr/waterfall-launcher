@@ -10,18 +10,28 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import kotlin.math.abs
@@ -33,32 +43,54 @@ private const val EXPAND_LABEL = "Expand →"
 private const val DISMISS_LABEL = "← Dismiss"
 private const val UNCLEARABLE_LABEL = "Can't dismiss"
 
-// Drag right to open the notification panel, left to dismiss the previewed notification. Both
-// directions throw the row off the edge and settle it back once the action has run.
 @Composable
 fun NotificationSwipeBox(
-    canSwipe: Boolean,
-    canDismiss: Boolean,
+    swipeTarget: NotificationInfo?,
     onExpand: () -> Unit,
-    onDismissNotification: () -> Unit,
+    onDismissNotification: (NotificationInfo) -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val swipeState = rememberSwipeToDismissBoxState(positionalThreshold = { it * COMMIT_FRACTION })
     val coroutineScope = rememberCoroutineScope()
 
+    // The row is thrown off the edge before onDismiss fires, so the target is taken the moment the
+    // drag passes the threshold — whatever repost replaces the preview mid-throw is not what the
+    // user acted on, and cancelling it would take content they never saw.
+    val latestTarget by rememberUpdatedState(swipeTarget)
+    var armedTarget by remember { mutableStateOf<NotificationInfo?>(null) }
+    LaunchedEffect(swipeState) {
+        snapshotFlow { swipeState.targetValue }
+            .filter { it != SwipeToDismissBoxValue.Settled }
+            .collect { armedTarget = latestTarget }
+    }
+
+    // Anchors have to outlive the gesture, or the row loses them mid-settle.
+    val settling = swipeState.currentValue != SwipeToDismissBoxValue.Settled
+    val backgroundTarget = swipeTarget ?: armedTarget
+
     SwipeToDismissBox(
         state = swipeState,
-        backgroundContent = { SwipeActionBackground(swipeState, canDismiss) },
-        modifier = modifier,
-        enableDismissFromStartToEnd = canSwipe,
-        enableDismissFromEndToStart = canSwipe,
-        onDismiss = { direction ->
-            when {
-                direction == SwipeToDismissBoxValue.StartToEnd -> onExpand()
-                direction == SwipeToDismissBoxValue.EndToStart && canDismiss -> onDismissNotification()
+        backgroundContent = {
+            if (backgroundTarget != null) {
+                SwipeActionBackground(swipeState, backgroundTarget.isClearable)
             }
-            coroutineScope.launch { swipeState.reset() }
+        },
+        modifier = modifier,
+        enableDismissFromStartToEnd = swipeTarget != null || settling,
+        enableDismissFromEndToStart = swipeTarget != null || settling,
+        onDismiss = { direction ->
+            when (direction) {
+                SwipeToDismissBoxValue.StartToEnd -> if (latestTarget != null) onExpand()
+                SwipeToDismissBoxValue.EndToStart ->
+                    armedTarget?.takeIf { it.isClearable }?.let(onDismissNotification)
+
+                SwipeToDismissBoxValue.Settled -> Unit
+            }
+            coroutineScope.launch {
+                swipeState.reset()
+                armedTarget = null
+            }
         },
     ) {
         content()
@@ -78,20 +110,19 @@ private fun SwipeActionBackground(swipeState: SwipeToDismissBoxState, canDismiss
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind {
-                val offset = swipeState.offsetOrZero()
-                if (offset == 0f) return@drawBehind
-                drawRect(
-                    color = if (offset > 0f) expandColor else dismissColor,
-                    topLeft = Offset(revealedLeft(offset), 0f),
-                    size = Size(revealedWidth(offset), size.height),
-                )
-            }
+            // Purely a drag affordance; leaving it in the tree makes every row read out twice.
+            .clearAndSetSemantics {}
             .drawWithContent {
                 val offset = swipeState.offsetOrZero()
                 if (offset == 0f) return@drawWithContent
                 val left = revealedLeft(offset)
-                clipRect(left = left, right = left + revealedWidth(offset)) {
+                val width = revealedWidth(offset)
+                drawRect(
+                    color = if (offset > 0f) expandColor else dismissColor,
+                    topLeft = Offset(left, 0f),
+                    size = Size(width, size.height),
+                )
+                clipRect(left = left, right = left + width) {
                     this@drawWithContent.drawContent()
                 }
             }
@@ -131,5 +162,10 @@ private fun SwipeToDismissBoxState.offsetOrZero(): Float =
 
 private fun DrawScope.revealedWidth(offset: Float): Float = min(abs(offset), size.width)
 
+// A positive offset is a start-to-end swipe, which travels leftwards under an RTL layout.
 private fun DrawScope.revealedLeft(offset: Float): Float =
-    if (offset > 0f) 0f else size.width - revealedWidth(offset)
+    if ((offset > 0f) == (layoutDirection == LayoutDirection.Ltr)) {
+        0f
+    } else {
+        size.width - revealedWidth(offset)
+    }

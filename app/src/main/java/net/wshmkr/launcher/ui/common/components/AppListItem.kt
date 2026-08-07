@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.delay
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.common.icons.ChevronRightIcon
@@ -42,6 +43,8 @@ import net.wshmkr.launcher.ui.feature.notifications.NotificationSwipeBox
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+
+private const val DISMISS_CONFIRMATION_TIMEOUT_MS = 2_000L
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -59,18 +62,29 @@ fun AppListItem(
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showNotificationPanel by remember { mutableStateOf(false) }
-    var dismissing by remember { mutableStateOf<NotificationInfo?>(null) }
+    var pendingDismissals by remember { mutableStateOf(emptyList<NotificationInfo>()) }
 
-    // Hides a swiped notification until the system callback lands, so the preview has already
+    // Hides swiped notifications until the system callback lands, so the preview has already
     // swapped to the next one by the time the row settles back.
-    val visibleNotifications = remember(notifications, dismissing) {
-        val pending = dismissing ?: return@remember notifications
-        notifications.filterNot { it.matches(pending) }.toImmutableList()
+    val visibleNotifications = remember(notifications, pendingDismissals) {
+        if (pendingDismissals.isEmpty()) return@remember notifications
+        notifications
+            .filterNot { shown -> pendingDismissals.any { shown.matches(it) } }
+            .toImmutableList()
     }
 
     LaunchedEffect(notifications) {
-        val pending = dismissing
-        if (pending != null && notifications.none { it.matches(pending) }) dismissing = null
+        pendingDismissals = pendingDismissals.filter { pending ->
+            notifications.any { it.matches(pending) }
+        }
+    }
+
+    // A cancel is best-effort and can be dropped outright when the listener is unbound, which would
+    // otherwise leave the row hiding a live notification for as long as it stays composed.
+    LaunchedEffect(pendingDismissals) {
+        if (pendingDismissals.isEmpty()) return@LaunchedEffect
+        delay(DISMISS_CONFIRMATION_TIMEOUT_MS)
+        pendingDismissals = emptyList()
     }
 
     val inactiveFilter = remember(isActiveUser) {
@@ -86,16 +100,11 @@ fun AppListItem(
     val dimensions = LocalDimensions.current
 
     NotificationSwipeBox(
-        // Keyed off the unfiltered list so clearing the last notification doesn't drop the swipe
-        // anchors out from under the row while it is still animating home.
-        canSwipe = notifications.isNotEmpty(),
-        canDismiss = (visibleNotifications.firstOrNull() ?: dismissing)?.isClearable == true,
+        swipeTarget = visibleNotifications.firstOrNull(),
         onExpand = { showNotificationPanel = true },
         onDismissNotification = {
-            visibleNotifications.firstOrNull()?.let {
-                dismissing = it
-                onClearNotifications(listOf(it))
-            }
+            pendingDismissals = pendingDismissals + it
+            onClearNotifications(listOf(it))
         },
         modifier = Modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
