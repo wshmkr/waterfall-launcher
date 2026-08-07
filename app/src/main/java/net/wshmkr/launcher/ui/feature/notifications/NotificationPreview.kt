@@ -2,9 +2,11 @@ package net.wshmkr.launcher.ui.feature.notifications
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,6 +61,8 @@ fun NotificationPreview(
         isHidden = isHidden,
         notificationTimestamp = retained?.timestamp,
         count = notifications.size,
+        // Live rather than retained, so the suffix leaves on the same frame the lines start to.
+        hasNotification = notification != null,
     )
 
     val previewFont = LocalDimensions.current.fontCaption
@@ -99,6 +103,7 @@ private fun NotificationAppTitle(
     isHidden: Boolean,
     notificationTimestamp: Long?,
     count: Int,
+    hasNotification: Boolean,
 ) {
     if (notificationTimestamp == null) {
         AppTitle(label, isHidden)
@@ -117,10 +122,20 @@ private fun NotificationAppTitle(
         "$stack · ${timeSince(notificationTimestamp)}"
     }
 
+    // Starts collapsed so a first notification animates the suffix in rather than snapping it in.
+    val suffixState = remember { MutableTransitionState(false) }
+    suffixState.targetState = hasNotification
+
     // Only the name is weighted, so a long one ellipsizes into the space the suffix leaves behind.
     Row(verticalAlignment = Alignment.CenterVertically) {
         AppTitle(label, isHidden, Modifier.weight(1f, fill = false))
-        AppTitle(suffix, isHidden)
+        AnimatedVisibility(
+            visibleState = suffixState,
+            enter = fadeIn() + expandHorizontally(),
+            exit = fadeOut() + shrinkHorizontally(),
+        ) {
+            AppTitle(suffix, isHidden)
+        }
     }
 }
 
