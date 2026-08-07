@@ -17,6 +17,12 @@ fun ArrowDropDownIcon() = painterResource(id = R.drawable.icon_arrow_drop_down)
 fun ArrowDropUpIcon() = painterResource(id = R.drawable.icon_arrow_drop_up)
 
 @Composable
+fun ArrowLeftAltIcon() = painterResource(id = R.drawable.icon_arrow_left_alt)
+
+@Composable
+fun ArrowRightAltIcon() = painterResource(id = R.drawable.icon_arrow_right_alt)
+
+@Composable
 fun CalendarTodayIcon() = painterResource(id = R.drawable.icon_calendar_today)
 
 @Composable
