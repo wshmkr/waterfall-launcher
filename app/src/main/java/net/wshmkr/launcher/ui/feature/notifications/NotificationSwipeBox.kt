@@ -1,6 +1,8 @@
 package net.wshmkr.launcher.ui.feature.notifications
 
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -26,16 +28,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.CacheDrawScope
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -53,14 +57,12 @@ import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 // Far enough that a scroll or a brush past the row can't reach it, short enough that the gesture
 // is over almost as soon as it has started.
 private val COMMIT_DISTANCE = 64.dp
 
-// The platform spec for settling a drag, and what SwipeToDismissBox's own reset() used before this
-// took the gesture over.
+// The platform spec for settling a drag.
 private val SETTLE_SPEC = AnchoredDraggableDefaults.SnapAnimationSpec
 
 private val ROW_SHAPE = Corners.small
@@ -107,9 +109,19 @@ fun NotificationSwipeBox(
     var settle by remember { mutableStateOf<Job?>(null) }
 
     // Painted rather than routed through an Indication: the row's own ripple never surfaces once
-    // draggable has taken the pointer from its clickable.
-    var tintAlpha by remember { mutableFloatStateOf(0f) }
+    // draggable has taken the pointer from its clickable. A press has to register at once, so only
+    // the release is animated.
+    var dragging by remember { mutableStateOf(false) }
+    val tint = animateFloatAsState(
+        targetValue = if (dragging) DRAG_TINT_ALPHA else 0f,
+        animationSpec = if (dragging) snap() else SETTLE_SPEC,
+        label = "dragTint",
+    )
     val dragTint = MaterialTheme.colorScheme.onSurface
+
+    // Nothing of the underlay is visible at rest, and composing it costs two vector painters and a
+    // text layout, so notification rows only pay for it while one is actually being dragged.
+    var gesturing by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -124,38 +136,32 @@ fun NotificationSwipeBox(
                 enabled = swipeTarget != null || armedTarget != null,
                 onDragStarted = {
                     settle?.cancel()
-                    tintAlpha = DRAG_TINT_ALPHA
+                    gesturing = true
+                    dragging = true
                 },
-                // Also reached when the gesture is cancelled, so the tint can't stay latched.
+                // Also reached when the gesture is cancelled, so neither flag can stay latched.
                 onDragStopped = {
-                    val towardsRight = travel > 0f
-                    val committed = abs(travel) >= commitPx
-                    if (committed) {
-                        if (expandsRow(towardsRight, layoutDirection)) {
+                    dragging = false
+                    if (abs(travel) >= commitPx) {
+                        if (expandsRow(movedRight, layoutDirection)) {
                             if (latestTarget != null) onExpand()
                         } else {
                             armedTarget?.takeIf { it.isClearable }?.let(onDismissNotification)
                         }
                     }
                     settle = settleScope.launch {
-                        // Same spec, so the highlight lifts exactly as the row comes to rest
-                        // rather than cutting out the moment the finger leaves.
-                        launch {
-                            animate(tintAlpha, 0f, animationSpec = SETTLE_SPEC) { value, _ ->
-                                tintAlpha = value
-                            }
-                        }
                         animate(travel, 0f, animationSpec = SETTLE_SPEC) { value, _ ->
                             travel = value
                         }
                         armedTarget = null
+                        gesturing = false
                     }
                 },
             ),
         propagateMinConstraints = true,
     ) {
         val backgroundTarget = swipeTarget ?: armedTarget
-        if (backgroundTarget != null) {
+        if (gesturing && backgroundTarget != null) {
             SwipeActionBackground(
                 travel = { travel },
                 movedRight = movedRight,
@@ -165,15 +171,16 @@ fun NotificationSwipeBox(
         }
         Box(
             modifier = Modifier
-                .horizontalTravel { travel }
-                .drawWithContent {
-                    drawContent()
-                    if (tintAlpha <= 0f) return@drawWithContent
-                    drawRoundRect(
-                        color = dragTint,
-                        cornerRadius = CornerRadius(ROW_SHAPE.topStart.toPx(size, this)),
-                        alpha = tintAlpha,
-                    )
+                // Physical pixels, unlike Modifier.offset, which mirrors under RTL — the row
+                // follows the finger. Read in the layer, so following it costs no recomposition.
+                .graphicsLayer { translationX = travel }
+                .drawWithCache {
+                    val radius = rowCornerRadius()
+                    onDrawWithContent {
+                        drawContent()
+                        if (tint.value <= 0f) return@onDrawWithContent
+                        drawRoundRect(color = dragTint, cornerRadius = radius, alpha = tint.value)
+                    }
                 },
         ) {
             content()
@@ -203,30 +210,25 @@ private fun SwipeActionBackground(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    val rowOutline = remember { Path() }
-
     Box(
         modifier = modifier
             // Purely a drag affordance; leaving it in the tree makes every row read out twice.
             .clearAndSetSemantics {}
-            .drawWithContent {
-                val offset = travel()
-                if (offset == 0f) return@drawWithContent
-                rowOutline.rewind()
-                rowOutline.addRoundRect(
-                    RoundRect(
-                        left = offset,
-                        top = 0f,
-                        right = size.width + offset,
-                        bottom = size.height,
-                        cornerRadius = CornerRadius(ROW_SHAPE.topStart.toPx(size, this)),
-                    )
-                )
-                // Everything the row still covers is left alone, so its corners read as the edge
-                // of something lying on top rather than as a straight cut.
-                clipPath(rowOutline, ClipOp.Difference) {
-                    drawRect(fill)
-                    this@drawWithContent.drawContent()
+            .drawWithCache {
+                val atRest = Path()
+                atRest.addRoundRect(RoundRect(0f, 0f, size.width, size.height, rowCornerRadius()))
+                val outline = Path()
+                onDrawWithContent {
+                    val offset = travel()
+                    if (offset == 0f) return@onDrawWithContent
+                    outline.rewind()
+                    outline.addPath(atRest, Offset(offset, 0f))
+                    // Everything the row still covers is left alone, so its corners read as the
+                    // edge of something lying on top rather than as a straight cut.
+                    clipPath(outline, ClipOp.Difference) {
+                        drawRect(fill)
+                        this@onDrawWithContent.drawContent()
+                    }
                 }
             }
     ) {
@@ -239,7 +241,7 @@ private fun SwipeActionBackground(
                 .align(if (movedRight) AbsoluteAlignment.CenterLeft else AbsoluteAlignment.CenterRight)
                 .padding(horizontal = Spacing.medium),
         ) {
-            // The arrow points the way the row is travelling.
+            // Points the way the row is travelling, which is a physical direction under RTL too.
             if (!movedRight) SwipeActionArrow(ArrowLeftAltIcon(), contentColor)
             Text(
                 text = when {
@@ -274,11 +276,5 @@ private fun SwipeActionArrow(painter: Painter, color: Color) {
 private fun expandsRow(movedRight: Boolean, layoutDirection: LayoutDirection) =
     movedRight == (layoutDirection == LayoutDirection.Ltr)
 
-// Physical pixels, unlike Modifier.offset, which mirrors under RTL — the row follows the finger.
-// Read in the layout phase, so following it never costs a recomposition.
-private fun Modifier.horizontalTravel(travel: () -> Float) = layout { measurable, constraints ->
-    val placeable = measurable.measure(constraints)
-    layout(placeable.width, placeable.height) {
-        placeable.placeWithLayer(travel().roundToInt(), 0)
-    }
-}
+// Only topStart is consulted, so the row is assumed to be evenly rounded.
+private fun CacheDrawScope.rowCornerRadius() = CornerRadius(ROW_SHAPE.topStart.toPx(size, this))

@@ -1,7 +1,5 @@
 package net.wshmkr.launcher.ui.common.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
@@ -28,6 +26,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -43,7 +42,6 @@ import net.wshmkr.launcher.ui.theme.Spacing
 
 private const val DISMISS_CONFIRMATION_TIMEOUT_MS = 2_000L
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppListItem(
     appInfo: AppInfo,
@@ -77,11 +75,13 @@ fun AppListItem(
     }
 
     // A cancel is best-effort and can be dropped outright when the listener is unbound, which would
-    // otherwise leave the row hiding a live notification for as long as it stays composed.
-    LaunchedEffect(pendingDismissals) {
-        if (pendingDismissals.isEmpty()) return@LaunchedEffect
-        delay(DISMISS_CONFIRMATION_TIMEOUT_MS)
-        pendingDismissals = emptyList()
+    // otherwise leave the row hiding a live notification for as long as it stays composed. Guarded
+    // outside the effect so untouched rows launch nothing at all.
+    if (pendingDismissals.isNotEmpty()) {
+        LaunchedEffect(pendingDismissals) {
+            delay(DISMISS_CONFIRMATION_TIMEOUT_MS)
+            pendingDismissals = emptyList()
+        }
     }
 
     val inactiveFilter = remember(isActiveUser) {
@@ -95,6 +95,12 @@ fun AppListItem(
     }
 
     val dimensions = LocalDimensions.current
+
+    // The chevron consumes the gesture, so the row's long press has to be repeated on it.
+    val openOptions = {
+        onLongClick?.invoke(appInfo)
+        showBottomSheet = true
+    }
 
     NotificationSwipeBox(
         swipeTarget = visibleNotifications.firstOrNull(),
@@ -113,10 +119,7 @@ fun AppListItem(
                 .fillMaxWidth()
                 .combinedClickable(
                     onClick = { onClick(appInfo) },
-                    onLongClick = {
-                        onLongClick?.invoke(appInfo)
-                        showBottomSheet = true
-                    }
+                    onLongClick = openOptions,
                 )
                 .padding(Spacing.small),
             verticalAlignment = Alignment.CenterVertically
@@ -137,28 +140,11 @@ fun AppListItem(
                     isHidden = appInfo.isHidden,
                     notifications = visibleNotifications,
                     trailing = {
-                        AnimatedVisibility(visible = visibleNotifications.isNotEmpty()) {
-                            Icon(
-                                painter = ChevronRightIcon(),
-                                contentDescription = "Show notifications",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier
-                                    .padding(start = Spacing.small)
-                                    .size(dimensions.iconLarge)
-                                    // Consumes the gesture, so the row's long-press is repeated here.
-                                    .combinedClickable(
-                                        interactionSource = null,
-                                        indication = null,
-                                        role = Role.Button,
-                                        onClick = { showNotificationPanel = true },
-                                        onLongClick = {
-                                            onLongClick?.invoke(appInfo)
-                                            showBottomSheet = true
-                                        },
-                                    )
-                                    .padding(Spacing.small),
-                            )
-                        }
+                        NotificationChevron(
+                            size = dimensions.iconLarge,
+                            onOpen = { showNotificationPanel = true },
+                            onLongClick = openOptions,
+                        )
                     },
                 )
             }
@@ -183,6 +169,26 @@ fun AppListItem(
             onDismiss = { showNotificationPanel = false },
         )
     }
+}
+
+@Composable
+private fun NotificationChevron(size: Dp, onOpen: () -> Unit, onLongClick: () -> Unit) {
+    Icon(
+        painter = ChevronRightIcon(),
+        contentDescription = "Show notifications",
+        tint = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+            .padding(start = Spacing.small)
+            .size(size)
+            .combinedClickable(
+                interactionSource = null,
+                indication = null,
+                role = Role.Button,
+                onClick = onOpen,
+                onLongClick = onLongClick,
+            )
+            .padding(Spacing.small),
+    )
 }
 
 // A repost reuses the key, so the timestamp is what tells the two apart.

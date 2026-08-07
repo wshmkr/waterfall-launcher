@@ -57,14 +57,14 @@ fun NotificationPreview(
     titleState.targetState = notification != null
     bodyState.targetState = notification != null
 
-    LaunchedEffect(titleState.isIdle, bodyState.isIdle) {
+    LaunchedEffect(titleState.isIdle && bodyState.isIdle) {
         if (titleState.isIdle && bodyState.isIdle && !titleState.currentState) retained = null
     }
 
     val previewFont = LocalDimensions.current.fontCaption
 
-    // The chevron spans both title lines, so it has room for a touch target without stretching
-    // either of them on its own.
+    // Trailing content spans both title lines, so it has room for a touch target without
+    // stretching either of them on its own.
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f, fill = false)) {
             NotificationAppTitle(
@@ -91,7 +91,14 @@ fun NotificationPreview(
                 }
             }
         }
-        trailing()
+        // Driven here so it leaves on the same signal and the same axis as the suffix beside it.
+        AnimatedVisibility(
+            visible = notification != null,
+            enter = fadeIn() + expandHorizontally(),
+            exit = fadeOut() + shrinkHorizontally(),
+        ) {
+            trailing()
+        }
     }
 
     AnimatedVisibility(
