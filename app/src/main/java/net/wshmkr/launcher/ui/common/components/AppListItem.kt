@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.Dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.delay
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.common.icons.ChevronRightIcon
@@ -39,8 +38,6 @@ import net.wshmkr.launcher.ui.feature.notifications.NotificationPreview
 import net.wshmkr.launcher.ui.feature.notifications.NotificationSwipeBox
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
-
-private const val DISMISS_CONFIRMATION_TIMEOUT_MS = 2_000L
 
 @Composable
 fun AppListItem(
@@ -53,7 +50,7 @@ fun AppListItem(
     onLongClick: ((AppInfo) -> Unit)? = null,
     alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
-    onClearNotifications: (List<NotificationInfo>) -> Unit = {},
+    onClearNotifications: (List<NotificationInfo>) -> Boolean = { false },
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showNotificationPanel by remember { mutableStateOf(false) }
@@ -71,16 +68,6 @@ fun AppListItem(
     LaunchedEffect(notifications) {
         pendingDismissals = pendingDismissals.filter { pending ->
             notifications.any { it.matches(pending) }
-        }
-    }
-
-    // A cancel is best-effort and can be dropped outright when the listener is unbound, which would
-    // otherwise leave the row hiding a live notification for as long as it stays composed. Guarded
-    // outside the effect so untouched rows launch nothing at all.
-    if (pendingDismissals.isNotEmpty()) {
-        LaunchedEffect(pendingDismissals) {
-            delay(DISMISS_CONFIRMATION_TIMEOUT_MS)
-            pendingDismissals = emptyList()
         }
     }
 
@@ -105,9 +92,9 @@ fun AppListItem(
     NotificationSwipeBox(
         swipeTarget = visibleNotifications.firstOrNull(),
         onExpand = { showNotificationPanel = true },
+        // Only hidden once the cancel is away; a dropped one leaves it on screen, where it belongs.
         onDismissNotification = {
-            pendingDismissals = pendingDismissals + it
-            onClearNotifications(listOf(it))
+            if (onClearNotifications(listOf(it))) pendingDismissals = pendingDismissals + it
         },
         modifier = Modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
@@ -165,7 +152,8 @@ fun AppListItem(
         NotificationPanel(
             appInfo = appInfo,
             notifications = visibleNotifications,
-            onClearNotifications = onClearNotifications,
+            // The panel tracks its own dismissals, so it has no use for the outcome.
+            onClearNotifications = { onClearNotifications(it) },
             onDismiss = { showNotificationPanel = false },
         )
     }

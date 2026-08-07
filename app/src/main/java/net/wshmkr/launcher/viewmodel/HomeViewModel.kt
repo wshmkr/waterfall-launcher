@@ -201,12 +201,14 @@ class HomeViewModel @Inject constructor(
             mutableStateOf(notificationRepository.notifications.value.notificationsFor(packageName, user))
         }
 
-    fun clearNotifications(dismissed: List<NotificationInfo>) {
+    // Reports whether the cancel was actually sent, so a caller can hold off on hiding what is
+    // still live — a repost the guard below rejects never reaches the listener either.
+    fun clearNotifications(dismissed: List<NotificationInfo>): Boolean {
         val current = notificationRepository.notifications.value
         // Dismissals land after their exit animation, by which point a repost can have taken over
         // the key; cancelling then would take content the user never saw.
         val keys = dismissed.filter { current.timestampOf(it) == it.timestamp }.map { it.key }
-        NotificationPanelHelper.dismissNotifications(keys + orphanedSummaryKeys(keys))
+        return NotificationPanelHelper.dismissNotifications(keys + orphanedSummaryKeys(keys))
     }
 
     // A summary the panel hid behind its children resurfaces alone once they are all cleared.
