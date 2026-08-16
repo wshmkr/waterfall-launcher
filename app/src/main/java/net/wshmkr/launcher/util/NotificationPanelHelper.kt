@@ -13,12 +13,15 @@ object NotificationPanelHelper {
         return service?.expandNotificationPanel() ?: false
     }
 
-    fun dismissNotifications(keys: List<String>) {
-        if (keys.isEmpty()) return
-        val service = LauncherNotificationListenerService.getInstance() ?: return
-        try {
+    // False when the listener was unreachable, so callers can avoid hiding what is still posted.
+    fun dismissNotifications(keys: List<String>): Boolean {
+        if (keys.isEmpty()) return false
+        val service = LauncherNotificationListenerService.getInstance() ?: return false
+        return try {
             service.cancelNotifications(keys.toTypedArray())
+            true
         } catch (ignored: Exception) {
+            false
         }
     }
 
