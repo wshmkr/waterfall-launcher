@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import net.wshmkr.launcher.model.WeatherUiState
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
@@ -37,8 +38,9 @@ fun ClockWidget(
     showWeather: Boolean = true,
     use24Hour: Boolean = false,
     useFahrenheit: Boolean = false,
-    weatherLocationLatitude: Double? = null,
-    weatherLocationLongitude: Double? = null,
+    weatherState: WeatherUiState = WeatherUiState.Loading,
+    hasStaticWeatherLocation: Boolean = false,
+    onWeatherRefresh: () -> Unit = {},
 ) {
     if (!showClock && !showCalendar && !showWeather) return
 
@@ -75,15 +77,16 @@ fun ClockWidget(
 
                 if (showWeather) {
                     WeatherWidget(
-                        Modifier
+                        state = weatherState,
+                        useFahrenheit = useFahrenheit,
+                        hasStaticLocation = hasStaticWeatherLocation,
+                        onRefresh = onWeatherRefresh,
+                        modifier = Modifier
                             .clip(Corners.small)
                             .clickable {
                                 launchWeatherApp(context)
                             }
                             .padding(horizontal = Spacing.small, vertical = 4.dp),
-                        useFahrenheit,
-                        weatherLocationLatitude,
-                        weatherLocationLongitude,
                     )
                 }
             }

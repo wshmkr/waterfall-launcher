@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.R
+import net.wshmkr.launcher.model.WeatherReading
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -27,17 +28,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 object WeatherHelper {
-    const val REFRESH_INTERVAL_MS = 30 * 60 * 1000L
     private const val WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast"
     private const val GEOCODING_API_URL = "https://geocoding-api.open-meteo.com/v1/search"
-
-    private var cachedWeather: CachedWeather? = null
-    private var lastFetchTime: Long = 0L
-
-    private fun setCachedWeather(weather: CachedWeather) {
-        cachedWeather = weather
-        lastFetchTime = System.currentTimeMillis()
-    }
 
     fun isLocationGranted(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -58,62 +50,24 @@ object WeatherHelper {
             .suspendForTask(cancellationTokenSource)
     }
 
-    suspend fun getWeather(
-        latitude: Double,
-        longitude: Double,
-        useFahrenheit: Boolean
-    ): WeatherState {
-        val cached = cachedWeather
-        val cacheMatches = cached?.let {
-            it.latitude == latitude &&
-                it.longitude == longitude &&
-                it.isFahrenheit == useFahrenheit
-        } == true
-        val isFresh = cacheMatches && System.currentTimeMillis() - lastFetchTime < REFRESH_INTERVAL_MS
-        if (isFresh) {
-            return cached!!.toReady(isStale = false)
-        }
-
-        val result = fetchWeather(latitude, longitude, useFahrenheit)
-        if (result is WeatherState.Ready) {
-            setCachedWeather(result.toCached(latitude, longitude))
-            return result
-        }
-
-        // On failure, fall back to a cached reading for this location instead of showing an error.
-        val sameLocationCache = cached?.takeIf {
-            it.latitude == latitude && it.longitude == longitude
-        }
-        return sameLocationCache?.toReady(isStale = true, targetFahrenheit = useFahrenheit)
-            ?: result
-    }
-
-    private suspend fun fetchWeather(
-        latitude: Double,
-        longitude: Double,
-        useFahrenheit: Boolean
-    ): WeatherState {
-        val temperatureUnit = if (useFahrenheit) "fahrenheit" else "celsius"
+    suspend fun fetchCurrentWeather(latitude: Double, longitude: Double): Result<WeatherReading> {
         val url = "$WEATHER_API_URL?latitude=$latitude&longitude=$longitude" +
-            "&current=temperature_2m,weather_code&daily=sunrise,sunset&temperature_unit=$temperatureUnit&timezone=auto"
+            "&current=temperature_2m,weather_code&daily=sunrise,sunset&timezone=auto"
 
         return httpGetJson(url).mapCatching { json ->
             val current = json.getJSONObject("current")
-            val temperature = current.getDouble("temperature_2m")
-            val weatherCode = current.getInt("weather_code")
-
             val daily = json.optJSONObject("daily")
-            val sunriseTime = daily?.optJSONArray("sunrise")?.optString(0)
-            val sunsetTime = daily?.optJSONArray("sunset")?.optString(0)
 
-            WeatherState.Ready(
-                temperature = temperature,
-                weatherCode = weatherCode,
-                sunriseTime = sunriseTime,
-                sunsetTime = sunsetTime,
-                isFahrenheit = useFahrenheit
+            WeatherReading(
+                temperatureCelsius = current.getDouble("temperature_2m"),
+                weatherCode = current.getInt("weather_code"),
+                sunriseTime = daily?.optJSONArray("sunrise")?.optString(0),
+                sunsetTime = daily?.optJSONArray("sunset")?.optString(0),
+                latitude = latitude,
+                longitude = longitude,
+                fetchedAtMillis = System.currentTimeMillis(),
             )
-        }.getOrElse { WeatherState.Error(it.message ?: "Unable to load weather") }
+        }
     }
 
     // Null means the lookup failed; an empty list means it succeeded but matched nothing.
@@ -215,29 +169,6 @@ object WeatherHelper {
         cont.invokeOnCancellation { cancellationTokenSource?.cancel() }
     }
 
-    sealed interface WeatherState {
-        data object Idle : WeatherState
-        data class Ready(
-            val temperature: Double,
-            val weatherCode: Int,
-            val sunriseTime: String? = null,
-            val sunsetTime: String? = null,
-            val isStale: Boolean = false,
-            val isFahrenheit: Boolean = false,
-        ) : WeatherState
-        data class Error(val reason: String) : WeatherState
-    }
-
-    private data class CachedWeather(
-        val temperature: Double,
-        val weatherCode: Int,
-        val sunriseTime: String?,
-        val sunsetTime: String?,
-        val isFahrenheit: Boolean,
-        val latitude: Double,
-        val longitude: Double
-    )
-
     data class GeocodingResult(
         val name: String,
         val latitude: Double,
@@ -255,32 +186,5 @@ object WeatherHelper {
                 .takeIf { it.isNotBlank() }
     }
 
-    fun convertTemperature(value: Double, fromFahrenheit: Boolean, toFahrenheit: Boolean): Double =
-        when {
-            fromFahrenheit == toFahrenheit -> value
-            toFahrenheit -> value * 9 / 5 + 32
-            else -> (value - 32) * 5 / 9
-        }
-
-    private fun WeatherState.Ready.toCached(latitude: Double, longitude: Double): CachedWeather = CachedWeather(
-        temperature = temperature,
-        weatherCode = weatherCode,
-        sunriseTime = sunriseTime,
-        sunsetTime = sunsetTime,
-        isFahrenheit = isFahrenheit,
-        latitude = latitude,
-        longitude = longitude
-    )
-
-    private fun CachedWeather.toReady(
-        isStale: Boolean,
-        targetFahrenheit: Boolean = isFahrenheit
-    ): WeatherState.Ready = WeatherState.Ready(
-        temperature = convertTemperature(temperature, fromFahrenheit = isFahrenheit, toFahrenheit = targetFahrenheit),
-        weatherCode = weatherCode,
-        sunriseTime = sunriseTime,
-        sunsetTime = sunsetTime,
-        isStale = isStale,
-        isFahrenheit = targetFahrenheit
-    )
+    fun celsiusToFahrenheit(value: Double): Double = value * 9 / 5 + 32
 }

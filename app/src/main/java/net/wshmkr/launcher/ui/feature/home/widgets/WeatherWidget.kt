@@ -1,7 +1,6 @@
 package net.wshmkr.launcher.ui.feature.home.widgets
 
 import android.Manifest
-import android.annotation.SuppressLint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -14,9 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,40 +24,38 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
+import net.wshmkr.launcher.model.WeatherReading
+import net.wshmkr.launcher.model.WeatherUiState
 import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.rememberAmbientBodyStyle
 import net.wshmkr.launcher.util.WeatherHelper
-import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
-@SuppressLint("MissingPermission")
 @Composable
 fun WeatherWidget(
+    state: WeatherUiState,
+    useFahrenheit: Boolean,
+    hasStaticLocation: Boolean,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
-    useFahrenheit: Boolean = false,
-    weatherLocationLatitude: Double? = null,
-    weatherLocationLongitude: Double? = null,
 ) {
     val context = LocalContext.current
-    val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    val hasStaticLocation = weatherLocationLatitude != null && weatherLocationLongitude != null
     // Raw permission state is remembered across static/dynamic toggles so flipping the source
     // doesn't wipe an in-flight grant.
     var rawHasPermission by remember { mutableStateOf(WeatherHelper.isLocationGranted(context)) }
     val hasPermission = hasStaticLocation || rawHasPermission
-    var weatherState by remember { mutableStateOf<WeatherState>(WeatherState.Idle) }
-    var retryTrigger by remember { mutableIntStateOf(0) }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted -> rawHasPermission = granted }
+        onResult = { granted ->
+            rawHasPermission = granted
+            // Grants via system Settings are covered by the resume-triggered refresh instead.
+            if (granted) onRefresh()
+        }
     )
 
     // Re-check on resume so grants made via system Settings are picked up.
@@ -68,64 +63,25 @@ fun WeatherWidget(
         rawHasPermission = WeatherHelper.isLocationGranted(context)
     }
 
-    // Convert the current reading locally for an instant update; the fetch loop refreshes it after.
-    LaunchedEffect(useFahrenheit) {
-        val current = weatherState
-        if (current is WeatherState.Ready && current.isFahrenheit != useFahrenheit) {
-            weatherState = current.copy(
-                temperature = WeatherHelper.convertTemperature(
-                    current.temperature,
-                    fromFahrenheit = current.isFahrenheit,
-                    toFahrenheit = useFahrenheit
-                ),
-                isFahrenheit = useFahrenheit
-            )
-        }
-    }
-
-    LaunchedEffect(hasPermission, useFahrenheit, weatherLocationLatitude, weatherLocationLongitude, retryTrigger) {
-        if (!hasPermission) {
-            weatherState = WeatherState.Idle
-            return@LaunchedEffect
-        }
-
-        while (isActive) {
-            val currentKey = if (hasStaticLocation) {
-                weatherLocationLatitude to weatherLocationLongitude
-            } else {
-                val loc = runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }.getOrNull()
-                loc?.let { it.latitude to it.longitude }
-            }
-
-            if (currentKey == null) {
-                weatherState = WeatherState.Error("No location")
-                delay(WeatherHelper.REFRESH_INTERVAL_MS)
-                continue
-            }
-
-            weatherState = WeatherHelper.getWeather(currentKey.first, currentKey.second, useFahrenheit)
-
-            delay(WeatherHelper.REFRESH_INTERVAL_MS)
-        }
-    }
-
     WeatherContent(
-        state = weatherState,
+        state = state,
         hasPermission = hasPermission,
+        useFahrenheit = useFahrenheit,
         modifier = modifier,
         onRequestPermission = {
             if (!hasStaticLocation) {
                 locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             }
         },
-        onRetry = { retryTrigger++ }
+        onRetry = onRefresh
     )
 }
 
 @Composable
 private fun WeatherContent(
-    state: WeatherState,
+    state: WeatherUiState,
     hasPermission: Boolean,
+    useFahrenheit: Boolean,
     modifier: Modifier = Modifier,
     onRequestPermission: () -> Unit,
     onRetry: () -> Unit
@@ -149,11 +105,17 @@ private fun WeatherContent(
             }
         }
 
-        state is WeatherState.Ready -> {
-            WeatherReadyRow(state = state, modifier = modifier, textStyle = textStyle)
+        state is WeatherUiState.Ready -> {
+            WeatherReadyRow(
+                reading = state.reading,
+                isStale = state.isStale,
+                useFahrenheit = useFahrenheit,
+                modifier = modifier,
+                textStyle = textStyle
+            )
         }
 
-        state is WeatherState.Error -> {
+        state is WeatherUiState.Error -> {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = modifier.clickable { onRetry() }
@@ -180,17 +142,24 @@ private fun WeatherContent(
 
 @Composable
 private fun WeatherReadyRow(
-    state: WeatherState.Ready,
+    reading: WeatherReading,
+    isStale: Boolean,
+    useFahrenheit: Boolean,
     modifier: Modifier,
     textStyle: androidx.compose.ui.text.TextStyle,
 ) {
     val colors = MaterialTheme.colorScheme
     val now by rememberCurrentLocalTime()
-    val isNight = remember(now, state.sunriseTime, state.sunsetTime) {
-        WeatherHelper.isNightAt(now, state.sunriseTime, state.sunsetTime)
+    val isNight = remember(now, reading.sunriseTime, reading.sunsetTime) {
+        WeatherHelper.isNightAt(now, reading.sunriseTime, reading.sunsetTime)
     }
-    val iconRes = remember(state.isStale, state.weatherCode, isNight) {
-        if (state.isStale) null else WeatherHelper.weatherIconRes(state.weatherCode, isNight)
+    val iconRes = remember(isStale, reading.weatherCode, isNight) {
+        if (isStale) null else WeatherHelper.weatherIconRes(reading.weatherCode, isNight)
+    }
+    val displayTemperature = if (useFahrenheit) {
+        WeatherHelper.celsiusToFahrenheit(reading.temperatureCelsius)
+    } else {
+        reading.temperatureCelsius
     }
 
     Row(
@@ -204,10 +173,10 @@ private fun WeatherReadyRow(
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = "${state.temperature.toInt()}°${if (state.isFahrenheit) "F" else "C"}",
+            text = "${displayTemperature.toInt()}°${if (useFahrenheit) "F" else "C"}",
             style = textStyle
         )
-        if (state.isStale) {
+        if (isStale) {
             Spacer(modifier = Modifier.width(4.dp))
             Text(text = "stale", style = textStyle.copy(color = colors.onSurfaceVariant))
         }
