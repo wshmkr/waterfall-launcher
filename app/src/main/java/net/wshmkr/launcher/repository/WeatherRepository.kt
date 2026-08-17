@@ -14,10 +14,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -26,6 +26,8 @@ import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.datastore.WeatherCacheDataSource
 import net.wshmkr.launcher.model.WeatherReading
 import net.wshmkr.launcher.model.WeatherUiState
+import net.wshmkr.launcher.util.ONE_HOUR
+import net.wshmkr.launcher.util.ONE_MINUTE
 import net.wshmkr.launcher.util.WeatherHelper
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,52 +40,54 @@ class WeatherRepository @Inject constructor(
 ) {
     companion object {
         // Fetch cadence: a reading younger than this is served without any location or network request.
-        const val READING_TTL_MS = 30 * 60 * 1000L
+        private const val READING_TTL_MS = 30L * ONE_MINUTE
 
         // Display ceiling: past this age a reading is no longer shown, even flagged stale.
-        const val MAX_READING_AGE_MS = 6 * 60 * 60 * 1000L
+        private const val MAX_READING_AGE_MS = 6L * ONE_HOUR
 
         // Weather is the same across GPS jitter; a reading this close counts as the same place.
         private const val CACHE_LOCATION_RADIUS_METERS = 5_000f
 
-        private const val MIN_LOOP_DELAY_MS = 60 * 1000L
+        private const val MIN_LOOP_DELAY_MS = 1L * ONE_MINUTE
     }
 
-    private val fusedClient = LocationServices.getFusedLocationProviderClient(context)
+    private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(context) }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val fetchMutex = Mutex()
 
     private val _state = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val state: StateFlow<WeatherUiState> = _state.asStateFlow()
 
-    private val launcherVisible = MutableStateFlow(false)
-
-    // Conflated so a request made mid-fetch or while hidden is kept until the loop can serve it.
+    // Conflated so a request made mid-fetch or while the loop is idle is kept until it can be served.
     private val forceRefreshRequests = Channel<Unit>(capacity = Channel.CONFLATED)
 
     private var reading: WeatherReading? = null
     private var nextRefreshDueAtMillis = 0L
 
-    private val initialLoad: Job = scope.launch {
-        val persisted = weatherCacheDataSource.load() ?: return@launch
-        fetchMutex.withLock {
-            if (reading != null) return@launch
+    // Lazy so the cache file is only read once something actually collects the state.
+    private val initialLoad: Job by lazy {
+        scope.launch {
+            val persisted = weatherCacheDataSource.load() ?: return@launch
             reading = persisted
-            val age = System.currentTimeMillis() - persisted.fetchedAtMillis
-            if (age < MAX_READING_AGE_MS) {
-                _state.value = WeatherUiState.Ready(persisted, isStale = age >= READING_TTL_MS)
+            val now = System.currentTimeMillis()
+            if (persisted.isDisplayableAt(now)) {
+                _state.value = WeatherUiState.Ready(
+                    persisted,
+                    isStale = now - persisted.fetchedAtMillis >= READING_TTL_MS
+                )
             }
         }
     }
 
     init {
+        // The widget collects the state only while it is shown and the launcher is foregrounded,
+        // so keying the fetch loop on subscribers keeps all refresh work inside that window.
         scope.launch {
-            combine(launcherVisible, userSettingsDataSource.showWeather) { visible, enabled ->
-                visible && enabled
-            }
+            _state.subscriptionCount
+                .map { it > 0 }
                 .distinctUntilChanged()
-                .collectLatest { active ->
-                    if (!active) return@collectLatest
+                .collectLatest { subscribed ->
+                    if (!subscribed) return@collectLatest
                     var force = false
                     while (true) {
                         refresh(force)
@@ -95,21 +99,10 @@ class WeatherRepository @Inject constructor(
         }
 
         scope.launch {
-            combine(userSettingsDataSource.weatherLat, userSettingsDataSource.weatherLon) { lat, lon ->
-                lat to lon
-            }
-                .distinctUntilChanged()
+            userSettingsDataSource.weatherLocation
                 .drop(1)
                 .collect { requestRefresh() }
         }
-    }
-
-    fun onLauncherVisible() {
-        launcherVisible.value = true
-    }
-
-    fun onLauncherHidden() {
-        launcherVisible.value = false
     }
 
     fun requestRefresh() {
@@ -120,25 +113,23 @@ class WeatherRepository @Inject constructor(
         initialLoad.join()
         fetchMutex.withLock {
             val now = System.currentTimeMillis()
-            val staticLocation = staticLocation()
-            if (staticLocation == null && !WeatherHelper.isLocationGranted(context)) {
-                nextRefreshDueAtMillis = now + READING_TTL_MS
-                return
-            }
+            nextRefreshDueAtMillis = now + READING_TTL_MS
+            val staticLocation = userSettingsDataSource.weatherLocation.first()
+            if (staticLocation == null && !WeatherHelper.isLocationGranted(context)) return
 
             val current = reading
             val fresh = current?.takeIf { now - it.fetchedAtMillis < READING_TTL_MS }
-            val matchesTarget = fresh != null &&
+            if (!force && fresh != null &&
                 (staticLocation == null || fresh.isNear(staticLocation.first, staticLocation.second))
-            if (!force && matchesTarget) {
-                _state.value = WeatherUiState.Ready(fresh!!, isStale = false)
+            ) {
+                _state.value = WeatherUiState.Ready(fresh, isStale = false)
                 nextRefreshDueAtMillis = fresh.fetchedAtMillis + READING_TTL_MS
                 return
             }
 
             val target = staticLocation ?: deviceLocation()
             if (target == null) {
-                fallBackToCache(current, now, "No location")
+                fallBackToCache(current, now)
                 return
             }
 
@@ -149,33 +140,29 @@ class WeatherRepository @Inject constructor(
                     _state.value = WeatherUiState.Ready(fetched, isStale = false)
                     nextRefreshDueAtMillis = fetched.fetchedAtMillis + READING_TTL_MS
                 }
-                .onFailure { error ->
-                    fallBackToCache(current, now, error.message ?: "Unable to load weather")
+                .onFailure {
+                    fallBackToCache(current, now)
                 }
         }
     }
 
-    private fun fallBackToCache(current: WeatherReading?, now: Long, reason: String) {
-        val usable = current?.takeIf { now - it.fetchedAtMillis < MAX_READING_AGE_MS }
+    private fun fallBackToCache(current: WeatherReading?, now: Long) {
+        val usable = current?.takeIf { it.isDisplayableAt(now) }
         _state.value = usable?.let { WeatherUiState.Ready(it, isStale = true) }
-            ?: WeatherUiState.Error(reason)
-        nextRefreshDueAtMillis = now + READING_TTL_MS
+            ?: WeatherUiState.Error
     }
 
     private fun delayUntilNextRefresh(): Long =
         (nextRefreshDueAtMillis - System.currentTimeMillis()).coerceAtLeast(MIN_LOOP_DELAY_MS)
-
-    private suspend fun staticLocation(): Pair<Double, Double>? {
-        val latitude = userSettingsDataSource.weatherLat.first() ?: return null
-        val longitude = userSettingsDataSource.weatherLon.first() ?: return null
-        return latitude to longitude
-    }
 
     // Permission is checked dynamically in refresh() before this is reached.
     @SuppressLint("MissingPermission")
     private suspend fun deviceLocation(): Pair<Double, Double>? =
         runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }.getOrNull()
             ?.let { it.latitude to it.longitude }
+
+    private fun WeatherReading.isDisplayableAt(now: Long): Boolean =
+        now - fetchedAtMillis < MAX_READING_AGE_MS
 
     private fun WeatherReading.isNear(targetLatitude: Double, targetLongitude: Double): Boolean {
         val distance = FloatArray(1)

@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import kotlinx.coroutines.flow.StateFlow
 import net.wshmkr.launcher.model.WeatherUiState
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
@@ -38,9 +39,9 @@ fun ClockWidget(
     showWeather: Boolean = true,
     use24Hour: Boolean = false,
     useFahrenheit: Boolean = false,
-    weatherState: WeatherUiState = WeatherUiState.Loading,
-    hasStaticWeatherLocation: Boolean = false,
-    onWeatherRefresh: () -> Unit = {},
+    weatherState: StateFlow<WeatherUiState>,
+    hasStaticWeatherLocation: Boolean,
+    onWeatherRefresh: () -> Unit,
 ) {
     if (!showClock && !showCalendar && !showWeather) return
 

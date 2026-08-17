@@ -220,7 +220,6 @@ class HomeViewModel @Inject constructor(
     fun onLauncherStopped() {
         observedStop = true
         appsRepository.releaseMostUsedPublish()
-        weatherRepository.onLauncherHidden()
         viewModelScope.launch {
             appsRepository.flushUsage()
         }
@@ -231,7 +230,6 @@ class HomeViewModel @Inject constructor(
             navigateToFavorites()
         }
         appsRepository.updateMostUsedApps()
-        weatherRepository.onLauncherVisible()
     }
 
     fun notificationsFor(packageName: String, user: UserHandle): State<ImmutableList<NotificationInfo>> =

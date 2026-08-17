@@ -18,5 +18,5 @@ data class WeatherReading(
 sealed interface WeatherUiState {
     data object Loading : WeatherUiState
     data class Ready(val reading: WeatherReading, val isStale: Boolean) : WeatherUiState
-    data class Error(val reason: String) : WeatherUiState
+    data object Error : WeatherUiState
 }

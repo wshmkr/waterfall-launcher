@@ -24,6 +24,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
 import net.wshmkr.launcher.model.WeatherReading
 import net.wshmkr.launcher.model.WeatherUiState
 import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
@@ -36,13 +38,17 @@ import net.wshmkr.launcher.util.rememberCurrentLocalTime
 
 @Composable
 fun WeatherWidget(
-    state: WeatherUiState,
+    state: StateFlow<WeatherUiState>,
     useFahrenheit: Boolean,
     hasStaticLocation: Boolean,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+
+    // Lifecycle-aware collection: the repository keys its fetch loop on subscribers, so this
+    // pauses all refresh work while the widget is hidden or the launcher is backgrounded.
+    val weatherState by state.collectAsStateWithLifecycle()
 
     // Raw permission state is remembered across static/dynamic toggles so flipping the source
     // doesn't wipe an in-flight grant.
@@ -64,7 +70,7 @@ fun WeatherWidget(
     }
 
     WeatherContent(
-        state = state,
+        state = weatherState,
         hasPermission = hasPermission,
         useFahrenheit = useFahrenheit,
         modifier = modifier,
