@@ -10,7 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import net.wshmkr.launcher.R
 import net.wshmkr.launcher.model.LauncherFont
 import java.io.File
-import android.graphics.fonts.Font as PlatformFont
+import java.io.RandomAccessFile
 
 @Composable
 fun rememberFontFamily(font: LauncherFont): FontFamily = remember(font) {
@@ -49,12 +49,38 @@ private fun userFonts(file: File): List<Font> =
         listOf(Font(file))
     }
 
-private fun File.hasWeightAxis(): Boolean {
-    val font = PlatformFont.Builder(this).build()
-    return (0 until font.axisCount).any { font.getAxis(it).tag == WEIGHT_AXIS_TAG }
+// No platform API lists a file's variation axes, so this reads the OpenType fvar table itself.
+private fun File.hasWeightAxis(): Boolean = RandomAccessFile(this, "r").use { font ->
+    font.seek(4)                // sfnt version
+    val tableCount = font.readUnsignedShort()
+    font.skipBytes(6)           // searchRange, entrySelector, rangeShift
+    repeat(tableCount) {
+        val tag = font.readInt()
+        font.skipBytes(4)       // checksum
+        val tableOffset = font.readInt()
+        font.skipBytes(4)       // length
+        if (tag == FVAR_TABLE_TAG) return font.fvarHasWeightAxis(tableOffset.toLong())
+    }
+    false
+}
+
+private fun RandomAccessFile.fvarHasWeightAxis(fvarOffset: Long): Boolean {
+    seek(fvarOffset + 4)        // major and minor version
+    val axesOffset = readUnsignedShort()
+    skipBytes(2)                // reserved
+    val axisCount = readUnsignedShort()
+    val axisSize = readUnsignedShort()
+    return (0 until axisCount).any { axis ->
+        seek(fvarOffset + axesOffset + axis.toLong() * axisSize)
+        readInt() == WEIGHT_AXIS_TAG
+    }
 }
 
 private fun weightSettings(weight: FontWeight) =
     FontVariation.Settings(FontVariation.weight(weight.weight))
 
-private const val WEIGHT_AXIS_TAG = "wght"
+private fun openTypeTag(tag: String) = tag.fold(0) { packed, char -> (packed shl 8) or char.code }
+
+private val FVAR_TABLE_TAG = openTypeTag("fvar")
+
+private val WEIGHT_AXIS_TAG = openTypeTag("wght")
