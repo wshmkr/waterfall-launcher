@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -59,8 +60,10 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val FAVORITE_CONTENT_TYPE = "favorite_app"
 private const val SUGGESTION_CONTENT_TYPE = "suggested_app"
-private const val REORDER_SUGGESTION_ALPHA = 0.4f
 private const val MIN_REORDERABLE_FAVORITES = 2
+
+private val FULL_ALPHA: () -> Float = { 1f }
+private val DIMMED_ALPHA: () -> Float = { 0.4f }
 
 @Composable
 fun FavoritesView(
@@ -117,9 +120,8 @@ fun FavoritesView(
     val onLongPress = remember { { if (!widgetTouched.value) showHomeOptionsMenu.value = true } }
     val onEndReorder = remember(viewModel) { viewModel::endFavoritesReorder }
     val startReorder = remember(viewModel) { viewModel::startFavoritesReorder }
-    val onStartReorder = startReorder.takeIf {
-        favoriteApps.count { app -> !app.isSuggested } >= MIN_REORDERABLE_FAVORITES
-    }
+    val onStartReorder =
+        if (favoriteApps.count { !it.isSuggested } >= MIN_REORDERABLE_FAVORITES) startReorder else null
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -128,7 +130,6 @@ fun FavoritesView(
     val onToggleHidden = remember(viewModel) { viewModel::toggleHidden }
     val onToggleSuggest = remember(viewModel) { viewModel::toggleSuggest }
     val onClearNotifications = remember(viewModel) { viewModel::clearNotifications }
-    val dimmedAlpha = remember { { REORDER_SUGGESTION_ALPHA } }
 
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
@@ -219,32 +220,13 @@ fun FavoritesView(
                         viewModel.notificationsFor(item.packageName, item.userHandle)
                     }
 
-                    if (reordering) {
-                        ReorderableItem(
-                            state = reorderState,
-                            key = item.key,
-                            enabled = !item.isSuggested,
-                        ) {
-                            val dragHandle: (@Composable () -> Unit)? = if (item.isSuggested) {
-                                null
-                            } else {
-                                { ReorderHandle(item.label, Modifier.draggableHandle()) }
-                            }
-                            AppListItem(
-                                appInfo = item,
-                                isActiveUser = isActiveUser,
-                                onClick = onClick,
-                                onToggleFavorite = onToggleFavorite,
-                                onToggleHidden = onToggleHidden,
-                                onToggleSuggest = onToggleSuggest,
-                                alphaProvider = if (item.isSuggested) dimmedAlpha else FULL_ALPHA,
-                                notifications = notifications,
-                                onClearNotifications = onClearNotifications,
-                                clickEnabled = false,
-                                dragHandle = dragHandle,
-                            )
-                        }
-                    } else {
+                    val draggable = reordering && !item.isSuggested
+                    ReorderableItem(
+                        state = reorderState,
+                        key = item.key,
+                        enabled = draggable,
+                        animateItemModifier = if (reordering) Modifier.animateItem() else Modifier,
+                    ) {
                         AppListItem(
                             appInfo = item,
                             isActiveUser = isActiveUser,
@@ -252,9 +234,14 @@ fun FavoritesView(
                             onToggleFavorite = onToggleFavorite,
                             onToggleHidden = onToggleHidden,
                             onToggleSuggest = onToggleSuggest,
+                            alphaProvider = if (reordering && item.isSuggested) DIMMED_ALPHA else FULL_ALPHA,
                             notifications = notifications,
                             onClearNotifications = onClearNotifications,
-                            onReorderFavorites = onStartReorder.takeIf { !item.isSuggested },
+                            onReorderFavorites = if (!reordering && !item.isSuggested) onStartReorder else null,
+                            clickEnabled = !reordering,
+                            dragHandle = if (draggable) {
+                                { ReorderHandle(item.label, Modifier.draggableHandle()) }
+                            } else null,
                         )
                     }
                 }
@@ -293,10 +280,14 @@ private fun FavoritesOutline(listState: LazyListState) {
     val dimensions = LocalDimensions.current
     val bounds by remember(listState) {
         derivedStateOf {
-            val rows = listState.layoutInfo.visibleItemsInfo
-                .filter { it.contentType == FAVORITE_CONTENT_TYPE }
-            val first = rows.firstOrNull() ?: return@derivedStateOf null
-            val last = rows.last()
+            var first: LazyListItemInfo? = null
+            var last: LazyListItemInfo? = null
+            for (row in listState.layoutInfo.visibleItemsInfo) {
+                if (row.contentType != FAVORITE_CONTENT_TYPE) continue
+                if (first == null) first = row
+                last = row
+            }
+            if (first == null || last == null) return@derivedStateOf null
             first.offset to (last.offset + last.size - first.offset)
         }
     }
@@ -312,5 +303,3 @@ private fun FavoritesOutline(listState: LazyListState) {
             .border(1.dp, MaterialTheme.colorScheme.outline, Corners.medium),
     )
 }
-
-private val FULL_ALPHA: () -> Float = { 1f }

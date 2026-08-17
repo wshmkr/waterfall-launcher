@@ -70,16 +70,7 @@ fun AppOptionsMenu(
                     onDismiss()
                 }
             )
-            if (onReorderFavorites != null) {
-                MenuOption(
-                    icon = DragIndicatorIcon(),
-                    text = "Reorder favorites",
-                    onClick = {
-                        onReorderFavorites()
-                        onDismiss()
-                    }
-                )
-            }
+            ReorderFavoritesMenuOption(onReorderFavorites, onDismiss)
         } else {
             MenuOption(
                 icon = StarFilledIcon(),
@@ -146,4 +137,17 @@ fun AppOptionsMenu(
             )
         }
     }
+}
+
+@Composable
+fun ReorderFavoritesMenuOption(onReorderFavorites: (() -> Unit)?, onDismiss: () -> Unit) {
+    if (onReorderFavorites == null) return
+    MenuOption(
+        icon = DragIndicatorIcon(),
+        text = "Reorder favorites",
+        onClick = {
+            onReorderFavorites()
+            onDismiss()
+        }
+    )
 }

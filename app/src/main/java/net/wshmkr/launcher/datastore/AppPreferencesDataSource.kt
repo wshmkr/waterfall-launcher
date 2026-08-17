@@ -9,12 +9,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -34,16 +34,14 @@ class AppPreferencesDataSource @Inject constructor(
     val hidden = PackageNameSetStore("hidden")
 
     // Ordered app keys: membership and home screen position in one value.
-    suspend fun getFavorites(): ImmutableList<String> =
-        decodeFavorites(dataStore.data.first()[FAVORITES_KEY])
+    suspend fun getFavorites(): PersistentList<String> {
+        val raw = dataStore.data.first()[FAVORITES_KEY]
+        if (raw.isNullOrEmpty()) return persistentListOf()
+        return raw.split(FAVORITES_SEPARATOR).toPersistentList()
+    }
 
     suspend fun setFavorites(appKeys: List<String>) {
         dataStore.edit { it[FAVORITES_KEY] = appKeys.joinToString(FAVORITES_SEPARATOR) }
-    }
-
-    private fun decodeFavorites(raw: String?): ImmutableList<String> {
-        if (raw.isNullOrEmpty()) return persistentListOf()
-        return raw.split(FAVORITES_SEPARATOR).toImmutableList()
     }
 
     inner class PackageNameSetStore internal constructor(private val baseName: String) {

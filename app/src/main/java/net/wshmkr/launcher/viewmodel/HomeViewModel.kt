@@ -11,6 +11,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -74,6 +75,11 @@ class HomeViewModel @Inject constructor(
                 .sorted()
             addAll(letters)
         }
+    }
+
+    // Own derived state, so a favorites write (every drag move) doesn't rebuild it.
+    private val installedAppsByKey by derivedStateOf {
+        appsRepository.allApps.associateBy { it.key }
     }
 
     val favoriteApps by derivedStateOf { buildFavoriteAppsList() }
@@ -182,23 +188,18 @@ class HomeViewModel @Inject constructor(
 
     fun endFavoritesReorder() {
         favoritesReordering = false
-        commitFavoritesOrder()
+        viewModelScope.launch { appsRepository.commitFavorites() }
     }
 
     // Keys rather than list indices: suggestions and the widgets above them share the same list,
     // and an unknown key is exactly the case that must not move.
     fun moveFavorite(fromKey: String, toKey: String) {
-        val keys = appsRepository.favorites.toMutableList()
+        val keys = appsRepository.favorites
         val from = keys.indexOf(fromKey)
         val to = keys.indexOf(toKey)
         if (from == -1 || to == -1 || from == to) return
 
-        keys.add(to, keys.removeAt(from))
-        appsRepository.previewFavorites(keys)
-    }
-
-    private fun commitFavoritesOrder() {
-        viewModelScope.launch { appsRepository.commitFavorites() }
+        appsRepository.previewFavorites(keys.mutate { it.add(to, it.removeAt(from)) })
     }
 
     fun navigateToFavorites() {
@@ -270,14 +271,13 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun buildFavoriteAppsList(): List<AppInfo> {
-        val installedByKey = appsRepository.allApps.associateBy { it.key }
         // Uninstalled or temporarily unavailable apps drop out but keep their stored position.
-        val apps = appsRepository.favorites.mapNotNullTo(mutableListOf()) { installedByKey[it] }
+        val apps = appsRepository.favorites.mapNotNullTo(mutableListOf()) { installedAppsByKey[it] }
 
         if (apps.size < HOME_SCREEN_APPS) {
             val remainingSlots = HOME_SCREEN_APPS - apps.size
             val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { usageKey ->
-                installedByKey[usageKey]
+                installedAppsByKey[usageKey]
             }
             val suggestions =
                 mostUsedApps

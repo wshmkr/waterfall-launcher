@@ -23,11 +23,12 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.core.graphics.drawable.toBitmap
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -69,10 +70,8 @@ class AppsRepository @Inject constructor(
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
 
-    var favorites: ImmutableList<String> by mutableStateOf(persistentListOf())
+    var favorites: PersistentList<String> by mutableStateOf(persistentListOf())
         private set
-
-    private var persistedFavorites: ImmutableList<String> = persistentListOf()
 
     private val usageEntries = mutableMapOf<String, UsageEntry>()
     private var usageLoaded = false
@@ -194,7 +193,6 @@ class AppsRepository @Inject constructor(
 
         Snapshot.withMutableSnapshot {
             favorites = storedFavorites
-            persistedFavorites = storedFavorites
             allApps.clear()
             allApps.addAll(apps)
         }
@@ -227,7 +225,7 @@ class AppsRepository @Inject constructor(
     private fun buildAppInfo(
         activity: LauncherActivityInfo,
         userHandle: UserHandle,
-        favoriteKeys: Set<String>,
+        favoriteKeys: Collection<String>,
         hidden: Set<String>,
         doNotSuggest: Set<String>,
     ): AppInfo {
@@ -280,7 +278,7 @@ class AppsRepository @Inject constructor(
             buildAppInfo(
                 activity = activity,
                 userHandle = userHandle,
-                favoriteKeys = favorites.toHashSet(),
+                favoriteKeys = favorites,
                 hidden = appPreferencesDataSource.hidden.get(userHandle),
                 doNotSuggest = appPreferencesDataSource.doNotSuggest.get(userHandle),
             )
@@ -384,34 +382,27 @@ class AppsRepository @Inject constructor(
     }
 
     suspend fun toggleFavorite(packageName: String, userHandle: UserHandle) {
-        val index = allApps.indexOfFirst { it.packageName == packageName && it.userHandle == userHandle }
+        val index = indexOfApp(packageName, userHandle)
         if (index == -1) return
 
         val app = allApps[index]
         val pinned = !app.isFavorite
-        val updated = if (pinned) favorites + app.key else favorites - app.key
 
         Snapshot.withMutableSnapshot {
-            favorites = updated.toImmutableList()
+            favorites = if (pinned) favorites.add(app.key) else favorites.remove(app.key)
             allApps[index] = app.copy(isFavorite = pinned)
         }
-        persistFavorites()
+        commitFavorites()
     }
 
     // Applied in memory only, so a drag never waits on a disk write.
     fun previewFavorites(appKeys: List<String>) {
-        favorites = appKeys.toImmutableList()
+        favorites = appKeys.toPersistentList()
     }
 
+    // DataStore already skips the disk write when the value is unchanged.
     suspend fun commitFavorites() {
-        if (favorites == persistedFavorites) return
-        persistFavorites()
-    }
-
-    private suspend fun persistFavorites() {
-        val snapshot = favorites
-        appPreferencesDataSource.setFavorites(snapshot)
-        persistedFavorites = snapshot
+        appPreferencesDataSource.setFavorites(favorites)
     }
 
     suspend fun toggleHidden(packageName: String, userHandle: UserHandle) {
@@ -426,6 +417,9 @@ class AppsRepository @Inject constructor(
             withFlag = { app, value -> app.copy(doNotSuggest = value, isSuggested = app.isSuggested && !value) })
     }
 
+    private fun indexOfApp(packageName: String, userHandle: UserHandle) =
+        allApps.indexOfFirst { it.packageName == packageName && it.userHandle == userHandle }
+
     private suspend fun togglePackageFlag(
         packageName: String,
         userHandle: UserHandle,
@@ -433,7 +427,7 @@ class AppsRepository @Inject constructor(
         isSet: (AppInfo) -> Boolean,
         withFlag: (AppInfo, Boolean) -> AppInfo,
     ) {
-        val index = allApps.indexOfFirst { it.packageName == packageName && it.userHandle == userHandle }
+        val index = indexOfApp(packageName, userHandle)
         if (index == -1) return
 
         val app = allApps[index]
