@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -72,6 +75,7 @@ fun FavoritesView(
 ) {
     val reordering = viewModel.favoritesReordering
 
+    // Always enabled: the launcher home is the bottom of the stack, so Back is consumed here.
     BackHandler(enabled = true) {
         if (reordering) viewModel.endFavoritesReorder()
     }
@@ -130,6 +134,7 @@ fun FavoritesView(
     val onToggleHidden = remember(viewModel) { viewModel::toggleHidden }
     val onToggleSuggest = remember(viewModel) { viewModel::toggleSuggest }
     val onClearNotifications = remember(viewModel) { viewModel::clearNotifications }
+    val onMoveFavorite = remember(viewModel) { viewModel::moveFavorite }
 
     if (showAccessibilityDialog) {
         AccessibilityServiceDialog(
@@ -206,13 +211,13 @@ fun FavoritesView(
                     )
                 }
 
-                items(
+                itemsIndexed(
                     items = favoriteApps,
-                    key = { item -> item.key },
-                    contentType = { item ->
+                    key = { _, item -> item.key },
+                    contentType = { _, item ->
                         if (item.isSuggested) SUGGESTION_CONTENT_TYPE else FAVORITE_CONTENT_TYPE
                     },
-                ) { item ->
+                ) { index, item ->
                     val isActiveUser = remember(item.userHandle, activeProfiles) {
                         item.userHandle in activeProfiles
                     }
@@ -229,6 +234,18 @@ fun FavoritesView(
                     ) {
                         AppListItem(
                             appInfo = item,
+                            // The drag gesture is invisible to accessibility services, so
+                            // reordering is mirrored as custom actions on the row.
+                            modifier = if (draggable) {
+                                Modifier.semantics {
+                                    customActions = reorderActions(
+                                        item = item,
+                                        previous = favoriteApps.getOrNull(index - 1),
+                                        next = favoriteApps.getOrNull(index + 1),
+                                        moveFavorite = onMoveFavorite,
+                                    )
+                                }
+                            } else Modifier,
                             isActiveUser = isActiveUser,
                             onClick = onClick,
                             onToggleFavorite = onToggleFavorite,
@@ -259,6 +276,20 @@ fun FavoritesView(
             onDismiss = { showHomeOptionsMenu.value = false },
             onReorderFavorites = onStartReorder,
         )
+    }
+}
+
+private fun reorderActions(
+    item: AppInfo,
+    previous: AppInfo?,
+    next: AppInfo?,
+    moveFavorite: (String, String) -> Unit,
+): List<CustomAccessibilityAction> = buildList {
+    if (previous != null && !previous.isSuggested) {
+        add(CustomAccessibilityAction("Move up") { moveFavorite(item.key, previous.key); true })
+    }
+    if (next != null && !next.isSuggested) {
+        add(CustomAccessibilityAction("Move down") { moveFavorite(item.key, next.key); true })
     }
 }
 
