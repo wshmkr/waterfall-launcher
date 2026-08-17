@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import android.os.UserHandle
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -44,6 +46,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.AppListItem
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
@@ -59,6 +62,7 @@ import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val FAVORITE_CONTENT_TYPE = "favorite_app"
@@ -218,49 +222,22 @@ fun FavoritesView(
                         if (item.isSuggested) SUGGESTION_CONTENT_TYPE else FAVORITE_CONTENT_TYPE
                     },
                 ) { index, item ->
-                    val isActiveUser = remember(item.userHandle, activeProfiles) {
-                        item.userHandle in activeProfiles
-                    }
-                    val notifications by remember(item.key) {
-                        viewModel.notificationsFor(item.packageName, item.userHandle)
-                    }
-
-                    val draggable = reordering && !item.isSuggested
-                    ReorderableItem(
-                        state = reorderState,
-                        key = item.key,
-                        enabled = draggable,
-                        animateItemModifier = if (reordering) Modifier.animateItem() else Modifier,
-                    ) {
-                        AppListItem(
-                            appInfo = item,
-                            // The drag gesture is invisible to accessibility services, so
-                            // reordering is mirrored as custom actions on the row.
-                            modifier = if (draggable) {
-                                Modifier.semantics {
-                                    customActions = reorderActions(
-                                        item = item,
-                                        previous = favoriteApps.getOrNull(index - 1),
-                                        next = favoriteApps.getOrNull(index + 1),
-                                        moveFavorite = onMoveFavorite,
-                                    )
-                                }
-                            } else Modifier,
-                            isActiveUser = isActiveUser,
-                            onClick = onClick,
-                            onToggleFavorite = onToggleFavorite,
-                            onToggleHidden = onToggleHidden,
-                            onToggleSuggest = onToggleSuggest,
-                            alphaProvider = if (reordering && item.isSuggested) DIMMED_ALPHA else FULL_ALPHA,
-                            notifications = notifications,
-                            onClearNotifications = onClearNotifications,
-                            onReorderFavorites = if (!reordering && !item.isSuggested) onStartReorder else null,
-                            clickEnabled = !reordering,
-                            dragHandle = if (draggable) {
-                                { ReorderHandle(item.label, Modifier.draggableHandle()) }
-                            } else null,
-                        )
-                    }
+                    FavoriteRow(
+                        index = index,
+                        item = item,
+                        favoriteApps = favoriteApps,
+                        reordering = reordering,
+                        reorderState = reorderState,
+                        activeProfiles = activeProfiles,
+                        viewModel = viewModel,
+                        onClick = onClick,
+                        onToggleFavorite = onToggleFavorite,
+                        onToggleHidden = onToggleHidden,
+                        onToggleSuggest = onToggleSuggest,
+                        onClearNotifications = onClearNotifications,
+                        onMoveFavorite = onMoveFavorite,
+                        onStartReorder = onStartReorder,
+                    )
                 }
             }
 
@@ -275,6 +252,68 @@ fun FavoritesView(
             navController = navController,
             onDismiss = { showHomeOptionsMenu.value = false },
             onReorderFavorites = onStartReorder,
+        )
+    }
+}
+
+@Composable
+private fun LazyItemScope.FavoriteRow(
+    index: Int,
+    item: AppInfo,
+    favoriteApps: List<AppInfo>,
+    reordering: Boolean,
+    reorderState: ReorderableLazyListState,
+    activeProfiles: Set<UserHandle>,
+    viewModel: HomeViewModel,
+    onClick: (AppInfo) -> Unit,
+    onToggleFavorite: (AppInfo) -> Unit,
+    onToggleHidden: (AppInfo) -> Unit,
+    onToggleSuggest: (AppInfo) -> Unit,
+    onClearNotifications: (List<NotificationInfo>) -> Boolean,
+    onMoveFavorite: (String, String) -> Unit,
+    onStartReorder: (() -> Unit)?,
+) {
+    val isActiveUser = remember(item.userHandle, activeProfiles) {
+        item.userHandle in activeProfiles
+    }
+    val notifications by remember(item.key) {
+        viewModel.notificationsFor(item.packageName, item.userHandle)
+    }
+
+    val draggable = reordering && !item.isSuggested
+    ReorderableItem(
+        state = reorderState,
+        key = item.key,
+        enabled = draggable,
+        animateItemModifier = if (reordering) Modifier.animateItem() else Modifier,
+    ) {
+        AppListItem(
+            appInfo = item,
+            // The drag gesture is invisible to accessibility services, so
+            // reordering is mirrored as custom actions on the row.
+            modifier = if (draggable) {
+                Modifier.semantics {
+                    customActions = reorderActions(
+                        item = item,
+                        previous = favoriteApps.getOrNull(index - 1),
+                        next = favoriteApps.getOrNull(index + 1),
+                        moveFavorite = onMoveFavorite,
+                    )
+                }
+            } else Modifier,
+            isActiveUser = isActiveUser,
+            onClick = onClick,
+            onToggleFavorite = onToggleFavorite,
+            onToggleHidden = onToggleHidden,
+            onToggleSuggest = onToggleSuggest,
+            alphaProvider = if (reordering && item.isSuggested) DIMMED_ALPHA else FULL_ALPHA,
+            notifications = notifications,
+            onClearNotifications = onClearNotifications,
+            onReorderFavorites = if (!reordering && !item.isSuggested) onStartReorder else null,
+            clickEnabled = !reordering,
+            dragHandle = if (draggable) {
+                { ReorderHandle(item.label, Modifier.draggableHandle()) }
+            } else null,
         )
     }
 }

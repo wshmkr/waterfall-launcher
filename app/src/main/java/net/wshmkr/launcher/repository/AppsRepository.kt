@@ -236,7 +236,7 @@ class AppsRepository @Inject constructor(
         return AppInfo(
             label = label,
             packageName = appPackageName,
-            icon = toBitmapPainter(activity.getBadgedIcon(0)),
+            icon = toBitmapPainter(activity.getBadgedIcon(0), iconSizePx),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
             isFavorite = keyFor(appPackageName, userHandle) in favoriteKeys,
@@ -245,25 +245,6 @@ class AppsRepository @Inject constructor(
             searchTokens = buildSearchTokens(label),
         )
     }
-
-    private fun toBitmapPainter(drawable: Drawable): BitmapPainter {
-        val maxSizePx = iconSizePx
-        val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxSizePx
-        val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxSizePx
-        val scale = minOf(1f, maxSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
-
-        val bitmap = drawable.toBitmap(
-            width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
-            height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
-        )
-        return BitmapPainter(bitmap.asImageBitmap())
-    }
-
-    private fun buildSearchTokens(label: String) =
-        label.lowercase()
-            .split(' ')
-            .filter { it.isNotEmpty() }
-            .toImmutableList()
 
     private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
         if (packageName == application.packageName) return
@@ -340,7 +321,7 @@ class AppsRepository @Inject constructor(
                     launcherApps.getActivityList(app.packageName, app.userHandle)
                         ?.firstOrNull()
                         ?.getBadgedIcon(0)
-                        ?.let { app.key to toBitmapPainter(it) }
+                        ?.let { app.key to toBitmapPainter(it, iconSizePx) }
                 } catch (_: Exception) {
                     null
                 }
@@ -374,11 +355,6 @@ class AppsRepository @Inject constructor(
             mostUsedApps.clear()
             mostUsedApps.addAll(ranked)
         }
-    }
-
-    private fun frecencyScore(entry: UsageEntry, now: Long): Double {
-        val ageDays = (now - entry.lastUsed).coerceAtLeast(0L) / MILLIS_PER_DAY.toDouble()
-        return entry.count * exp(-DECAY_LAMBDA_PER_DAY * ageDays)
     }
 
     suspend fun toggleFavorite(packageName: String, userHandle: UserHandle) {
@@ -443,9 +419,33 @@ class AppsRepository @Inject constructor(
     companion object {
         private const val TAG = "AppsRepository"
         private const val SESSION_DEDUP_WINDOW_MS = 60_000L
-        private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
-        private const val DECAY_LAMBDA_PER_DAY = 0.05
         private const val FRECENCY_MIN_SCORE = 0.5
         private const val MAX_MOST_USED = 20
     }
+}
+
+private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
+private const val DECAY_LAMBDA_PER_DAY = 0.05
+
+private fun frecencyScore(entry: UsageEntry, now: Long): Double {
+    val ageDays = (now - entry.lastUsed).coerceAtLeast(0L) / MILLIS_PER_DAY.toDouble()
+    return entry.count * exp(-DECAY_LAMBDA_PER_DAY * ageDays)
+}
+
+private fun buildSearchTokens(label: String) =
+    label.lowercase()
+        .split(' ')
+        .filter { it.isNotEmpty() }
+        .toImmutableList()
+
+private fun toBitmapPainter(drawable: Drawable, maxSizePx: Int): BitmapPainter {
+    val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxSizePx
+    val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxSizePx
+    val scale = minOf(1f, maxSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
+
+    val bitmap = drawable.toBitmap(
+        width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
+        height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
+    )
+    return BitmapPainter(bitmap.asImageBitmap())
 }
