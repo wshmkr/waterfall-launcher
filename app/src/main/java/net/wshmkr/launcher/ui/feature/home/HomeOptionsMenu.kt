@@ -15,18 +15,18 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
-import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 import net.wshmkr.launcher.ui.common.components.ReorderFavoritesMenuOption
+import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
 import net.wshmkr.launcher.ui.common.icons.PartlyCloudyDayIcon
 import net.wshmkr.launcher.ui.common.icons.ScheduleIcon
 import net.wshmkr.launcher.ui.common.icons.SettingsIcon
 import net.wshmkr.launcher.ui.common.icons.WidgetsIcon
+import net.wshmkr.launcher.ui.theme.OnOpaqueSurface
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.sheetDivider
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,58 +61,60 @@ fun HomeOptionsMenu(
         sheetState = sheetState,
         dragHandle = null,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Spacing.medium)
-                .padding(vertical = 18.dp)
-        ) {
-            ToggleMenuOption(
-                icon = ScheduleIcon(),
-                text = "Clock",
-                checked = settings.showClock,
-                onCheckedChange = onToggleClock,
-            )
+        OnOpaqueSurface {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.medium)
+                    .padding(vertical = 18.dp)
+            ) {
+                ToggleMenuOption(
+                    icon = ScheduleIcon(),
+                    text = "Clock",
+                    checked = settings.showClock,
+                    onCheckedChange = onToggleClock,
+                )
 
-            ToggleMenuOption(
-                icon = CalendarTodayIcon(),
-                text = "Calendar",
-                checked = settings.showCalendar,
-                onCheckedChange = onToggleCalendar,
-            )
+                ToggleMenuOption(
+                    icon = CalendarTodayIcon(),
+                    text = "Calendar",
+                    checked = settings.showCalendar,
+                    onCheckedChange = onToggleCalendar,
+                )
 
-            ToggleMenuOption(
-                icon = PartlyCloudyDayIcon(),
-                text = "Weather",
-                checked = settings.showWeather,
-                onCheckedChange = onToggleWeather,
-            )
+                ToggleMenuOption(
+                    icon = PartlyCloudyDayIcon(),
+                    text = "Weather",
+                    checked = settings.showWeather,
+                    onCheckedChange = onToggleWeather,
+                )
 
-            ToggleMenuOption(
-                icon = MusicVideoIcon(),
-                text = "Media controls",
-                checked = settings.showMediaControls,
-                onCheckedChange = onToggleMedia,
-            )
+                ToggleMenuOption(
+                    icon = MusicVideoIcon(),
+                    text = "Media controls",
+                    checked = settings.showMediaControls,
+                    onCheckedChange = onToggleMedia,
+                )
 
-            MenuOption(
-                icon = WidgetsIcon(),
-                text = "Manage widgets",
-                onClick = onOpenWidgets,
-            )
+                MenuOption(
+                    icon = WidgetsIcon(),
+                    text = "Manage widgets",
+                    onClick = onOpenWidgets,
+                )
 
-            ReorderFavoritesMenuOption(onReorderFavorites, onDismiss)
+                ReorderFavoritesMenuOption(onReorderFavorites, onDismiss)
 
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 12.dp),
-                color = sheetDivider(),
-            )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    color = sheetDivider(),
+                )
 
-            MenuOption(
-                icon = SettingsIcon(),
-                text = "Waterfall launcher settings",
-                onClick = onOpenSettings,
-            )
+                MenuOption(
+                    icon = SettingsIcon(),
+                    text = "Waterfall launcher settings",
+                    onClick = onOpenSettings,
+                )
+            }
         }
     }
 }

@@ -11,11 +11,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import net.wshmkr.launcher.model.LauncherFont
 import net.wshmkr.launcher.model.PaletteStyle
 
 @Composable
 fun WaterfallLauncherTheme(
     paletteStyle: PaletteStyle,
+    launcherFont: LauncherFont = LauncherFont.Bundled,
     content: @Composable () -> Unit,
 ) {
     val wallpaperColors = rememberSystemWallpaperColors()
@@ -26,12 +28,16 @@ fun WaterfallLauncherTheme(
     )
     SystemBarIcons(darkTheme)
     val widthDp = LocalConfiguration.current.screenWidthDp
+    val fontFamily = rememberFontFamily(launcherFont)
     CompositionLocalProvider(
         LocalDimensions provides dimensionsFor(widthDp),
         // No Surface sets the ambient ink, since the app draws straight over the wallpaper.
         LocalContentColor provides colorScheme.onSurface,
     ) {
-        MaterialTheme(colorScheme = colorScheme) { content() }
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = rememberLauncherTypography(fontFamily),
+        ) { content() }
     }
 }
 

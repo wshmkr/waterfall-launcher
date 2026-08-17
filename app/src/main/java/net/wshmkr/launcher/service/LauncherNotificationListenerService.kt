@@ -169,7 +169,9 @@ class LauncherNotificationListenerService : NotificationListenerService() {
             title = title,
             text = text,
             subText = subText,
-            timestamp = sbn.postTime,
+            // `when` is the app's event time; apps that don't set one leave it 0.
+            timestamp = if (notification.`when` > 0) notification.`when` else sbn.postTime,
+            postTime = sbn.postTime,
             actions = actions,
             contentIntent = notification.contentIntent,
             isClearable = sbn.isClearable,

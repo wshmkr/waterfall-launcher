@@ -230,12 +230,13 @@ class HomeViewModel @Inject constructor(
             mutableStateOf(notificationRepository.notifications.value.notificationsFor(packageName, user))
         }
 
-    fun clearNotifications(dismissed: List<NotificationInfo>) {
+    // False when nothing was sent, including when the guard below rejects every instance.
+    fun clearNotifications(dismissed: List<NotificationInfo>): Boolean {
         val current = notificationRepository.notifications.value
         // Dismissals land after their exit animation, by which point a repost can have taken over
         // the key; cancelling then would take content the user never saw.
-        val keys = dismissed.filter { current.timestampOf(it) == it.timestamp }.map { it.key }
-        NotificationPanelHelper.dismissNotifications(keys + orphanedSummaryKeys(keys))
+        val keys = dismissed.filter { current.hasInstanceOf(it) }.map { it.key }
+        return NotificationPanelHelper.dismissNotifications(keys + orphanedSummaryKeys(keys))
     }
 
     // A summary the panel hid behind its children resurfaces alone once they are all cleared.
@@ -303,10 +304,9 @@ class HomeViewModel @Inject constructor(
     }
 }
 
-private fun NotificationMap.timestampOf(notification: NotificationInfo): Long? =
+private fun NotificationMap.hasInstanceOf(notification: NotificationInfo): Boolean =
     this[notification.packageName]?.get(notification.userHandle)
-        ?.firstOrNull { it.key == notification.key }
-        ?.timestamp
+        ?.any { it.isSameInstanceAs(notification) } == true
 
 // Newest first, so the row preview and the panel both read the head of one ordering.
 private fun NotificationMap.notificationsFor(

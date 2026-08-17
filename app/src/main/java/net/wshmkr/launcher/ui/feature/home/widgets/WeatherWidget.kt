@@ -34,6 +34,7 @@ import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.rememberAmbientBodyStyle
 import net.wshmkr.launcher.util.WeatherHelper
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
@@ -130,9 +131,7 @@ private fun WeatherContent(
     onRetry: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val textStyle = MaterialTheme.typography.bodyMedium.copy(
-        fontSize = LocalDimensions.current.fontMedium
-    )
+    val textStyle = rememberAmbientBodyStyle(LocalDimensions.current.fontMedium)
 
     when {
         !hasPermission -> {

@@ -115,21 +115,20 @@ fun NotificationPanel(
         Column(
             modifier = Modifier.verticalScroll(rememberScrollState())
         ) {
-            // Timestamps rather than a set of keys, so a repost under a key revives its card.
-            val dismissedTimestamps = remember { mutableStateMapOf<String, Long>() }
+            // Instances rather than a set of keys, so a repost under a key revives its card.
+            val dismissed = remember { mutableStateMapOf<String, NotificationInfo>() }
             notifications.forEachIndexed { index, notification ->
-                key(notification.key) {
+                // A repost of a key whose cancel didn't stick gets a fresh card.
+                key(notification.key, notification.postTime) {
                     val hasVisibleCardAbove = notifications.take(index).any {
-                        dismissedTimestamps[it.key] != it.timestamp
+                        dismissed[it.key]?.isSameInstanceAs(it) != true
                     }
                     NotificationCard(
                         notification = notification,
                         hasDividerAbove = hasVisibleCardAbove,
                         onOpen = onDismiss,
                         onDismissNotification = { onClearNotifications(listOf(notification)) },
-                        onDismissStarted = {
-                            dismissedTimestamps[notification.key] = notification.timestamp
-                        },
+                        onDismissStarted = { dismissed[notification.key] = notification },
                     )
                 }
             }
@@ -145,9 +144,8 @@ private fun NotificationCard(
     onDismissNotification: () -> Unit,
     onDismissStarted: () -> Unit,
 ) {
-    // Keyed on the timestamp so a repost of a key whose cancel didn't stick shows a card again.
-    val visibleState = remember(notification.timestamp) { MutableTransitionState(true) }
-    val dismissSent = remember(notification.timestamp) { mutableStateOf(false) }
+    val visibleState = remember { MutableTransitionState(true) }
+    val dismissSent = remember { mutableStateOf(false) }
 
     fun sendDismissOnce() {
         if (!dismissSent.value) {
@@ -162,7 +160,7 @@ private fun NotificationCard(
     }
 
     // Closing the sheet disposes this card before it reaches idle; the dismissal must still land.
-    DisposableEffect(notification.timestamp) {
+    DisposableEffect(Unit) {
         onDispose { if (!visibleState.targetState) sendDismissOnce() }
     }
 

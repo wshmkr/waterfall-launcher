@@ -15,6 +15,7 @@ data class NotificationInfo(
     val text: String? = null,
     val subText: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
+    val postTime: Long,
     val actions: ImmutableList<NotificationAction> = persistentListOf(),
     val contentIntent: PendingIntent? = null,
     val isClearable: Boolean = true,
@@ -27,6 +28,10 @@ data class NotificationInfo(
     // A custom view is unreadable to us but still means the app posted something worth showing.
     val hasContent: Boolean
         get() = !title.isNullOrBlank() || !text.isNullOrBlank() || detail != null || hasCustomView
+
+    // A repost reuses the key, so the post time is what tells two instances apart.
+    fun isSameInstanceAs(other: NotificationInfo): Boolean =
+        key == other.key && postTime == other.postTime
 }
 
 // What the shade would reveal on expand. A notification uses at most one of these styles.
