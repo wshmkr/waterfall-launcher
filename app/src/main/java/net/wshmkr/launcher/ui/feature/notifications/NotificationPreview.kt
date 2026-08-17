@@ -51,10 +51,8 @@ fun NotificationPreview(
     if (notification != null) retained = notification
 
     // One state can't back two AnimatedVisibility, and these sit in different parts of the layout.
-    val titleState = remember { MutableTransitionState(notification != null) }
-    val bodyState = remember { MutableTransitionState(notification != null) }
-    titleState.targetState = notification != null
-    bodyState.targetState = notification != null
+    val titleState = rememberPresenceState(notification != null)
+    val bodyState = rememberPresenceState(notification != null)
 
     LaunchedEffect(titleState.isIdle && bodyState.isIdle) {
         if (titleState.isIdle && bodyState.isIdle && !titleState.currentState) retained = null
@@ -126,6 +124,9 @@ private fun NotificationAppTitle(
     count: Int,
     hasNotification: Boolean,
 ) {
+    // Above the early return so the state survives the null branch to animate a later arrival.
+    val suffixState = rememberPresenceState(hasNotification)
+
     if (notificationTimestamp == null) {
         AppTitle(label, isHidden)
         return
@@ -142,10 +143,6 @@ private fun NotificationAppTitle(
         "$stack · ${timeSince(notificationTimestamp)}"
     }
 
-    // Starts collapsed so a first notification animates the suffix in rather than snapping it in.
-    val suffixState = remember { MutableTransitionState(false) }
-    suffixState.targetState = hasNotification
-
     // Only the name is weighted, so a long one ellipsizes into the space the suffix leaves behind.
     Row(verticalAlignment = Alignment.CenterVertically) {
         AppTitle(label, isHidden, Modifier.weight(1f, fill = false))
@@ -158,6 +155,11 @@ private fun NotificationAppTitle(
         }
     }
 }
+
+// Seeded so first composition — a row scrolling into view — snaps rather than animating in.
+@Composable
+private fun rememberPresenceState(present: Boolean): MutableTransitionState<Boolean> =
+    remember { MutableTransitionState(present) }.apply { targetState = present }
 
 // Cadence matches the age bucket — fresh notifications tick often, week-old ones rarely.
 @Composable

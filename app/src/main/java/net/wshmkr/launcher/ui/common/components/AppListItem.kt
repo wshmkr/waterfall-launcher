@@ -60,13 +60,13 @@ fun AppListItem(
     val visibleNotifications = remember(notifications, pendingDismissals) {
         if (pendingDismissals.isEmpty()) return@remember notifications
         notifications
-            .filterNot { shown -> pendingDismissals.any { shown.matches(it) } }
+            .filterNot { shown -> pendingDismissals.any { shown.isSameInstanceAs(it) } }
             .toImmutableList()
     }
 
     LaunchedEffect(notifications) {
         pendingDismissals = pendingDismissals.filter { pending ->
-            notifications.any { it.matches(pending) }
+            notifications.any { it.isSameInstanceAs(pending) }
         }
     }
 
@@ -177,10 +177,6 @@ private fun NotificationChevron(size: Dp, onOpen: () -> Unit, onLongClick: () ->
             .padding(Spacing.small),
     )
 }
-
-// A repost reuses the key, so the timestamp is what tells the two apart.
-private fun NotificationInfo.matches(other: NotificationInfo) =
-    key == other.key && timestamp == other.timestamp
 
 @Composable
 fun AppTitle(title: String, isHidden: Boolean, modifier: Modifier = Modifier) {
