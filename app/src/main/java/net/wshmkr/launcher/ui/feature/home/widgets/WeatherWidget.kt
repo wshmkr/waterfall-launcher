@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -130,7 +131,8 @@ private fun WeatherContent(
     onRetry: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val textStyle = MaterialTheme.typography.bodyMedium.copy(
+    // The ambient style carries the wallpaper text shadow.
+    val textStyle = LocalTextStyle.current.merge(MaterialTheme.typography.bodyMedium).copy(
         fontSize = LocalDimensions.current.fontMedium
     )
 

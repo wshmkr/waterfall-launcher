@@ -36,7 +36,7 @@ private fun wallpaperTextShadow(): Shadow {
     val density = LocalDensity.current
     return remember(ink, density) {
         Shadow(
-            // The shadow has to oppose the ink, which already tracks the wallpaper's own tone.
+            // The ink already tracks the wallpaper's tone.
             color = (if (ink.luminance() > MID_LUMINANCE) Color.Black else Color.White)
                 .copy(alpha = SHADOW_ALPHA),
             offset = with(density) { Offset(0f, SHADOW_OFFSET.toPx()) },

@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.font.FontFamily
 
-// Material's defaults already own every size and weight; only the family is ours to set.
 @Composable
 fun rememberLauncherTypography(fontFamily: FontFamily): Typography = remember(fontFamily) {
     val base = Typography()

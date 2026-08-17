@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -123,24 +124,24 @@ private fun buildOnMediaAppClick(context: Context, packageName: String?): () -> 
 @Composable
 private fun MediaPermissionPrompt(onRequestPermission: () -> Unit) {
     val dimensions = LocalDimensions.current
-    Row(
-        modifier = Modifier
-            .padding(horizontal = 12.dp)
-            .clip(Corners.medium)
-            .clickable { onRequestPermission() }
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.large),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = MusicNoteIcon(),
-            contentDescription = "Media",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(dimensions.iconMedium)
-        )
-        Spacer(modifier = Modifier.height(Spacing.small))
-        OnOpaqueSurface {
+    OnOpaqueSurface {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .clip(Corners.medium)
+                .clickable { onRequestPermission() }
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.large),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = MusicNoteIcon(),
+                contentDescription = "Media",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(dimensions.iconMedium)
+            )
+            Spacer(modifier = Modifier.width(Spacing.small))
             Text(
                 text = "Enable notification access\nfor media controls",
                 fontSize = dimensions.fontSmall,

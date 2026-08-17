@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,8 +103,10 @@ fun CalendarEventsWidget(
     val colors = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
     val eventFont = LocalDimensions.current.fontSmall
-    val eventTextStyle = remember(typography, eventFont) {
-        typography.bodyMedium.copy(fontSize = eventFont)
+    // The ambient style carries the wallpaper text shadow.
+    val ambientStyle = LocalTextStyle.current
+    val eventTextStyle = remember(ambientStyle, typography, eventFont) {
+        ambientStyle.merge(typography.bodyMedium).copy(fontSize = eventFont)
     }
     val ongoingTextStyle = remember(eventTextStyle) {
         eventTextStyle.copy(fontWeight = FontWeight.Bold)

@@ -27,8 +27,7 @@ private val launcherWeights = listOf(
     FontWeight.Bold,
 )
 
-// Geom is variable, so one file covers every weight. Hidden app titles are the only italic in the
-// app and are slanted from the same file, which is cheaper than shipping a second one.
+// Geom is variable, so one file covers every weight.
 private val bundledFontFamily = FontFamily(launcherWeights.map(::geom))
 
 @OptIn(ExperimentalTextApi::class)
@@ -38,14 +37,11 @@ private fun geom(weight: FontWeight) = Font(
     variationSettings = weightSettings(weight),
 )
 
-// Font(File) reads the file as it is constructed, so a moved, deleted, or corrupt one throws here
-// rather than during text layout, where nothing could recover from it.
+// hasWeightAxis reads the file up front, so a bad one fails here rather than during text layout.
 private fun userFontFamily(path: String): FontFamily? =
     runCatching { FontFamily(userFonts(File(path))) }.getOrNull()
 
-// A variable file serves every weight off its axis. A static one has to stay a single declaration:
-// declaring weights it cannot render would make FontSynthesis find an exact match at each one and
-// stop faking the bold.
+// Declaring weights a static file cannot render would make FontSynthesis stop faking the bold.
 private fun userFonts(file: File): List<Font> =
     if (file.hasWeightAxis()) {
         launcherWeights.map { Font(file, it, variationSettings = weightSettings(it)) }

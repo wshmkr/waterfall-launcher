@@ -3,7 +3,6 @@ package net.wshmkr.launcher.ui.theme
 import android.app.Activity
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -34,9 +33,6 @@ fun WaterfallLauncherTheme(
         LocalDimensions provides dimensionsFor(widthDp),
         // No Surface sets the ambient ink, since the app draws straight over the wallpaper.
         LocalContentColor provides colorScheme.onSurface,
-        // Material only styles its own components, so bare Text calls need the family here.
-        // Copied rather than rebuilt, to keep Material's own line height and font padding.
-        LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = fontFamily),
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
