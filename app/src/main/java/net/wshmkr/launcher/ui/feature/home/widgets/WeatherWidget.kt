@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +34,7 @@ import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.rememberAmbientBodyStyle
 import net.wshmkr.launcher.util.WeatherHelper
 import net.wshmkr.launcher.util.WeatherHelper.WeatherState
 import net.wshmkr.launcher.util.rememberCurrentLocalTime
@@ -131,10 +131,7 @@ private fun WeatherContent(
     onRetry: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    // The ambient style carries the wallpaper text shadow.
-    val textStyle = LocalTextStyle.current.merge(MaterialTheme.typography.bodyMedium).copy(
-        fontSize = LocalDimensions.current.fontMedium
-    )
+    val textStyle = rememberAmbientBodyStyle(LocalDimensions.current.fontMedium)
 
     when {
         !hasPermission -> {

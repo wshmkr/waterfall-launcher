@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 
 // Home and app-list text lands straight on the wallpaper, where a contrasting ink alone can fail.
@@ -28,6 +30,16 @@ fun OnOpaqueSurface(content: @Composable () -> Unit) {
         LocalTextStyle provides LocalTextStyle.current.copy(shadow = null),
         content = content,
     )
+}
+
+// An explicit style on Text drops the ambient shadow; merging over the ambient style keeps it.
+@Composable
+fun rememberAmbientBodyStyle(fontSize: TextUnit): TextStyle {
+    val ambientStyle = LocalTextStyle.current
+    val typography = MaterialTheme.typography
+    return remember(ambientStyle, typography, fontSize) {
+        ambientStyle.merge(typography.bodyMedium).copy(fontSize = fontSize)
+    }
 }
 
 @Composable
