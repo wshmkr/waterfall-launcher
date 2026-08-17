@@ -41,6 +41,7 @@ import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.rememberAmbientBodyStyle
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.formatEventTime
 import net.wshmkr.launcher.util.isPermissionPermanentlyDenied
@@ -100,11 +101,8 @@ fun CalendarEventsWidget(
     if (eventList.isEmpty()) return
 
     val colors = MaterialTheme.colorScheme
-    val typography = MaterialTheme.typography
     val eventFont = LocalDimensions.current.fontSmall
-    val eventTextStyle = remember(typography, eventFont) {
-        typography.bodyMedium.copy(fontSize = eventFont)
-    }
+    val eventTextStyle = rememberAmbientBodyStyle(eventFont)
     val ongoingTextStyle = remember(eventTextStyle) {
         eventTextStyle.copy(fontWeight = FontWeight.Bold)
     }

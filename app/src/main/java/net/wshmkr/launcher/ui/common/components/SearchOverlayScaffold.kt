@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.OnOpaqueSurface
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.invertedSearchBarColors
 import net.wshmkr.launcher.ui.theme.invertedSearchInputColors
@@ -150,24 +151,26 @@ fun SearchOverlayScaffold(
                     initialOffsetY = { fullHeight -> -fullHeight }
                 ),
             ) {
-                SearchBar(
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            query = query(),
-                            onQueryChange = onQueryChange,
-                            onSearch = onSearch,
-                            expanded = false,
-                            onExpandedChange = { },
-                            modifier = Modifier.focusRequester(focusRequester),
-                            placeholder = { Text(text = placeholder) },
-                            colors = invertedSearchInputColors(),
-                        )
-                    },
-                    expanded = false,
-                    onExpandedChange = { },
-                    modifier = Modifier.padding(vertical = Spacing.small),
-                    colors = invertedSearchBarColors(),
-                ) { }
+                OnOpaqueSurface {
+                    SearchBar(
+                        inputField = {
+                            SearchBarDefaults.InputField(
+                                query = query(),
+                                onQueryChange = onQueryChange,
+                                onSearch = onSearch,
+                                expanded = false,
+                                onExpandedChange = { },
+                                modifier = Modifier.focusRequester(focusRequester),
+                                placeholder = { Text(text = placeholder) },
+                                colors = invertedSearchInputColors(),
+                            )
+                        },
+                        expanded = false,
+                        onExpandedChange = { },
+                        modifier = Modifier.padding(vertical = Spacing.small),
+                        colors = invertedSearchBarColors(),
+                    ) { }
+                }
             }
             LazyColumn(
                 state = listState,
