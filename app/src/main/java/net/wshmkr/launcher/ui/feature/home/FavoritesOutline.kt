@@ -18,25 +18,30 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import net.wshmkr.launcher.ui.theme.Corners
+import net.wshmkr.launcher.ui.theme.Dimensions
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+
+// The list gutter plus the insets AppListItem applies on top of it.
+internal val Dimensions.favoritesOutlineStart get() = gutterLarge + Spacing.small
+internal val Dimensions.favoritesOutlineEnd get() = gutterLarge * 2
+
+internal fun favoriteRowsBounds(listState: LazyListState): Pair<Int, Int>? {
+    var first: LazyListItemInfo? = null
+    var last: LazyListItemInfo? = null
+    for (row in listState.layoutInfo.visibleItemsInfo) {
+        if (row.contentType != FAVORITE_CONTENT_TYPE) continue
+        if (first == null) first = row
+        last = row
+    }
+    if (first == null || last == null) return null
+    return first.offset to (last.offset + last.size - first.offset)
+}
 
 @Composable
 fun FavoritesOutline(listState: LazyListState) {
     val dimensions = LocalDimensions.current
-    val bounds by remember(listState) {
-        derivedStateOf {
-            var first: LazyListItemInfo? = null
-            var last: LazyListItemInfo? = null
-            for (row in listState.layoutInfo.visibleItemsInfo) {
-                if (row.contentType != FAVORITE_CONTENT_TYPE) continue
-                if (first == null) first = row
-                last = row
-            }
-            if (first == null || last == null) return@derivedStateOf null
-            first.offset to (last.offset + last.size - first.offset)
-        }
-    }
+    val bounds by remember(listState) { derivedStateOf { favoriteRowsBounds(listState) } }
     val (top, height) = bounds ?: return
 
     Box(
@@ -44,8 +49,7 @@ fun FavoritesOutline(listState: LazyListState) {
             .offset { IntOffset(0, top) }
             .fillMaxWidth()
             .height(with(LocalDensity.current) { height.toDp() })
-            // The list gutter plus the insets AppListItem applies on top of it.
-            .padding(start = dimensions.gutterLarge + Spacing.small, end = dimensions.gutterLarge * 2)
+            .padding(start = dimensions.favoritesOutlineStart, end = dimensions.favoritesOutlineEnd)
             .border(1.dp, MaterialTheme.colorScheme.outline, Corners.medium),
     )
 }

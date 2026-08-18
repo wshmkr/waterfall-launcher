@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,9 +13,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,6 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -35,6 +42,7 @@ import net.wshmkr.launcher.ui.feature.home.widgets.CalendarEventsWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.ClockWidget
 import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
+import net.wshmkr.launcher.ui.theme.Dimensions
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
@@ -81,6 +89,12 @@ fun FavoritesView(
         if (viewModel.favoritesReordering) viewModel.endFavoritesReorder()
     }
 
+    DisposableEffect(viewModel) {
+        onDispose {
+            if (viewModel.favoritesReordering) viewModel.endFavoritesReorder()
+        }
+    }
+
     LaunchedEffect(favoritesVisible) {
         if (favoritesVisible) {
             isVisible = true
@@ -124,16 +138,25 @@ fun FavoritesView(
         visible = isVisible,
         enter = fadeIn(animationSpec = tween(durationMillis = 300)),
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        val dimensions = LocalDimensions.current
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (reordering) {
+                        Modifier.endReorderOnPressOutside(listState, dimensions, onEndReorder)
+                    } else {
+                        Modifier
+                    }
+                ),
+        ) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
                     .then(
                         if (reordering) {
-                            Modifier.pointerInput(onEndReorder) {
-                                detectTapGestures(onTap = { onEndReorder() })
-                            }
+                            Modifier
                         } else {
                             Modifier
                                 .verticalSwipeDetection(
@@ -147,7 +170,7 @@ fun FavoritesView(
                                 }
                         }
                     ),
-                contentPadding = PaddingValues(horizontal = LocalDimensions.current.gutterLarge),
+                contentPadding = PaddingValues(horizontal = dimensions.gutterLarge),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 userScrollEnabled = false,
             ) {
@@ -224,4 +247,30 @@ fun FavoritesView(
             onReorderFavorites = onStartReorder,
         )
     }
+}
+
+private fun Modifier.endReorderOnPressOutside(
+    listState: LazyListState,
+    dimensions: Dimensions,
+    onEndReorder: () -> Unit,
+) = pointerInput(listState, dimensions, onEndReorder) {
+    awaitEachGesture {
+        val down = awaitFirstDown(pass = PointerEventPass.Initial)
+        if (!isInsideFavoritesOutline(down.position, listState, dimensions)) {
+            down.consume()
+            onEndReorder()
+        }
+    }
+}
+
+private fun PointerInputScope.isInsideFavoritesOutline(
+    position: Offset,
+    listState: LazyListState,
+    dimensions: Dimensions,
+): Boolean {
+    val (top, height) = favoriteRowsBounds(listState) ?: return false
+    return position.y >= top &&
+        position.y <= top + height &&
+        position.x >= dimensions.favoritesOutlineStart.toPx() &&
+        position.x <= size.width - dimensions.favoritesOutlineEnd.toPx()
 }
