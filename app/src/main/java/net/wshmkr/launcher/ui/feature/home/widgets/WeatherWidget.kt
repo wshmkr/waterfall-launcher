@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +29,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.StateFlow
 import net.wshmkr.launcher.model.WeatherReading
 import net.wshmkr.launcher.model.WeatherUiState
-import net.wshmkr.launcher.ui.common.icons.CloudOffIcon
 import net.wshmkr.launcher.ui.common.icons.HelpIcon
 import net.wshmkr.launcher.ui.common.icons.LocationOnIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
@@ -152,37 +152,36 @@ private fun WeatherReadyRow(
     modifier: Modifier,
     textStyle: androidx.compose.ui.text.TextStyle,
 ) {
-    val colors = MaterialTheme.colorScheme
     val now by rememberCurrentLocalTime()
     val isNight = remember(now, reading.sunriseTime, reading.sunsetTime) {
         WeatherHelper.isNightAt(now, reading.sunriseTime, reading.sunsetTime)
     }
-    val iconRes = remember(isStale, reading.weatherCode, isNight) {
-        if (isStale) null else WeatherHelper.weatherIconRes(reading.weatherCode, isNight)
+    val iconRes = remember(reading.weatherCode, isNight) {
+        WeatherHelper.weatherIconRes(reading.weatherCode, isNight)
     }
     val displayTemperature = if (useFahrenheit) {
         WeatherHelper.celsiusToFahrenheit(reading.temperatureCelsius)
     } else {
         reading.temperatureCelsius
     }
+    val contentColor =
+        if (isStale) MaterialTheme.colorScheme.onSurfaceVariant else LocalContentColor.current
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
     ) {
         Icon(
-            painter = if (iconRes == null) CloudOffIcon() else painterResource(iconRes),
+            painter = painterResource(iconRes),
             contentDescription = "Weather",
+            tint = contentColor,
             modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = "${displayTemperature.toInt()}°${if (useFahrenheit) "F" else "C"}",
+            color = contentColor,
             style = textStyle
         )
-        if (isStale) {
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "stale", style = textStyle.copy(color = colors.onSurfaceVariant))
-        }
     }
 }

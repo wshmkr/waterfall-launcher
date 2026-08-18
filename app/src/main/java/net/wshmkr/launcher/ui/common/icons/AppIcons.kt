@@ -99,9 +99,6 @@ fun WidgetsIcon() = painterResource(id = R.drawable.icon_widgets)
 
 // Weather Icons
 @Composable
-fun CloudOffIcon() = painterResource(id = R.drawable.icon_cloud_off)
-
-@Composable
 fun ClearDayIcon() = painterResource(id = R.drawable.icon_clear_day)
 
 @Composable

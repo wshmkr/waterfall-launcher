@@ -63,11 +63,14 @@ class WeatherRepository @Inject constructor(
             val persisted = weatherCacheDataSource.load() ?: return@launch
             reading = persisted
             val now = System.currentTimeMillis()
-            if (persisted.isDisplayableAt(now)) {
-                _state.value = WeatherUiState.Ready(
+            // Resolving to Error keeps the spinner reachable only on a true first run.
+            _state.value = if (persisted.isDisplayableAt(now)) {
+                WeatherUiState.Ready(
                     persisted,
                     isStale = now - persisted.fetchedAtMillis >= READING_TTL_MS
                 )
+            } else {
+                WeatherUiState.Error
             }
         }
     }
