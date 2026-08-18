@@ -94,6 +94,7 @@ class AppsRepository @Inject constructor(
     private val densityCallbacks = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) = refreshIconsIfDensityChanged()
 
+        @Suppress("OVERRIDE_DEPRECATION")
         override fun onLowMemory() = Unit
     }
 
