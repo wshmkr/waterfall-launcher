@@ -292,14 +292,16 @@ private fun LazyItemScope.FavoriteRow(
             // The drag gesture is invisible to accessibility services, so
             // reordering is mirrored as custom actions on the row.
             modifier = if (draggable) {
-                Modifier.semantics {
-                    customActions = reorderActions(
-                        item = item,
-                        previous = favoriteApps.getOrNull(index - 1),
-                        next = favoriteApps.getOrNull(index + 1),
-                        moveFavorite = onMoveFavorite,
-                    )
-                }
+                Modifier
+                    .draggableHandle()
+                    .semantics {
+                        customActions = reorderActions(
+                            item = item,
+                            previous = favoriteApps.getOrNull(index - 1),
+                            next = favoriteApps.getOrNull(index + 1),
+                            moveFavorite = onMoveFavorite,
+                        )
+                    }
             } else Modifier,
             isActiveUser = isActiveUser,
             onClick = onClick,
@@ -312,7 +314,7 @@ private fun LazyItemScope.FavoriteRow(
             onReorderFavorites = if (!reordering && !item.isSuggested) onStartReorder else null,
             clickEnabled = !reordering,
             dragHandle = if (draggable) {
-                { ReorderHandle(item.label, Modifier.draggableHandle()) }
+                { ReorderHandle(item.label) }
             } else null,
         )
     }
