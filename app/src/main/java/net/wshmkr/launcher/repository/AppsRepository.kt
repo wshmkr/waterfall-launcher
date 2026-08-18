@@ -372,12 +372,10 @@ class AppsRepository @Inject constructor(
         commitFavorites()
     }
 
-    // Applied in memory only, so a drag never waits on a disk write.
     fun previewFavorites(appKeys: List<String>) {
         favorites = appKeys.toPersistentList()
     }
 
-    // DataStore already skips the disk write when the value is unchanged.
     suspend fun commitFavorites() {
         appPreferencesDataSource.setFavorites(favorites)
     }

@@ -191,8 +191,6 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { appsRepository.commitFavorites() }
     }
 
-    // Keys rather than list indices: suggestions and the widgets above them share the same list,
-    // and an unknown key is exactly the case that must not move.
     fun moveFavorite(fromKey: String, toKey: String) {
         val keys = appsRepository.favorites
         val from = keys.indexOf(fromKey)
@@ -272,7 +270,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun buildFavoriteAppsList(): List<AppInfo> {
-        // Uninstalled or temporarily unavailable apps drop out but keep their stored position.
         val apps = appsRepository.favorites.mapNotNullTo(mutableListOf()) { installedAppsByKey[it] }
 
         if (apps.size < HOME_SCREEN_APPS) {

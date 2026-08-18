@@ -33,7 +33,6 @@ class AppPreferencesDataSource @Inject constructor(
     val doNotSuggest = PackageNameSetStore("do_not_suggest")
     val hidden = PackageNameSetStore("hidden")
 
-    // Ordered app keys: membership and home screen position in one value.
     suspend fun getFavorites(): PersistentList<String> {
         val raw = dataStore.data.first()[FAVORITES_KEY]
         if (raw.isNullOrEmpty()) return persistentListOf()

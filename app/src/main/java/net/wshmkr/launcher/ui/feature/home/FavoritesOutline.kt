@@ -21,7 +21,6 @@ import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 
-// Traced over the favorite rows only, so it lines up with them rather than the wider widget area.
 @Composable
 fun FavoritesOutline(listState: LazyListState) {
     val dimensions = LocalDimensions.current

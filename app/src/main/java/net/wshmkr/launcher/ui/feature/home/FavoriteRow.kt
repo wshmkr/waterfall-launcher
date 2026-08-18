@@ -62,8 +62,7 @@ fun LazyItemScope.FavoriteRow(
     ) {
         AppListItem(
             appInfo = item,
-            // The drag gesture is invisible to accessibility services, so
-            // reordering is mirrored as custom actions on the row.
+            // Drag gestures are invisible to accessibility services, so reordering is mirrored as custom actions.
             modifier = if (draggable) {
                 Modifier
                     .draggableHandle()
