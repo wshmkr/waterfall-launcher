@@ -14,6 +14,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -39,7 +40,7 @@ internal fun favoriteRowsBounds(listState: LazyListState): Pair<Int, Int>? {
 }
 
 @Composable
-fun FavoritesOutline(listState: LazyListState) {
+fun FavoritesOutline(listState: LazyListState, alphaProvider: () -> Float) {
     val dimensions = LocalDimensions.current
     val bounds by remember(listState) { derivedStateOf { favoriteRowsBounds(listState) } }
     val (top, height) = bounds ?: return
@@ -49,6 +50,7 @@ fun FavoritesOutline(listState: LazyListState) {
             .offset { IntOffset(0, top) }
             .fillMaxWidth()
             .height(with(LocalDensity.current) { height.toDp() })
+            .graphicsLayer { alpha = alphaProvider() }
             .padding(start = dimensions.favoritesOutlineStart, end = dimensions.favoritesOutlineEnd)
             .border(1.dp, MaterialTheme.colorScheme.outline, Corners.medium),
     )

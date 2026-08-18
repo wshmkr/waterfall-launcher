@@ -1,6 +1,8 @@
 package net.wshmkr.launcher.ui.feature.home
 
 import android.os.UserHandle
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyItemScope
@@ -26,8 +28,7 @@ import sh.calvin.reorderable.ReorderableLazyListState
 internal const val FAVORITE_CONTENT_TYPE = "favorite_app"
 internal const val SUGGESTION_CONTENT_TYPE = "suggested_app"
 
-private val FULL_ALPHA: () -> Float = { 1f }
-private val DIMMED_ALPHA: () -> Float = { 0.4f }
+private const val SUGGESTION_DIM_ALPHA = 0.4f
 
 @Composable
 fun LazyItemScope.FavoriteRow(
@@ -54,6 +55,11 @@ fun LazyItemScope.FavoriteRow(
     }
 
     val draggable = reordering && !item.isSuggested
+    val rowAlpha = animateFloatAsState(
+        targetValue = if (reordering && item.isSuggested) SUGGESTION_DIM_ALPHA else 1f,
+        animationSpec = tween(durationMillis = 300),
+        label = "rowAlpha",
+    )
     ReorderableItem(
         state = reorderState,
         key = item.key,
@@ -80,7 +86,7 @@ fun LazyItemScope.FavoriteRow(
             onToggleFavorite = onToggleFavorite,
             onToggleHidden = onToggleHidden,
             onToggleSuggest = onToggleSuggest,
-            alphaProvider = if (reordering && item.isSuggested) DIMMED_ALPHA else FULL_ALPHA,
+            alphaProvider = rowAlpha::value,
             notifications = notifications,
             onClearNotifications = onClearNotifications,
             onReorderFavorites = if (!reordering && !item.isSuggested) onStartReorder else null,

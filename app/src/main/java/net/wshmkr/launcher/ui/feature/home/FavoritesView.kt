@@ -2,6 +2,7 @@ package net.wshmkr.launcher.ui.feature.home
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -234,8 +235,13 @@ fun FavoritesView(
                 }
             }
 
-            if (reordering) {
-                FavoritesOutline(listState = listState)
+            val outlineAlpha = animateFloatAsState(
+                targetValue = if (reordering) 1f else 0f,
+                animationSpec = tween(durationMillis = 300),
+                label = "outlineAlpha",
+            )
+            if (outlineAlpha.value > 0f) {
+                FavoritesOutline(listState = listState, alphaProvider = outlineAlpha::value)
             }
         }
     }
