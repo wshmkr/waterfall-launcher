@@ -41,19 +41,22 @@ class WeatherCacheDataSource @Inject constructor(
         private val KEY_FETCHED_AT = longPreferencesKey("fetched_at")
     }
 
+    // A record missing any required key (fresh install, wiped cache) loads as null.
     suspend fun load(): WeatherReading? {
         val preferences = dataStore.data
             .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
             .first()
-        return WeatherReading(
-            temperatureCelsius = preferences[KEY_TEMPERATURE_CELSIUS] ?: return null,
-            weatherCode = preferences[KEY_WEATHER_CODE] ?: return null,
-            sunriseTime = preferences[KEY_SUNRISE],
-            sunsetTime = preferences[KEY_SUNSET],
-            latitude = preferences[KEY_LATITUDE] ?: return null,
-            longitude = preferences[KEY_LONGITUDE] ?: return null,
-            fetchedAtMillis = preferences[KEY_FETCHED_AT] ?: return null,
-        )
+        return runCatching {
+            WeatherReading(
+                temperatureCelsius = requireNotNull(preferences[KEY_TEMPERATURE_CELSIUS]),
+                weatherCode = requireNotNull(preferences[KEY_WEATHER_CODE]),
+                sunriseTime = preferences[KEY_SUNRISE],
+                sunsetTime = preferences[KEY_SUNSET],
+                latitude = requireNotNull(preferences[KEY_LATITUDE]),
+                longitude = requireNotNull(preferences[KEY_LONGITUDE]),
+                fetchedAtMillis = requireNotNull(preferences[KEY_FETCHED_AT]),
+            )
+        }.getOrNull()
     }
 
     // A failed write must not kill the caller's refresh loop; the reading is still served from memory.
