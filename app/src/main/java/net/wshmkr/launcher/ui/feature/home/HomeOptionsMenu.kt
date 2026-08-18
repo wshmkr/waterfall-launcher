@@ -9,12 +9,15 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.components.MenuOption
+import net.wshmkr.launcher.ui.common.components.ReorderFavoritesMenuOption
 import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
 import net.wshmkr.launcher.ui.common.icons.CalendarTodayIcon
 import net.wshmkr.launcher.ui.common.icons.MusicVideoIcon
@@ -27,16 +30,27 @@ import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.sheetDivider
 import net.wshmkr.launcher.viewmodel.SettingsViewModel
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeOptionsMenu(
     navController: NavController,
     onDismiss: () -> Unit,
+    onReorderFavorites: (() -> Unit)? = null,
     settingsViewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
     val settings = settingsViewModel.homeWidgetSettings
+
+    fun slideOutThenDismiss() {
+        scope.launch {
+            try {
+                sheetState.hide()
+            } finally {
+                onDismiss()
+            }
+        }
+    }
 
     val onToggleClock = remember(settingsViewModel) { settingsViewModel::setShowClock }
     val onToggleCalendar = remember(settingsViewModel) { settingsViewModel::setShowCalendar }
@@ -44,14 +58,14 @@ fun HomeOptionsMenu(
     val onToggleMedia = remember(settingsViewModel) { settingsViewModel::setShowMedia }
     val onOpenWidgets = remember(navController, onDismiss) {
         {
-            onDismiss()
             navController.navigate(Screen.WidgetList.route)
+            slideOutThenDismiss()
         }
     }
     val onOpenSettings = remember(navController, onDismiss) {
         {
-            onDismiss()
             navController.navigate(Screen.Settings.route)
+            slideOutThenDismiss()
         }
     }
 
@@ -100,6 +114,8 @@ fun HomeOptionsMenu(
                     text = "Manage widgets",
                     onClick = onOpenWidgets,
                 )
+
+                ReorderFavoritesMenuOption(onReorderFavorites, ::slideOutThenDismiss)
 
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),

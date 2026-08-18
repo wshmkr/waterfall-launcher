@@ -47,10 +47,14 @@ fun AppListItem(
     onToggleFavorite: (AppInfo) -> Unit,
     onToggleHidden: (AppInfo) -> Unit,
     onToggleSuggest: (AppInfo) -> Unit,
+    modifier: Modifier = Modifier,
     onLongClick: ((AppInfo) -> Unit)? = null,
     alphaProvider: () -> Float = { 1f },
     notifications: ImmutableList<NotificationInfo> = persistentListOf(),
     onClearNotifications: (List<NotificationInfo>) -> Boolean = { false },
+    onReorderFavorites: (() -> Unit)? = null,
+    clickEnabled: Boolean = true,
+    dragHandle: (@Composable () -> Unit)? = null,
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showNotificationPanel by remember { mutableStateOf(false) }
@@ -89,13 +93,13 @@ fun AppListItem(
     }
 
     NotificationSwipeBox(
-        swipeTarget = visibleNotifications.firstOrNull(),
+        swipeTarget = if (clickEnabled) visibleNotifications.firstOrNull() else null,
         onExpand = { showNotificationPanel = true },
         // Only hidden once the cancel is away; a dropped one leaves it on screen, where it belongs.
         onDismissNotification = {
             if (onClearNotifications(listOf(it))) pendingDismissals = pendingDismissals + it
         },
-        modifier = Modifier
+        modifier = modifier
             .padding(start = Spacing.small, end = dimensions.gutterLarge)
             .fillMaxWidth()
             .graphicsLayer { this.alpha = alphaProvider() },
@@ -104,6 +108,7 @@ fun AppListItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
+                    enabled = clickEnabled,
                     onClick = { onClick(appInfo) },
                     onLongClick = openOptions,
                 )
@@ -128,12 +133,14 @@ fun AppListItem(
                     trailing = {
                         NotificationChevron(
                             size = dimensions.iconLarge,
+                            enabled = clickEnabled,
                             onOpen = { showNotificationPanel = true },
                             onLongClick = openOptions,
                         )
                     },
                 )
             }
+            dragHandle?.invoke()
         }
     }
 
@@ -144,6 +151,7 @@ fun AppListItem(
             onToggleFavorite = onToggleFavorite,
             onToggleHidden = onToggleHidden,
             onToggleSuggest = onToggleSuggest,
+            onReorderFavorites = onReorderFavorites,
         )
     }
 
@@ -159,7 +167,7 @@ fun AppListItem(
 }
 
 @Composable
-private fun NotificationChevron(size: Dp, onOpen: () -> Unit, onLongClick: () -> Unit) {
+private fun NotificationChevron(size: Dp, enabled: Boolean, onOpen: () -> Unit, onLongClick: () -> Unit) {
     Icon(
         painter = ChevronRightIcon(),
         contentDescription = "Show notifications",
@@ -170,6 +178,7 @@ private fun NotificationChevron(size: Dp, onOpen: () -> Unit, onLongClick: () ->
             .combinedClickable(
                 interactionSource = null,
                 indication = null,
+                enabled = enabled,
                 role = Role.Button,
                 onClick = onOpen,
                 onLongClick = onLongClick,

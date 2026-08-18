@@ -15,14 +15,20 @@ import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.PersistentList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +70,9 @@ class AppsRepository @Inject constructor(
     val allApps = mutableStateListOf<AppInfo>()
     val mostUsedApps = mutableStateListOf<String>()
 
+    var favorites: PersistentList<String> by mutableStateOf(persistentListOf())
+        private set
+
     private val usageEntries = mutableMapOf<String, UsageEntry>()
     private var usageLoaded = false
     private var usageDirty = false
@@ -85,6 +94,7 @@ class AppsRepository @Inject constructor(
     private val densityCallbacks = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) = refreshIconsIfDensityChanged()
 
+        @Suppress("OVERRIDE_DEPRECATION")
         override fun onLowMemory() = Unit
     }
 
@@ -160,11 +170,13 @@ class AppsRepository @Inject constructor(
         val density = application.resources.configuration.densityDpi
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() } ?: listOf(Process.myUserHandle())
 
+        val storedFavorites = appPreferencesDataSource.getFavorites()
+        val favoriteKeys = storedFavorites.toHashSet()
+
         val apps = withContext(Dispatchers.IO) {
             val seen = mutableSetOf<Pair<String, UserHandle>>()
             buildList {
                 for (userHandle in userHandles) {
-                    val favorites = appPreferencesDataSource.favorites.get(userHandle)
                     val hidden = appPreferencesDataSource.hidden.get(userHandle)
                     val doNotSuggest = appPreferencesDataSource.doNotSuggest.get(userHandle)
 
@@ -173,7 +185,7 @@ class AppsRepository @Inject constructor(
                     for (activity in activities) {
                         val appPackageName = activity.componentName.packageName
                         if (seen.add(appPackageName to userHandle) && appPackageName != application.packageName) {
-                            add(buildAppInfo(activity, userHandle, favorites, hidden, doNotSuggest))
+                            add(buildAppInfo(activity, userHandle, favoriteKeys, hidden, doNotSuggest))
                         }
                     }
                 }
@@ -181,6 +193,7 @@ class AppsRepository @Inject constructor(
         }
 
         Snapshot.withMutableSnapshot {
+            favorites = storedFavorites
             allApps.clear()
             allApps.addAll(apps)
         }
@@ -213,7 +226,7 @@ class AppsRepository @Inject constructor(
     private fun buildAppInfo(
         activity: LauncherActivityInfo,
         userHandle: UserHandle,
-        favorites: Set<String>,
+        favoriteKeys: Collection<String>,
         hidden: Set<String>,
         doNotSuggest: Set<String>,
     ): AppInfo {
@@ -224,34 +237,15 @@ class AppsRepository @Inject constructor(
         return AppInfo(
             label = label,
             packageName = appPackageName,
-            icon = toBitmapPainter(activity.getBadgedIcon(0)),
+            icon = toBitmapPainter(activity.getBadgedIcon(0), iconSizePx),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
-            isFavorite = favorites.contains(appPackageName),
+            isFavorite = keyFor(appPackageName, userHandle) in favoriteKeys,
             isHidden = hidden.contains(appPackageName),
             doNotSuggest = doNotSuggest.contains(appPackageName),
             searchTokens = buildSearchTokens(label),
         )
     }
-
-    private fun toBitmapPainter(drawable: Drawable): BitmapPainter {
-        val maxSizePx = iconSizePx
-        val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxSizePx
-        val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxSizePx
-        val scale = minOf(1f, maxSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
-
-        val bitmap = drawable.toBitmap(
-            width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
-            height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
-        )
-        return BitmapPainter(bitmap.asImageBitmap())
-    }
-
-    private fun buildSearchTokens(label: String) =
-        label.lowercase()
-            .split(' ')
-            .filter { it.isNotEmpty() }
-            .toImmutableList()
 
     private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
         if (packageName == application.packageName) return
@@ -266,7 +260,7 @@ class AppsRepository @Inject constructor(
             buildAppInfo(
                 activity = activity,
                 userHandle = userHandle,
-                favorites = appPreferencesDataSource.favorites.get(userHandle),
+                favoriteKeys = favorites,
                 hidden = appPreferencesDataSource.hidden.get(userHandle),
                 doNotSuggest = appPreferencesDataSource.doNotSuggest.get(userHandle),
             )
@@ -328,7 +322,7 @@ class AppsRepository @Inject constructor(
                     launcherApps.getActivityList(app.packageName, app.userHandle)
                         ?.firstOrNull()
                         ?.getBadgedIcon(0)
-                        ?.let { app.key to toBitmapPainter(it) }
+                        ?.let { app.key to toBitmapPainter(it, iconSizePx) }
                 } catch (_: Exception) {
                     null
                 }
@@ -364,15 +358,32 @@ class AppsRepository @Inject constructor(
         }
     }
 
-    private fun frecencyScore(entry: UsageEntry, now: Long): Double {
-        val ageDays = (now - entry.lastUsed).coerceAtLeast(0L) / MILLIS_PER_DAY.toDouble()
-        return entry.count * exp(-DECAY_LAMBDA_PER_DAY * ageDays)
+    suspend fun toggleFavorite(packageName: String, userHandle: UserHandle) {
+        val index = indexOfApp(packageName, userHandle)
+        if (index == -1) return
+
+        val app = allApps[index]
+        val pinned = !app.isFavorite
+
+        Snapshot.withMutableSnapshot {
+            favorites = if (pinned) favorites.add(app.key) else favorites.remove(app.key)
+            allApps[index] = app.copy(isFavorite = pinned)
+        }
+        commitFavorites()
     }
 
-    suspend fun toggleFavorite(packageName: String, userHandle: UserHandle) {
-        togglePackageFlag(packageName, userHandle, appPreferencesDataSource.favorites,
-            isSet = { it.isFavorite },
-            withFlag = { app, value -> app.copy(isFavorite = value) })
+    fun previewFavorites(appKeys: List<String>) {
+        favorites = appKeys.toPersistentList()
+    }
+
+    suspend fun commitFavorites() {
+        try {
+            appPreferencesDataSource.setFavorites(favorites)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to persist favorites", e)
+        }
     }
 
     suspend fun toggleHidden(packageName: String, userHandle: UserHandle) {
@@ -387,6 +398,9 @@ class AppsRepository @Inject constructor(
             withFlag = { app, value -> app.copy(doNotSuggest = value, isSuggested = app.isSuggested && !value) })
     }
 
+    private fun indexOfApp(packageName: String, userHandle: UserHandle) =
+        allApps.indexOfFirst { it.packageName == packageName && it.userHandle == userHandle }
+
     private suspend fun togglePackageFlag(
         packageName: String,
         userHandle: UserHandle,
@@ -394,15 +408,21 @@ class AppsRepository @Inject constructor(
         isSet: (AppInfo) -> Boolean,
         withFlag: (AppInfo, Boolean) -> AppInfo,
     ) {
-        val index = allApps.indexOfFirst { it.packageName == packageName && it.userHandle == userHandle }
+        val index = indexOfApp(packageName, userHandle)
         if (index == -1) return
 
         val app = allApps[index]
         val enable = !isSet(app)
-        if (enable) {
-            store.add(packageName, userHandle)
-        } else {
-            store.remove(packageName, userHandle)
+        try {
+            if (enable) {
+                store.add(packageName, userHandle)
+            } else {
+                store.remove(packageName, userHandle)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to persist package flag", e)
         }
         allApps[index] = withFlag(app, enable)
     }
@@ -410,9 +430,33 @@ class AppsRepository @Inject constructor(
     companion object {
         private const val TAG = "AppsRepository"
         private const val SESSION_DEDUP_WINDOW_MS = 60_000L
-        private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
-        private const val DECAY_LAMBDA_PER_DAY = 0.05
         private const val FRECENCY_MIN_SCORE = 0.5
         private const val MAX_MOST_USED = 20
     }
+}
+
+private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
+private const val DECAY_LAMBDA_PER_DAY = 0.05
+
+private fun frecencyScore(entry: UsageEntry, now: Long): Double {
+    val ageDays = (now - entry.lastUsed).coerceAtLeast(0L) / MILLIS_PER_DAY.toDouble()
+    return entry.count * exp(-DECAY_LAMBDA_PER_DAY * ageDays)
+}
+
+private fun buildSearchTokens(label: String) =
+    label.lowercase()
+        .split(' ')
+        .filter { it.isNotEmpty() }
+        .toImmutableList()
+
+private fun toBitmapPainter(drawable: Drawable, maxSizePx: Int): BitmapPainter {
+    val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxSizePx
+    val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxSizePx
+    val scale = minOf(1f, maxSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
+
+    val bitmap = drawable.toBitmap(
+        width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
+        height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
+    )
+    return BitmapPainter(bitmap.asImageBitmap())
 }

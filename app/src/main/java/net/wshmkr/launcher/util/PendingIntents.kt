@@ -17,11 +17,16 @@ fun sendPendingIntent(
 ): Boolean {
     if (pendingIntent == null) return false
     return try {
+        // ALLOW_IF_VISIBLE inlines to a value pre-36 platforms don't recognize.
+        val startMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE
+        } else {
+            @Suppress("DEPRECATION")
+            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+        }
         val options = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ActivityOptions.makeBasic()
-                .setPendingIntentBackgroundActivityStartMode(
-                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                )
+                .setPendingIntentBackgroundActivityStartMode(startMode)
                 .toBundle()
         } else {
             null

@@ -7,6 +7,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +32,7 @@ class SearchViewModel @Inject constructor(
 
     private val allAppsFlow = snapshotFlow { appsRepository.allApps.toList() }
 
+    @OptIn(FlowPreview::class)
     val searchListItems: StateFlow<ImmutableList<AppListItem.AppItem>> =
         combine(_searchQuery.debounce(80), allAppsFlow) { query, apps ->
             filterApps(query, apps)

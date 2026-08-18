@@ -11,6 +11,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -76,6 +77,11 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    // Own derived state, so a favorites write (every drag move) doesn't rebuild it.
+    private val installedAppsByKey by derivedStateOf {
+        appsRepository.allApps.associateBy { it.key }
+    }
+
     val favoriteApps by derivedStateOf { buildFavoriteAppsList() }
 
     val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
@@ -97,6 +103,9 @@ class HomeViewModel @Inject constructor(
         private set
 
     var showingFavorites by mutableStateOf(true)
+        private set
+
+    var favoritesReordering by mutableStateOf(false)
         private set
 
     var showSearchOverlay by mutableStateOf(false)
@@ -173,6 +182,24 @@ class HomeViewModel @Inject constructor(
         activeLetter = null
     }
 
+    fun startFavoritesReorder() {
+        favoritesReordering = true
+    }
+
+    fun endFavoritesReorder() {
+        favoritesReordering = false
+        viewModelScope.launch { appsRepository.commitFavorites() }
+    }
+
+    fun moveFavorite(fromKey: String, toKey: String) {
+        val keys = appsRepository.favorites
+        val from = keys.indexOf(fromKey)
+        val to = keys.indexOf(toKey)
+        if (from == -1 || to == -1 || from == to) return
+
+        appsRepository.previewFavorites(keys.mutate { it.add(to, it.removeAt(from)) })
+    }
+
     fun navigateToFavorites() {
         activeLetter = null
         showingFavorites = true
@@ -243,14 +270,12 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun buildFavoriteAppsList(): List<AppInfo> {
-        val apps = mutableListOf<AppInfo>()
-
-        apps.addAll(appsRepository.allApps.filter { it.isFavorite })
+        val apps = appsRepository.favorites.mapNotNullTo(mutableListOf()) { installedAppsByKey[it] }
 
         if (apps.size < HOME_SCREEN_APPS) {
             val remainingSlots = HOME_SCREEN_APPS - apps.size
             val mostUsedApps = appsRepository.mostUsedApps.mapNotNull { usageKey ->
-                appsRepository.allApps.find { it.key == usageKey }
+                installedAppsByKey[usageKey]
             }
             val suggestions =
                 mostUsedApps
