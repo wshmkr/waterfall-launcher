@@ -377,7 +377,13 @@ class AppsRepository @Inject constructor(
     }
 
     suspend fun commitFavorites() {
-        appPreferencesDataSource.setFavorites(favorites)
+        try {
+            appPreferencesDataSource.setFavorites(favorites)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to persist favorites", e)
+        }
     }
 
     suspend fun toggleHidden(packageName: String, userHandle: UserHandle) {
@@ -407,10 +413,16 @@ class AppsRepository @Inject constructor(
 
         val app = allApps[index]
         val enable = !isSet(app)
-        if (enable) {
-            store.add(packageName, userHandle)
-        } else {
-            store.remove(packageName, userHandle)
+        try {
+            if (enable) {
+                store.add(packageName, userHandle)
+            } else {
+                store.remove(packageName, userHandle)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to persist package flag", e)
         }
         allApps[index] = withFlag(app, enable)
     }
