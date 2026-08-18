@@ -39,13 +39,8 @@ class WeatherRepository @Inject constructor(
     private val weatherCacheDataSource: WeatherCacheDataSource,
 ) {
     companion object {
-        // Fetch cadence: a reading younger than this is served without any location or network request.
         private const val READING_TTL_MS = 30L * ONE_MINUTE
-
-        // Display ceiling: past this age a reading is no longer shown, even flagged stale.
         private const val MAX_READING_AGE_MS = 6L * ONE_HOUR
-
-        // Weather is the same across GPS jitter; a reading this close counts as the same place.
         private const val CACHE_LOCATION_RADIUS_METERS = 5_000f
 
         private const val MIN_LOOP_DELAY_MS = 1L * ONE_MINUTE
@@ -58,13 +53,11 @@ class WeatherRepository @Inject constructor(
     private val _state = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val state: StateFlow<WeatherUiState> = _state.asStateFlow()
 
-    // Conflated so a request made mid-fetch or while the loop is idle is kept until it can be served.
     private val forceRefreshRequests = Channel<Unit>(capacity = Channel.CONFLATED)
 
     private var reading: WeatherReading? = null
     private var nextRefreshDueAtMillis = 0L
 
-    // Lazy so the cache file is only read once something actually collects the state.
     private val initialLoad: Job by lazy {
         scope.launch {
             val persisted = weatherCacheDataSource.load() ?: return@launch
@@ -80,8 +73,6 @@ class WeatherRepository @Inject constructor(
     }
 
     init {
-        // The widget collects the state only while it is shown and the launcher is foregrounded,
-        // so keying the fetch loop on subscribers keeps all refresh work inside that window.
         scope.launch {
             _state.subscriptionCount
                 .map { it > 0 }

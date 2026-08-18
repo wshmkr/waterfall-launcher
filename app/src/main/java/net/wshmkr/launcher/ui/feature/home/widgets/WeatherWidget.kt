@@ -46,8 +46,7 @@ fun WeatherWidget(
 ) {
     val context = LocalContext.current
 
-    // Lifecycle-aware collection: the repository keys its fetch loop on subscribers, so this
-    // pauses all refresh work while the widget is hidden or the launcher is backgrounded.
+    // Must stay lifecycle-aware: this subscription is what gates the repository's fetch loop.
     val weatherState by state.collectAsStateWithLifecycle()
 
     // Raw permission state is remembered across static/dynamic toggles so flipping the source
@@ -59,7 +58,6 @@ fun WeatherWidget(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
             rawHasPermission = granted
-            // Grants via system Settings are covered by the resume-triggered refresh instead.
             if (granted) onRefresh()
         }
     )

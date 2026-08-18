@@ -2,7 +2,6 @@ package net.wshmkr.launcher.model
 
 import androidx.compose.runtime.Immutable
 
-// Temperature is stored in Celsius only; convert at display time.
 @Immutable
 data class WeatherReading(
     val temperatureCelsius: Double,
