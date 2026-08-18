@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.common.icons.CheckIcon
 import net.wshmkr.launcher.ui.common.icons.CloseIcon
@@ -36,8 +39,20 @@ fun AppOptionsMenu(
 ) {
     val context = LocalContext.current
     val dimensions = LocalDimensions.current
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
 
-    AppSheet(appInfo = appInfo, onDismiss = onDismiss) {
+    fun slideOutThenDismiss() {
+        scope.launch {
+            try {
+                sheetState.hide()
+            } finally {
+                onDismiss()
+            }
+        }
+    }
+
+    AppSheet(appInfo = appInfo, onDismiss = onDismiss, sheetState = sheetState) {
         if (appInfo.isSuggested) {
             MenuOption(
                 icon = CloseIcon(),
@@ -45,7 +60,7 @@ fun AppOptionsMenu(
                 subtext = "Don't show below favorites",
                 onClick = {
                     onToggleSuggest(appInfo)
-                    onDismiss()
+                    slideOutThenDismiss()
                 }
             )
         }
@@ -56,7 +71,7 @@ fun AppOptionsMenu(
                 subtext = "Suggestions appear below favorites",
                 onClick = {
                     onToggleSuggest(appInfo)
-                    onDismiss()
+                    slideOutThenDismiss()
                 }
             )
         }
@@ -67,17 +82,17 @@ fun AppOptionsMenu(
                 text = "Remove from favorites",
                 onClick = {
                     onToggleFavorite(appInfo)
-                    onDismiss()
+                    slideOutThenDismiss()
                 }
             )
-            ReorderFavoritesMenuOption(onReorderFavorites, onDismiss)
+            ReorderFavoritesMenuOption(onReorderFavorites, ::slideOutThenDismiss)
         } else {
             MenuOption(
                 icon = StarFilledIcon(),
                 text = "Favorite",
                 onClick = {
                     onToggleFavorite(appInfo)
-                    onDismiss()
+                    slideOutThenDismiss()
                 }
             )
         }
@@ -91,7 +106,7 @@ fun AppOptionsMenu(
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
                 context.startActivity(intent)
-                onDismiss()
+                slideOutThenDismiss()
             }
         )
 
@@ -101,7 +116,7 @@ fun AppOptionsMenu(
                 text = "Show in app list",
                 onClick = {
                     onToggleHidden(appInfo)
-                    onDismiss()
+                    slideOutThenDismiss()
                 }
             )
         } else {
@@ -110,7 +125,7 @@ fun AppOptionsMenu(
                 text = "Hide from app list",
                 onClick = {
                     onToggleHidden(appInfo)
-                    onDismiss()
+                    slideOutThenDismiss()
                 }
             )
         }
@@ -132,7 +147,7 @@ fun AppOptionsMenu(
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     context.startActivity(intent)
-                    onDismiss()
+                    slideOutThenDismiss()
                 }
             )
         }
