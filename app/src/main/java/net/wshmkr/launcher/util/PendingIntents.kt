@@ -17,9 +17,9 @@ fun sendPendingIntent(
 ): Boolean {
     if (pendingIntent == null) return false
     return try {
-        // ALLOW_ALWAYS inlines to a value pre-36 platforms don't recognize.
+        // ALLOW_IF_VISIBLE inlines to a value pre-36 platforms don't recognize.
         val startMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
+            ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE
         } else {
             @Suppress("DEPRECATION")
             ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
