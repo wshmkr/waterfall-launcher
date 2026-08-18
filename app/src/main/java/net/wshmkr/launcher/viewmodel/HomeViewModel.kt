@@ -32,11 +32,13 @@ import net.wshmkr.launcher.model.AppListItem
 import net.wshmkr.launcher.model.HomeWidgetSettings
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.model.TodayEvents
+import net.wshmkr.launcher.model.WeatherUiState
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
 import net.wshmkr.launcher.repository.CalendarRepository
 import net.wshmkr.launcher.repository.NotificationMap
 import net.wshmkr.launcher.repository.NotificationRepository
+import net.wshmkr.launcher.repository.WeatherRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import java.util.concurrent.ConcurrentHashMap
@@ -49,6 +51,7 @@ class HomeViewModel @Inject constructor(
     appsRepository: AppsRepository,
     private val notificationRepository: NotificationRepository,
     private val calendarRepository: CalendarRepository,
+    private val weatherRepository: WeatherRepository,
     private val userSettingsDataSource: UserSettingsDataSource
 ) : LauncherViewModel(appsRepository) {
 
@@ -97,6 +100,12 @@ class HomeViewModel @Inject constructor(
 
     fun refreshCalendarEvents() {
         calendarRepository.requestRefresh()
+    }
+
+    val weatherState: StateFlow<WeatherUiState> = weatherRepository.state
+
+    fun requestWeatherRefresh() {
+        weatherRepository.requestRefresh()
     }
 
     var activeLetter by mutableStateOf<String?>(null)

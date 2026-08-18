@@ -55,6 +55,14 @@ class UserSettingsDataSource @Inject constructor(
     val weatherLat: Flow<Double?> = optionalField(KEY_WEATHER_LOCATION_LAT)
     val weatherLon: Flow<Double?> = optionalField(KEY_WEATHER_LOCATION_LON)
 
+    val weatherLocation: Flow<Pair<Double, Double>?> = dataStore.data
+        .map { preferences ->
+            val latitude = preferences[KEY_WEATHER_LOCATION_LAT] ?: return@map null
+            val longitude = preferences[KEY_WEATHER_LOCATION_LON] ?: return@map null
+            latitude to longitude
+        }
+        .distinctUntilChanged()
+
     val homeWidgetSettings: Flow<HomeWidgetSettings> = dataStore.data
         .map { preferences ->
             HomeWidgetSettings(

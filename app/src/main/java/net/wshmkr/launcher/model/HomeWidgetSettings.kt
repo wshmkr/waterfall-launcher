@@ -14,4 +14,7 @@ data class HomeWidgetSettings(
     val weatherLocationName: String? = null,
     val weatherLocationLatitude: Double? = null,
     val weatherLocationLongitude: Double? = null,
-)
+) {
+    val hasWeatherLocation: Boolean
+        get() = weatherLocationLatitude != null && weatherLocationLongitude != null
+}

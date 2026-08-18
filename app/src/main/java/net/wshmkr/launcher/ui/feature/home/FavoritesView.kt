@@ -75,6 +75,7 @@ fun FavoritesView(
     val widgetSettings = viewModel.homeWidgetSettings
     val todayEvents by viewModel.todayEvents.collectAsState()
     val onCalendarPermissionGranted = remember(viewModel) { viewModel::refreshCalendarEvents }
+    val onWeatherRefresh = remember(viewModel) { viewModel::requestWeatherRefresh }
 
     val listState = rememberLazyListState()
     val reorderState = rememberReorderableLazyListState(listState) { from, to ->
@@ -184,8 +185,9 @@ fun FavoritesView(
                         showWeather = widgetSettings.showWeather,
                         use24Hour = widgetSettings.use24Hour,
                         useFahrenheit = widgetSettings.useFahrenheit,
-                        weatherLocationLatitude = widgetSettings.weatherLocationLatitude,
-                        weatherLocationLongitude = widgetSettings.weatherLocationLongitude,
+                        weatherState = viewModel.weatherState,
+                        hasStaticWeatherLocation = widgetSettings.hasWeatherLocation,
+                        onWeatherRefresh = onWeatherRefresh,
                     )
                 }
 
