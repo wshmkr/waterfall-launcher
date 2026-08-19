@@ -14,6 +14,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -156,9 +157,7 @@ private fun WeatherReadyRow(
     val isNight = remember(now, reading.sunriseTime, reading.sunsetTime) {
         WeatherHelper.isNightAt(now, reading.sunriseTime, reading.sunsetTime)
     }
-    val iconRes = remember(reading.weatherCode, isNight) {
-        WeatherHelper.weatherIconRes(reading.weatherCode, isNight)
-    }
+    val iconRes = WeatherHelper.weatherIconRes(reading.weatherCode, isNight)
     val displayTemperature = if (useFahrenheit) {
         WeatherHelper.celsiusToFahrenheit(reading.temperatureCelsius)
     } else {
@@ -167,21 +166,21 @@ private fun WeatherReadyRow(
     val contentColor =
         if (isStale) MaterialTheme.colorScheme.onSurfaceVariant else LocalContentColor.current
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-    ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = "Weather",
-            tint = contentColor,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = "${displayTemperature.toInt()}°${if (useFahrenheit) "F" else "C"}",
-            color = contentColor,
-            style = textStyle
-        )
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = modifier
+        ) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = "Weather",
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "${displayTemperature.toInt()}°${if (useFahrenheit) "F" else "C"}",
+                style = textStyle
+            )
+        }
     }
 }
