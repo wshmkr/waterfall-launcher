@@ -62,6 +62,11 @@ class WidgetDataSource @Inject constructor(
         ids.filter { it != widgetId }
     }
 
+    // Merges with the stored list so widgets added or removed mid-drag survive the reorder.
+    suspend fun setWidgetOrder(orderedIds: List<Int>) = updateWidgets { current ->
+        orderedIds.filter { it in current } + current.filterNot { it in orderedIds }
+    }
+
     suspend fun setLastPageWidgetId(widgetId: Int) {
         dataStore.edit { it[KEY_STACK_LAST_WIDGET] = widgetId }
     }

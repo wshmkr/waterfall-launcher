@@ -35,6 +35,8 @@ fun WidgetsScreen(
     }
     val onShowAdd = remember { { showAddWidget = true } }
     val onDeleteWidget = remember(viewModel) { { id: Int -> viewModel.removeWidget(id) } }
+    val onMoveWidget = remember(viewModel) { viewModel::moveWidget }
+    val onCommitOrder = remember(viewModel) { viewModel::commitWidgetOrder }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -53,6 +55,8 @@ fun WidgetsScreen(
                 managedWidgets = managedWidgets,
                 onAddWidget = onShowAdd,
                 onDeleteWidget = onDeleteWidget,
+                onMoveWidget = onMoveWidget,
+                onCommitOrder = onCommitOrder,
             )
         }
     }

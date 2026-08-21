@@ -49,6 +49,19 @@ class WidgetRepository @Inject constructor(
         widgetDataSource.removeWidget(widgetId)
     }
 
+    fun previewWidgetOrder(ids: List<Int>) {
+        _widgetIds.value = ids
+    }
+
+    suspend fun commitWidgetOrder() {
+        val ids = _widgetIds.value
+        withContext(Dispatchers.IO) {
+            if (widgetDataSource.getWidgetIds() != ids) {
+                widgetDataSource.setWidgetOrder(ids)
+            }
+        }
+    }
+
     fun allocateWidgetId(): Int = appWidgetHost.allocateAppWidgetId()
 
     fun bindAppWidgetIdIfAllowed(appWidgetId: Int, provider: ComponentName): Boolean =

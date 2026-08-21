@@ -15,8 +15,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -131,6 +133,20 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
+    fun moveWidget(fromWidgetId: Int, toWidgetId: Int) {
+        val ids = widgetIds
+        val from = ids.indexOf(fromWidgetId)
+        val to = ids.indexOf(toWidgetId)
+        if (from < 0 || to < 0 || from == to) return
+        widgetRepository.previewWidgetOrder(ids.toPersistentList().mutate { it.add(to, it.removeAt(from)) })
+    }
+
+    fun commitWidgetOrder() {
+        viewModelScope.launch {
+            widgetRepository.commitWidgetOrder()
+        }
+    }
+
     fun createWidgetView(context: Context, widgetId: Int): AppWidgetHostView? {
         return try {
             val info = widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId) ?: return null
@@ -150,29 +166,37 @@ class WidgetViewModel @Inject constructor(
     }
 
     private suspend fun refreshManagedWidgets(ids: List<Int>) {
+        // Reuse built entries so per-drag reorder emissions skip the IO of rebuilding labels and icons.
+        val existing = managedWidgets.associateBy { it.widgetId }
+        managedWidgets = if (ids.all { it in existing }) {
+            ids.mapNotNull { existing[it] }.toImmutableList()
+        } else {
+            withContext(Dispatchers.IO) {
+                ids.mapNotNull { widgetId ->
+                    existing[widgetId] ?: buildManagedWidget(widgetId)
+                }.toImmutableList()
+            }
+        }
+    }
+
+    private fun buildManagedWidget(widgetId: Int): ManagedWidget? {
         val manager = widgetRepository.appWidgetManager
         val pm = widgetRepository.packageManager
-
-        val items = withContext(Dispatchers.IO) {
-            ids.mapNotNull { widgetId ->
-                val info = runCatching { manager.getAppWidgetInfo(widgetId) }
-                    .getOrNull() ?: return@mapNotNull null
-                val appInfo = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
-                    .getOrNull()
-                val appName = appInfo?.loadLabel(pm)?.toString() ?: info.provider.packageName
-                val widgetName = runCatching { info.loadLabel(pm)?.toString() }
-                    .getOrNull() ?: info.provider.className
-                val icon = appInfo?.loadIcon(pm)
-                ManagedWidget(
-                    widgetId = widgetId,
-                    widgetName = widgetName,
-                    appName = appName,
-                    appIcon = icon
-                )
-            }.toImmutableList()
-        }
-
-        managedWidgets = items
+        val info = runCatching { manager.getAppWidgetInfo(widgetId) }
+            .getOrNull() ?: return null
+        val appInfo = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
+            .getOrNull()
+        val appName = appInfo?.loadLabel(pm)?.toString() ?: info.provider.packageName
+        val widgetName = runCatching { info.loadLabel(pm)?.toString() }
+            .getOrNull() ?: info.provider.className
+        val icon = appInfo?.loadIcon(pm)
+        return ManagedWidget(
+            widgetId = widgetId,
+            widgetName = widgetName,
+            appName = appName,
+            appIcon = icon,
+            providerInfo = info
+        )
     }
 
     private fun buildWidgetAppListItems(providers: List<WidgetProviderAppInfo>): ImmutableList<WidgetAppListItem> {
@@ -249,5 +273,6 @@ data class ManagedWidget(
     val widgetId: Int,
     val widgetName: String,
     val appName: String,
-    val appIcon: Drawable?
+    val appIcon: Drawable?,
+    val providerInfo: AppWidgetProviderInfo
 )
