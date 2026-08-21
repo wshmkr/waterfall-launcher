@@ -62,13 +62,9 @@ class WeatherRepository @Inject constructor(
         scope.launch {
             val persisted = weatherCacheDataSource.load() ?: return@launch
             reading = persisted
-            val now = System.currentTimeMillis()
-            if (persisted.isDisplayableAt(now)) {
-                _state.value = WeatherUiState.Ready(
-                    persisted,
-                    isStale = now - persisted.fetchedAtMillis >= READING_TTL_MS
-                )
-            }
+            if (!persisted.matchesTarget(userSettingsDataSource.weatherLocation.first())) return@launch
+            // Resolving even an over-ceiling reading keeps the spinner for true first runs only.
+            _state.value = uiStateFor(persisted, System.currentTimeMillis())
         }
     }
 
@@ -108,19 +104,17 @@ class WeatherRepository @Inject constructor(
             val staticLocation = userSettingsDataSource.weatherLocation.first()
             if (staticLocation == null && !WeatherHelper.isLocationGranted(context)) return
 
-            val current = reading
-            val servable = current
-                ?.takeIf { now - it.fetchedAtMillis < READING_TTL_MS }
-                ?.takeIf { staticLocation == null || it.isNear(staticLocation.first, staticLocation.second) }
+            val atTargetLocation = reading?.takeIf { it.matchesTarget(staticLocation) }
+            val servable = atTargetLocation?.takeIf { !it.isStaleAt(now) }
             if (!force && servable != null) {
-                _state.value = WeatherUiState.Ready(servable, isStale = false)
+                _state.value = uiStateFor(servable, now)
                 nextRefreshDueAtMillis = servable.fetchedAtMillis + READING_TTL_MS
                 return
             }
 
             val target = staticLocation ?: deviceLocation()
             if (target == null) {
-                fallBackToCache(current, now)
+                serveFallback(atTargetLocation, now)
                 return
             }
 
@@ -128,19 +122,27 @@ class WeatherRepository @Inject constructor(
                 .onSuccess { fetched ->
                     reading = fetched
                     weatherCacheDataSource.save(fetched)
-                    _state.value = WeatherUiState.Ready(fetched, isStale = false)
+                    _state.value = uiStateFor(fetched, now)
                     nextRefreshDueAtMillis = fetched.fetchedAtMillis + READING_TTL_MS
                 }
                 .onFailure {
-                    fallBackToCache(current, now)
+                    serveFallback(atTargetLocation, now)
                 }
         }
     }
 
-    private fun fallBackToCache(current: WeatherReading?, now: Long) {
-        val usable = current?.takeIf { it.isDisplayableAt(now) }
-        _state.value = usable?.let { WeatherUiState.Ready(it, isStale = true) }
+    private fun uiStateFor(cached: WeatherReading?, now: Long): WeatherUiState =
+        cached?.takeIf { it.isDisplayableAt(now) }
+            ?.let { WeatherUiState.Ready(it, isStale = it.isStaleAt(now)) }
             ?: WeatherUiState.Error
+
+    private fun serveFallback(fallback: WeatherReading?, now: Long) {
+        _state.value = uiStateFor(fallback, now)
+        val displayableUntil = (fallback?.fetchedAtMillis ?: return) + MAX_READING_AGE_MS
+        // Wake at the age ceiling so the reading flips to Error then, not at the next retry.
+        if (displayableUntil > now) {
+            nextRefreshDueAtMillis = minOf(nextRefreshDueAtMillis, displayableUntil)
+        }
     }
 
     private fun delayUntilNextRefresh(): Long =
@@ -154,6 +156,12 @@ class WeatherRepository @Inject constructor(
 
     private fun WeatherReading.isDisplayableAt(now: Long): Boolean =
         now - fetchedAtMillis < MAX_READING_AGE_MS
+
+    private fun WeatherReading.isStaleAt(now: Long): Boolean =
+        now - fetchedAtMillis >= READING_TTL_MS
+
+    private fun WeatherReading.matchesTarget(staticLocation: Pair<Double, Double>?): Boolean =
+        staticLocation == null || isNear(staticLocation.first, staticLocation.second)
 
     private fun WeatherReading.isNear(targetLatitude: Double, targetLongitude: Double): Boolean {
         val distance = FloatArray(1)
