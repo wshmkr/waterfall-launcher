@@ -103,10 +103,9 @@ class WeatherRepository @Inject constructor(
             val staticLocation = userSettingsDataSource.weatherLocation.first()
             if (staticLocation == null && !WeatherHelper.isLocationGranted(context)) return
 
-            val current = reading
-            val servable = current
-                ?.takeIf { !it.isStaleAt(now) }
+            val atTargetLocation = reading
                 ?.takeIf { staticLocation == null || it.isNear(staticLocation.first, staticLocation.second) }
+            val servable = atTargetLocation?.takeIf { !it.isStaleAt(now) }
             if (!force && servable != null) {
                 _state.value = uiStateFor(servable, now)
                 nextRefreshDueAtMillis = servable.fetchedAtMillis + READING_TTL_MS
@@ -115,7 +114,7 @@ class WeatherRepository @Inject constructor(
 
             val target = staticLocation ?: deviceLocation()
             if (target == null) {
-                _state.value = uiStateFor(current, now)
+                _state.value = uiStateFor(atTargetLocation, now)
                 return
             }
 
@@ -127,7 +126,7 @@ class WeatherRepository @Inject constructor(
                     nextRefreshDueAtMillis = fetched.fetchedAtMillis + READING_TTL_MS
                 }
                 .onFailure {
-                    _state.value = uiStateFor(current, now)
+                    _state.value = uiStateFor(atTargetLocation, now)
                 }
         }
     }
