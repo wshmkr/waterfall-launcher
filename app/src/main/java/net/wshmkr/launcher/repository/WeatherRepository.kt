@@ -62,6 +62,7 @@ class WeatherRepository @Inject constructor(
         scope.launch {
             val persisted = weatherCacheDataSource.load() ?: return@launch
             reading = persisted
+            if (!persisted.matchesTarget(userSettingsDataSource.weatherLocation.first())) return@launch
             // Resolving even an over-ceiling reading keeps the spinner for true first runs only.
             _state.value = uiStateFor(persisted, System.currentTimeMillis())
         }
@@ -103,8 +104,7 @@ class WeatherRepository @Inject constructor(
             val staticLocation = userSettingsDataSource.weatherLocation.first()
             if (staticLocation == null && !WeatherHelper.isLocationGranted(context)) return
 
-            val atTargetLocation = reading
-                ?.takeIf { staticLocation == null || it.isNear(staticLocation.first, staticLocation.second) }
+            val atTargetLocation = reading?.takeIf { it.matchesTarget(staticLocation) }
             val servable = atTargetLocation?.takeIf { !it.isStaleAt(now) }
             if (!force && servable != null) {
                 _state.value = uiStateFor(servable, now)
@@ -114,7 +114,7 @@ class WeatherRepository @Inject constructor(
 
             val target = staticLocation ?: deviceLocation()
             if (target == null) {
-                _state.value = uiStateFor(atTargetLocation, now)
+                serveFallback(atTargetLocation, now)
                 return
             }
 
@@ -126,7 +126,7 @@ class WeatherRepository @Inject constructor(
                     nextRefreshDueAtMillis = fetched.fetchedAtMillis + READING_TTL_MS
                 }
                 .onFailure {
-                    _state.value = uiStateFor(atTargetLocation, now)
+                    serveFallback(atTargetLocation, now)
                 }
         }
     }
@@ -135,6 +135,15 @@ class WeatherRepository @Inject constructor(
         cached?.takeIf { it.isDisplayableAt(now) }
             ?.let { WeatherUiState.Ready(it, isStale = it.isStaleAt(now)) }
             ?: WeatherUiState.Error
+
+    private fun serveFallback(fallback: WeatherReading?, now: Long) {
+        _state.value = uiStateFor(fallback, now)
+        val displayableUntil = (fallback?.fetchedAtMillis ?: return) + MAX_READING_AGE_MS
+        // Wake at the age ceiling so the reading flips to Error then, not at the next retry.
+        if (displayableUntil > now) {
+            nextRefreshDueAtMillis = minOf(nextRefreshDueAtMillis, displayableUntil)
+        }
+    }
 
     private fun delayUntilNextRefresh(): Long =
         (nextRefreshDueAtMillis - System.currentTimeMillis()).coerceAtLeast(MIN_LOOP_DELAY_MS)
@@ -150,6 +159,9 @@ class WeatherRepository @Inject constructor(
 
     private fun WeatherReading.isStaleAt(now: Long): Boolean =
         now - fetchedAtMillis >= READING_TTL_MS
+
+    private fun WeatherReading.matchesTarget(staticLocation: Pair<Double, Double>?): Boolean =
+        staticLocation == null || isNear(staticLocation.first, staticLocation.second)
 
     private fun WeatherReading.isNear(targetLatitude: Double, targetLongitude: Double): Boolean {
         val distance = FloatArray(1)
