@@ -11,8 +11,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -45,6 +48,7 @@ import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
 import net.wshmkr.launcher.ui.theme.Dimensions
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -103,6 +107,13 @@ fun FavoritesView(
         }
     }
 
+    // HOME while already on favorites doesn't recompose this view, so reset the scroll here.
+    LaunchedEffect(viewModel) {
+        viewModel.returnHomeEvents.collect {
+            listState.scrollToItem(0)
+        }
+    }
+
     val onSwipeUp = remember(viewModel) { { viewModel.showSearchOverlay = true } }
     val onSwipeDown = remember {
         {
@@ -116,6 +127,8 @@ fun FavoritesView(
     val startReorder = remember(viewModel) { viewModel::startFavoritesReorder }
     val onStartReorder =
         if (favoriteApps.count { !it.isSuggested } >= MIN_REORDERABLE_FAVORITES) startReorder else null
+    val firstFavoriteKey = favoriteApps.firstOrNull { !it.isSuggested }?.key
+    val lastFavoriteKey = favoriteApps.lastOrNull { !it.isSuggested }?.key
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -146,7 +159,9 @@ fun FavoritesView(
                 .fillMaxSize()
                 .then(
                     if (reordering) {
-                        Modifier.endReorderOnPressOutside(listState, dimensions, onEndReorder)
+                        Modifier.endReorderOnPressOutside(
+                            listState, firstFavoriteKey, lastFavoriteKey, dimensions, onEndReorder
+                        )
                     } else {
                         Modifier
                     }
@@ -162,6 +177,7 @@ fun FavoritesView(
                         } else {
                             Modifier
                                 .verticalSwipeDetection(
+                                    listState = listState,
                                     onSwipeUp = onSwipeUp,
                                     onSwipeDown = onSwipeDown
                                 )
@@ -172,9 +188,14 @@ fun FavoritesView(
                                 }
                         }
                     ),
-                contentPadding = PaddingValues(horizontal = dimensions.gutterLarge),
+                contentPadding = PaddingValues(
+                    start = dimensions.gutterLarge,
+                    end = dimensions.gutterLarge,
+                    bottom = WindowInsets.navigationBars.asPaddingValues()
+                        .calculateBottomPadding() + Spacing.small,
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                userScrollEnabled = false,
+                userScrollEnabled = reordering,
             ) {
                 item { Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding())) }
 
@@ -243,7 +264,12 @@ fun FavoritesView(
                 label = "outlineAlpha",
             )
             if (outlineAlpha.value > 0f) {
-                FavoritesOutline(listState = listState, alphaProvider = outlineAlpha::value)
+                FavoritesOutline(
+                    listState = listState,
+                    firstFavoriteKey = firstFavoriteKey,
+                    lastFavoriteKey = lastFavoriteKey,
+                    alphaProvider = outlineAlpha::value,
+                )
             }
         }
     }
@@ -259,12 +285,14 @@ fun FavoritesView(
 
 private fun Modifier.endReorderOnPressOutside(
     listState: LazyListState,
+    firstFavoriteKey: String?,
+    lastFavoriteKey: String?,
     dimensions: Dimensions,
     onEndReorder: () -> Unit,
-) = pointerInput(listState, dimensions, onEndReorder) {
+) = pointerInput(listState, firstFavoriteKey, lastFavoriteKey, dimensions, onEndReorder) {
     awaitEachGesture {
         val down = awaitFirstDown(pass = PointerEventPass.Initial)
-        if (!isInsideFavoritesOutline(down.position, listState, dimensions)) {
+        if (!isInsideFavoritesOutline(down.position, listState, firstFavoriteKey, lastFavoriteKey, dimensions)) {
             down.consume()
             onEndReorder()
         }
@@ -274,9 +302,11 @@ private fun Modifier.endReorderOnPressOutside(
 private fun PointerInputScope.isInsideFavoritesOutline(
     position: Offset,
     listState: LazyListState,
+    firstFavoriteKey: String?,
+    lastFavoriteKey: String?,
     dimensions: Dimensions,
 ): Boolean {
-    val (top, height) = favoriteRowsBounds(listState) ?: return false
+    val (top, height) = favoriteRowsBounds(listState, firstFavoriteKey, lastFavoriteKey) ?: return false
     return position.y >= top &&
         position.y <= top + height &&
         position.x >= dimensions.favoritesOutlineStart.toPx() &&

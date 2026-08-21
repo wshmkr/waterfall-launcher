@@ -27,22 +27,38 @@ import net.wshmkr.launcher.ui.theme.Spacing
 internal val Dimensions.favoritesOutlineStart get() = gutterLarge + Spacing.small
 internal val Dimensions.favoritesOutlineEnd get() = gutterLarge * 2
 
-internal fun favoriteRowsBounds(listState: LazyListState): Pair<Int, Int>? {
+internal fun favoriteRowsBounds(
+    listState: LazyListState,
+    firstFavoriteKey: String?,
+    lastFavoriteKey: String?,
+): Pair<Int, Int>? {
     var first: LazyListItemInfo? = null
     var last: LazyListItemInfo? = null
-    for (row in listState.layoutInfo.visibleItemsInfo) {
+    val layoutInfo = listState.layoutInfo
+    for (row in layoutInfo.visibleItemsInfo) {
         if (row.contentType != FAVORITE_CONTENT_TYPE) continue
         if (first == null) first = row
         last = row
     }
     if (first == null || last == null) return null
-    return first.offset to (last.offset + last.size - first.offset)
+    // An edge whose true first/last favorite is scrolled away pins to the viewport,
+    // so the outline reads as continuing off-screen instead of ending at a visible row.
+    val top = if (first.key == firstFavoriteKey) first.offset else layoutInfo.viewportStartOffset
+    val bottom = if (last.key == lastFavoriteKey) last.offset + last.size else layoutInfo.viewportEndOffset
+    return top to (bottom - top)
 }
 
 @Composable
-fun FavoritesOutline(listState: LazyListState, alphaProvider: () -> Float) {
+fun FavoritesOutline(
+    listState: LazyListState,
+    firstFavoriteKey: String?,
+    lastFavoriteKey: String?,
+    alphaProvider: () -> Float,
+) {
     val dimensions = LocalDimensions.current
-    val bounds by remember(listState) { derivedStateOf { favoriteRowsBounds(listState) } }
+    val bounds by remember(listState, firstFavoriteKey, lastFavoriteKey) {
+        derivedStateOf { favoriteRowsBounds(listState, firstFavoriteKey, lastFavoriteKey) }
+    }
     val (top, height) = bounds ?: return
 
     Box(
