@@ -44,7 +44,7 @@ import net.wshmkr.launcher.util.NotificationPanelHelper
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
-const val HOME_SCREEN_APPS = 6
+const val HOME_SCREEN_APPS = 8
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(

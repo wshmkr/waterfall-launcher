@@ -11,8 +11,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -45,6 +48,7 @@ import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
 import net.wshmkr.launcher.ui.theme.Dimensions
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -100,6 +104,13 @@ fun FavoritesView(
     LaunchedEffect(favoritesVisible) {
         if (favoritesVisible) {
             isVisible = true
+        }
+    }
+
+    // HOME while already on favorites doesn't recompose this view, so reset the scroll here.
+    LaunchedEffect(viewModel) {
+        viewModel.returnHomeEvents.collect {
+            listState.scrollToItem(0)
         }
     }
 
@@ -162,6 +173,7 @@ fun FavoritesView(
                         } else {
                             Modifier
                                 .verticalSwipeDetection(
+                                    listState = listState,
                                     onSwipeUp = onSwipeUp,
                                     onSwipeDown = onSwipeDown
                                 )
@@ -172,9 +184,14 @@ fun FavoritesView(
                                 }
                         }
                     ),
-                contentPadding = PaddingValues(horizontal = dimensions.gutterLarge),
+                contentPadding = PaddingValues(
+                    start = dimensions.gutterLarge,
+                    end = dimensions.gutterLarge,
+                    bottom = WindowInsets.navigationBars.asPaddingValues()
+                        .calculateBottomPadding() + Spacing.small,
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                userScrollEnabled = false,
+                userScrollEnabled = reordering,
             ) {
                 item { Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding())) }
 
