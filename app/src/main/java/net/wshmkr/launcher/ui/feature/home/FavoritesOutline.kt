@@ -30,26 +30,13 @@ internal val Dimensions.favoritesOutlineEnd get() = gutterLarge * 2
 internal fun favoriteRowsBounds(listState: LazyListState): Pair<Int, Int>? {
     var first: LazyListItemInfo? = null
     var last: LazyListItemInfo? = null
-    val layoutInfo = listState.layoutInfo
-    val visible = layoutInfo.visibleItemsInfo
-    for (row in visible) {
+    for (row in listState.layoutInfo.visibleItemsInfo) {
         if (row.contentType != FAVORITE_CONTENT_TYPE) continue
         if (first == null) first = row
         last = row
     }
     if (first == null || last == null) return null
-    // Relies on favorites being the list's contiguous tail.
-    val top = if (first.index == visible.first().index && listState.canScrollBackward) {
-        layoutInfo.viewportStartOffset
-    } else {
-        first.offset
-    }
-    val bottom = if (last.index == visible.last().index && listState.canScrollForward) {
-        layoutInfo.viewportEndOffset
-    } else {
-        last.offset + last.size
-    }
-    return top to (bottom - top)
+    return first.offset to (last.offset + last.size - first.offset)
 }
 
 @Composable
