@@ -29,7 +29,6 @@ val VERTICAL_SWIPE_THRESHOLD = 180.dp
 
 private const val PAUSE_TIMEOUT_MS = 150L
 
-// Ordinary scroll strokes easily exceed the plain threshold.
 private const val SCROLLED_SWIPE_HEIGHT_FRACTION = 0.6f
 
 fun verticalDragFeedback(dy: Float) = sqrt(abs(dy)) * sign(dy) * 5
