@@ -127,8 +127,6 @@ fun FavoritesView(
     val startReorder = remember(viewModel) { viewModel::startFavoritesReorder }
     val onStartReorder =
         if (favoriteApps.count { !it.isSuggested } >= MIN_REORDERABLE_FAVORITES) startReorder else null
-    val firstFavoriteKey = favoriteApps.firstOrNull { !it.isSuggested }?.key
-    val lastFavoriteKey = favoriteApps.lastOrNull { !it.isSuggested }?.key
 
     val onClick = remember(viewModel) {
         { app: AppInfo -> viewModel.launchApp(app.packageName, app.userHandle) }
@@ -159,9 +157,7 @@ fun FavoritesView(
                 .fillMaxSize()
                 .then(
                     if (reordering) {
-                        Modifier.endReorderOnPressOutside(
-                            listState, firstFavoriteKey, lastFavoriteKey, dimensions, onEndReorder
-                        )
+                        Modifier.endReorderOnPressOutside(listState, dimensions, onEndReorder)
                     } else {
                         Modifier
                     }
@@ -264,12 +260,7 @@ fun FavoritesView(
                 label = "outlineAlpha",
             )
             if (outlineAlpha.value > 0f) {
-                FavoritesOutline(
-                    listState = listState,
-                    firstFavoriteKey = firstFavoriteKey,
-                    lastFavoriteKey = lastFavoriteKey,
-                    alphaProvider = outlineAlpha::value,
-                )
+                FavoritesOutline(listState = listState, alphaProvider = outlineAlpha::value)
             }
         }
     }
@@ -285,14 +276,12 @@ fun FavoritesView(
 
 private fun Modifier.endReorderOnPressOutside(
     listState: LazyListState,
-    firstFavoriteKey: String?,
-    lastFavoriteKey: String?,
     dimensions: Dimensions,
     onEndReorder: () -> Unit,
-) = pointerInput(listState, firstFavoriteKey, lastFavoriteKey, dimensions, onEndReorder) {
+) = pointerInput(listState, dimensions, onEndReorder) {
     awaitEachGesture {
         val down = awaitFirstDown(pass = PointerEventPass.Initial)
-        if (!isInsideFavoritesOutline(down.position, listState, firstFavoriteKey, lastFavoriteKey, dimensions)) {
+        if (!isInsideFavoritesOutline(down.position, listState, dimensions)) {
             down.consume()
             onEndReorder()
         }
@@ -302,11 +291,9 @@ private fun Modifier.endReorderOnPressOutside(
 private fun PointerInputScope.isInsideFavoritesOutline(
     position: Offset,
     listState: LazyListState,
-    firstFavoriteKey: String?,
-    lastFavoriteKey: String?,
     dimensions: Dimensions,
 ): Boolean {
-    val (top, height) = favoriteRowsBounds(listState, firstFavoriteKey, lastFavoriteKey) ?: return false
+    val (top, height) = favoriteRowsBounds(listState) ?: return false
     return position.y >= top &&
         position.y <= top + height &&
         position.x >= dimensions.favoritesOutlineStart.toPx() &&

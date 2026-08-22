@@ -27,7 +27,6 @@ import kotlin.math.sqrt
 
 val VERTICAL_SWIPE_THRESHOLD = 180.dp
 
-// Standing still this long mid-drag resets the swipe ("hold to scroll") and stales the fling velocity.
 private const val PAUSE_TIMEOUT_MS = 150L
 
 fun verticalDragFeedback(dy: Float) = sqrt(abs(dy)) * sign(dy) * 5
@@ -56,10 +55,14 @@ fun Modifier.verticalSwipeDetection(
             var lastMoveUptime = 0L
             val velocityTracker = VelocityTracker()
             var flingJob: Job? = null
+            fun settle() {
+                coroutineScope.launch {
+                    offsetY.animateTo(targetValue = 0f, animationSpec = spring())
+                }
+            }
             detectVerticalDragGestures(
                 onDragStart = {
-                    // dispatchRawDelta bypasses the scroll mutex; a live fling would keep
-                    // running under the finger.
+                    // dispatchRawDelta bypasses the scroll mutex, so a fling won't stop on its own.
                     flingJob?.cancel()
                     committed = 0f
                     bandY = offsetY.value
@@ -84,19 +87,9 @@ fun Modifier.verticalSwipeDetection(
                             }
                         }
                     }
-                    committed = 0f
-                    bandY = 0f
-                    coroutineScope.launch {
-                        offsetY.animateTo(targetValue = 0f, animationSpec = spring())
-                    }
+                    settle()
                 },
-                onDragCancel = {
-                    committed = 0f
-                    bandY = 0f
-                    coroutineScope.launch {
-                        offsetY.animateTo(targetValue = 0f, animationSpec = spring())
-                    }
-                },
+                onDragCancel = { settle() },
                 onVerticalDrag = { change, dragAmount ->
                     if (change.uptimeMillis - lastMoveUptime > PAUSE_TIMEOUT_MS) {
                         committed = 0f
@@ -106,8 +99,7 @@ fun Modifier.verticalSwipeDetection(
                     velocityTracker.addPointerInputChange(change)
                     committed += dragAmount
 
-                    // Unwind a stretched band before scrolling, else reversing at an edge
-                    // scrolls the list under a frozen band.
+                    // Unwind the band first, else reversing at an edge scrolls under a frozen band.
                     var remainder = dragAmount
                     if (bandY != 0f && sign(remainder) != sign(bandY)) {
                         val unwind = sign(remainder) * min(abs(remainder), abs(bandY))
@@ -115,11 +107,12 @@ fun Modifier.verticalSwipeDetection(
                         remainder -= unwind
                     }
                     if (remainder != 0f) {
-                        // Finger down (positive) scrolls the list backward, hence the negation.
                         val consumedScroll = listState.dispatchRawDelta(-remainder)
                         bandY += remainder + consumedScroll
                     }
-                    coroutineScope.launch { offsetY.snapTo(bandY) }
+                    if (offsetY.value != bandY) {
+                        coroutineScope.launch { offsetY.snapTo(bandY) }
+                    }
                 }
             )
         }
