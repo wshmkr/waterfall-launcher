@@ -3,24 +3,18 @@ package net.wshmkr.launcher.ui.feature.home
 import android.os.UserHandle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.NotificationInfo
 import net.wshmkr.launcher.ui.common.components.AppListItem
-import net.wshmkr.launcher.ui.common.icons.DragIndicatorIcon
-import net.wshmkr.launcher.ui.theme.LocalDimensions
-import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.ui.common.components.ReorderHandle
+import net.wshmkr.launcher.ui.common.components.reorderActions
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
@@ -68,16 +62,15 @@ fun LazyItemScope.FavoriteRow(
     ) {
         AppListItem(
             appInfo = item,
-            // Drag gestures are invisible to accessibility services, so reordering is mirrored as custom actions.
             modifier = if (draggable) {
                 Modifier
                     .draggableHandle()
                     .semantics {
                         customActions = reorderActions(
-                            item = item,
-                            previous = favoriteApps.getOrNull(index - 1),
-                            next = favoriteApps.getOrNull(index + 1),
-                            moveFavorite = onMoveFavorite,
+                            key = item.key,
+                            previousKey = favoriteApps.getOrNull(index - 1)?.takeUnless { it.isSuggested }?.key,
+                            nextKey = favoriteApps.getOrNull(index + 1)?.takeUnless { it.isSuggested }?.key,
+                            move = onMoveFavorite,
                         )
                     }
             } else Modifier,
@@ -98,28 +91,3 @@ fun LazyItemScope.FavoriteRow(
     }
 }
 
-private fun reorderActions(
-    item: AppInfo,
-    previous: AppInfo?,
-    next: AppInfo?,
-    moveFavorite: (String, String) -> Unit,
-): List<CustomAccessibilityAction> = buildList {
-    if (previous != null && !previous.isSuggested) {
-        add(CustomAccessibilityAction("Move up") { moveFavorite(item.key, previous.key); true })
-    }
-    if (next != null && !next.isSuggested) {
-        add(CustomAccessibilityAction("Move down") { moveFavorite(item.key, next.key); true })
-    }
-}
-
-@Composable
-private fun ReorderHandle(label: String, modifier: Modifier = Modifier) {
-    Icon(
-        painter = DragIndicatorIcon(),
-        contentDescription = "Reorder $label",
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier
-            .size(LocalDimensions.current.iconLarge)
-            .padding(Spacing.small),
-    )
-}

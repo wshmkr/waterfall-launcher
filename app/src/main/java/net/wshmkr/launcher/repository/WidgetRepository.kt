@@ -30,6 +30,8 @@ class WidgetRepository @Inject constructor(
     private val _widgetIds = MutableStateFlow<List<Int>>(emptyList())
     val widgetIds = _widgetIds.asStateFlow()
 
+    private var persistedWidgetIds: List<Int> = emptyList()
+
     suspend fun getLastPageWidgetId(): Int? = widgetDataSource.getLastPageWidgetId()
 
     suspend fun setLastPageWidgetId(widgetId: Int) = widgetDataSource.setLastPageWidgetId(widgetId)
@@ -55,10 +57,10 @@ class WidgetRepository @Inject constructor(
 
     suspend fun commitWidgetOrder() {
         val ids = _widgetIds.value
+        if (ids == persistedWidgetIds) return
+        persistedWidgetIds = ids
         withContext(Dispatchers.IO) {
-            if (widgetDataSource.getWidgetIds() != ids) {
-                widgetDataSource.setWidgetOrder(ids)
-            }
+            widgetDataSource.setWidgetOrder(ids)
         }
     }
 
@@ -90,6 +92,7 @@ class WidgetRepository @Inject constructor(
             block()
             widgetDataSource.getWidgetIds()
         }
+        persistedWidgetIds = updated
         _widgetIds.value = updated
     }
 }

@@ -11,7 +11,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,6 +40,7 @@ import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.repository.WeatherRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import net.wshmkr.launcher.util.NotificationPanelHelper
+import net.wshmkr.launcher.util.movedItem
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
@@ -201,12 +201,8 @@ class HomeViewModel @Inject constructor(
     }
 
     fun moveFavorite(fromKey: String, toKey: String) {
-        val keys = appsRepository.favorites
-        val from = keys.indexOf(fromKey)
-        val to = keys.indexOf(toKey)
-        if (from == -1 || to == -1 || from == to) return
-
-        appsRepository.previewFavorites(keys.mutate { it.add(to, it.removeAt(from)) })
+        appsRepository.favorites.movedItem(fromKey, toKey)
+            ?.let(appsRepository::previewFavorites)
     }
 
     fun navigateToFavorites() {
