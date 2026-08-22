@@ -79,7 +79,10 @@ class WidgetViewModel @Inject constructor(
                     initialPageIndex = it.indexOf(lastWidgetId).coerceAtLeast(0)
                     initialPageRestored = true
                 }
-                widgetIds = it.toImmutableList()
+                val ids = it.toImmutableList()
+                // moveWidget already applied this order; skipping the echo keeps drag reorders synchronous.
+                if (ids == widgetIds) return@collect
+                widgetIds = ids
                 refreshManagedWidgets(it)
             }
         }
@@ -132,9 +135,14 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
+    // The reorderable drag expects the list to move within the same frame, so state updates
+    // synchronously here instead of waiting on the repository flow round-trip.
     fun moveWidget(fromWidgetId: Int, toWidgetId: Int) {
-        widgetIds.movedItem(fromWidgetId, toWidgetId)
-            ?.let(widgetRepository::previewWidgetOrder)
+        val reordered = widgetIds.movedItem(fromWidgetId, toWidgetId) ?: return
+        widgetIds = reordered.toImmutableList()
+        val widgetsById = managedWidgets.associateBy { it.widgetId }
+        managedWidgets = reordered.mapNotNull { widgetsById[it] }.toImmutableList()
+        widgetRepository.previewWidgetOrder(reordered)
     }
 
     fun commitWidgetOrder() {
