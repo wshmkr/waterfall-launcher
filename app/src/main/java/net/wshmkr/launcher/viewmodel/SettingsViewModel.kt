@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.viewmodel
 
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,12 +13,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
 import net.wshmkr.launcher.model.HomeWidgetSettings
+import net.wshmkr.launcher.model.LauncherFont
 import net.wshmkr.launcher.model.PaletteStyle
+import net.wshmkr.launcher.repository.FontRepository
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val userSettingsDataSource: UserSettingsDataSource
+    private val userSettingsDataSource: UserSettingsDataSource,
+    private val fontRepository: FontRepository,
 ) : ViewModel() {
 
     // Kept for existing callers (e.g. HomeOptionsMenu) that consume the composed snapshot.
@@ -48,6 +52,11 @@ class SettingsViewModel @Inject constructor(
         userSettingsDataSource.weatherLon.stateIn(viewModelScope, subscribed, null)
     val paletteStyle: StateFlow<PaletteStyle> =
         userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.Default)
+    val launcherFont: StateFlow<LauncherFont> =
+        userSettingsDataSource.launcherFont.stateIn(viewModelScope, subscribed, LauncherFont.Bundled)
+
+    var customFontFailed by mutableStateOf(false)
+        private set
 
     init {
         viewModelScope.launch {
@@ -99,5 +108,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setPaletteStyle(style: PaletteStyle) {
         viewModelScope.launch { userSettingsDataSource.setPaletteStyle(style) }
+    }
+
+    fun setCustomFont(uri: Uri) {
+        viewModelScope.launch { customFontFailed = !fontRepository.installCustomFont(uri) }
+    }
+
+    fun clearCustomFont() {
+        customFontFailed = false
+        viewModelScope.launch { fontRepository.clearCustomFont() }
     }
 }
