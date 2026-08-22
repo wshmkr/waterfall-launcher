@@ -29,6 +29,9 @@ val VERTICAL_SWIPE_THRESHOLD = 180.dp
 
 private const val PAUSE_TIMEOUT_MS = 150L
 
+// Ordinary scroll strokes easily exceed the plain threshold.
+private const val SCROLLED_SWIPE_HEIGHT_FRACTION = 0.6f
+
 fun verticalDragFeedback(dy: Float) = sqrt(abs(dy)) * sign(dy) * 5
 
 @Composable
@@ -51,6 +54,7 @@ fun Modifier.verticalSwipeDetection(
         }
         .pointerInput(listState) {
             var committed = 0f
+            var scrolled = false
             var bandY = 0f
             var lastMoveUptime = 0L
             val velocityTracker = VelocityTracker()
@@ -65,6 +69,7 @@ fun Modifier.verticalSwipeDetection(
                     // dispatchRawDelta bypasses the scroll mutex, so a fling won't stop on its own.
                     flingJob?.cancel()
                     committed = 0f
+                    scrolled = false
                     bandY = offsetY.value
                     velocityTracker.resetTracking()
                     lastMoveUptime = SystemClock.uptimeMillis()
@@ -73,10 +78,15 @@ fun Modifier.verticalSwipeDetection(
                 onDragEnd = {
                     val pausedBeforeRelease =
                         SystemClock.uptimeMillis() - lastMoveUptime > PAUSE_TIMEOUT_MS
+                    val swipeThreshold = if (scrolled) {
+                        maxOf(thresholdPx, size.height * SCROLLED_SWIPE_HEIGHT_FRACTION)
+                    } else {
+                        thresholdPx
+                    }
                     if (!pausedBeforeRelease) {
                         when {
-                            committed > thresholdPx -> currentOnSwipeDown?.invoke()
-                            committed < -thresholdPx -> currentOnSwipeUp?.invoke()
+                            committed > swipeThreshold -> currentOnSwipeDown?.invoke()
+                            committed < -swipeThreshold -> currentOnSwipeUp?.invoke()
                             else -> {
                                 val flingVelocity = -velocityTracker.calculateVelocity().y
                                 flingJob = coroutineScope.launch {
@@ -93,6 +103,7 @@ fun Modifier.verticalSwipeDetection(
                 onVerticalDrag = { change, dragAmount ->
                     if (change.uptimeMillis - lastMoveUptime > PAUSE_TIMEOUT_MS) {
                         committed = 0f
+                        scrolled = false
                         velocityTracker.resetTracking()
                     }
                     lastMoveUptime = change.uptimeMillis
@@ -108,6 +119,7 @@ fun Modifier.verticalSwipeDetection(
                     }
                     if (remainder != 0f) {
                         val consumedScroll = listState.dispatchRawDelta(-remainder)
+                        if (consumedScroll != 0f) scrolled = true
                         bandY += remainder + consumedScroll
                     }
                     if (offsetY.value != bandY) {
