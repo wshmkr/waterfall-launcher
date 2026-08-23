@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,6 +45,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.datastore.WidgetDataSource
+import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.ReorderHandle
 import net.wshmkr.launcher.ui.common.components.reorderActions
 import net.wshmkr.launcher.ui.common.icons.AddIcon
@@ -97,6 +99,7 @@ fun ManageWidgetsView(
     }
 
     val dimensions = LocalDimensions.current
+    val minHeaderHeight = calculateCenteredContentTopPadding()
 
     Column(
         modifier = Modifier
@@ -105,13 +108,22 @@ fun ManageWidgetsView(
             .padding(
                 start = dimensions.pagePadding,
                 end = dimensions.pagePadding,
-                top = Spacing.medium,
                 bottom = Spacing.medium,
             )
     ) {
-        stackPreview()
-
-        Spacer(modifier = Modifier.height(Spacing.medium))
+        // The preview pins to the top and the title never sits higher than it used to,
+        // only pushed down when the stack outgrows the reserved space.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = minHeaderHeight)
+        ) {
+            Column {
+                Spacer(modifier = Modifier.height(Spacing.medium))
+                stackPreview()
+                Spacer(modifier = Modifier.height(Spacing.medium))
+            }
+        }
 
         Text(
             text = "Manage Widgets",
