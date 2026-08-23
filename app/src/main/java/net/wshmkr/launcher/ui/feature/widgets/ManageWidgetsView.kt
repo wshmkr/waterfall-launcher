@@ -44,7 +44,6 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.datastore.WidgetDataSource
-import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.ReorderHandle
 import net.wshmkr.launcher.ui.common.components.reorderActions
 import net.wshmkr.launcher.ui.common.icons.AddIcon
@@ -97,7 +96,6 @@ fun ManageWidgetsView(
         onDispose { onCommitOrder() }
     }
 
-    val topPadding = calculateCenteredContentTopPadding()
     val dimensions = LocalDimensions.current
 
     Column(
@@ -107,7 +105,7 @@ fun ManageWidgetsView(
             .padding(
                 start = dimensions.pagePadding,
                 end = dimensions.pagePadding,
-                top = topPadding,
+                top = Spacing.medium,
                 bottom = Spacing.medium,
             )
     ) {

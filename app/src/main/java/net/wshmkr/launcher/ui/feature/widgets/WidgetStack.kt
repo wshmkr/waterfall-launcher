@@ -90,6 +90,8 @@ private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
 fun WidgetStack(
     viewModel: WidgetViewModel = hiltViewModel(),
     onTouchedChange: (Boolean) -> Unit = {},
+    // Preview mode: the resize handle is always shown and widget taps are blocked.
+    previewMode: Boolean = false,
 ) {
     val widgetIds = viewModel.widgetIds
 
@@ -105,7 +107,7 @@ fun WidgetStack(
 
     // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        if (editing) {
+        if (editing || previewMode) {
             viewModel.commitStackHeight()
             editing = false
         }
@@ -134,11 +136,17 @@ fun WidgetStack(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(Corners.medium)
-                .captureLongPress(
-                    interactionSource = pressSource,
-                    enabled = { !editing },
-                    onTouchedChange = onTouchedChange,
-                ) { editing = true },
+                .then(
+                    if (previewMode) {
+                        Modifier
+                    } else {
+                        Modifier.captureLongPress(
+                            interactionSource = pressSource,
+                            enabled = { !editing },
+                            onTouchedChange = onTouchedChange,
+                        ) { editing = true }
+                    }
+                ),
         ) {
             Column {
                 Box(
@@ -158,6 +166,16 @@ fun WidgetStack(
                             widgetId = widgetIds[page % pageCount],
                             widthDp = stackWidth.value.toInt(),
                             viewModel = viewModel,
+                            blockTouches = previewMode,
+                        )
+                    }
+
+                    if (previewMode) {
+                        DragHandle(
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                            currentHeightDp = { viewModel.stackHeightDp },
+                            onResize = viewModel::previewStackHeight,
+                            onResizeEnd = viewModel::commitStackHeight,
                         )
                     }
 
@@ -205,12 +223,14 @@ fun WidgetStack(
                 }
             }
 
-            // A sibling, so the ripple draws above the opaque interop widget views.
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .indication(pressSource, ripple()),
-            )
+            if (!previewMode) {
+                // A sibling, so the ripple draws above the opaque interop widget views.
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .indication(pressSource, ripple()),
+                )
+            }
         }
     }
 }
@@ -221,6 +241,7 @@ private fun WidgetPage(
     widgetId: Int,
     widthDp: Int,
     viewModel: WidgetViewModel,
+    blockTouches: Boolean,
 ) {
     val context = LocalContext.current
     val widgetView = remember(widgetId) {
@@ -242,10 +263,21 @@ private fun WidgetPage(
     if (widgetView == null) {
         UnavailableWidget()
     } else {
-        AndroidView(
-            factory = { widgetView },
-            modifier = Modifier.fillMaxSize(),
-        )
+        Box {
+            AndroidView(
+                factory = { widgetView },
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (blockTouches) {
+                // Sits above the interop view so taps never reach the widget; the pager
+                // still intercepts horizontal drags for page swiping.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) { detectTapGestures(onTap = {}) },
+                )
+            }
+        }
     }
 }
 
