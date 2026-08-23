@@ -163,9 +163,31 @@ private fun LazyItemScope.ManagedWidgetRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    // Long-press keeps list scrolling and the delete button's tap working.
+                    if (reorderable) {
+                        Modifier.longPressDraggableHandle(onDragStopped = onCommitOrder)
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(horizontal = Spacing.medium, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (reorderable) {
+                val actions = remember(item.widgetId, previousId, nextId, onMove) {
+                    reorderActions(item.widgetId, previousId, nextId, onMove)
+                }
+                ReorderHandle(
+                    label = item.widgetName,
+                    modifier = Modifier
+                        .draggableHandle(onDragStopped = onCommitOrder)
+                        .semantics { customActions = actions },
+                )
+
+                Spacer(modifier = Modifier.width(Spacing.small))
+            }
+
             WidgetPreviewThumbnail(item = item)
 
             Spacer(modifier = Modifier.width(Spacing.medium))
@@ -197,18 +219,6 @@ private fun LazyItemScope.ManagedWidgetRow(
                 Icon(
                     painter = DeleteIcon(),
                     contentDescription = "Remove widget",
-                )
-            }
-
-            if (reorderable) {
-                val actions = remember(item.widgetId, previousId, nextId, onMove) {
-                    reorderActions(item.widgetId, previousId, nextId, onMove)
-                }
-                ReorderHandle(
-                    label = item.widgetName,
-                    modifier = Modifier
-                        .draggableHandle(onDragStopped = onCommitOrder)
-                        .semantics { customActions = actions },
                 )
             }
         }
