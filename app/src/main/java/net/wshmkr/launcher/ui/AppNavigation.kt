@@ -61,7 +61,8 @@ fun AppNavigation(
             composable(route = Screen.Home.route) {
                 HomeScreen(
                     navController = navController,
-                    viewModel = homeViewModel
+                    viewModel = homeViewModel,
+                    widgetViewModel = widgetViewModel,
                 )
             }
             composable(route = Screen.Settings.route) {

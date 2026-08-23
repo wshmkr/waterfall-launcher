@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.FlowPreview
@@ -86,9 +85,11 @@ private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     }
 
+// The caller must pass the app's single WidgetViewModel: a defaulted hiltViewModel() here
+// resolves per nav destination, forking stack state between home and the manage screen.
 @Composable
 fun WidgetStack(
-    viewModel: WidgetViewModel = hiltViewModel(),
+    viewModel: WidgetViewModel,
     onTouchedChange: (Boolean) -> Unit = {},
     // Preview mode: the resize handle is always shown and widget taps are blocked.
     previewMode: Boolean = false,
@@ -179,7 +180,7 @@ fun WidgetStack(
                         )
                     }
 
-                    if (editing) {
+                    if (editing || previewMode) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -189,6 +190,9 @@ fun WidgetStack(
                                     Corners.medium,
                                 ),
                         )
+                    }
+
+                    if (editing) {
                         Popup(
                             onDismissRequest = { editing = false },
                             properties = PopupProperties(focusable = true),
