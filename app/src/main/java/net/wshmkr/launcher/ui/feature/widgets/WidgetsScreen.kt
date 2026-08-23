@@ -53,6 +53,7 @@ fun WidgetsScreen(
         } else {
             ManageWidgetsView(
                 managedWidgets = managedWidgets,
+                stackPreview = { WidgetStack(viewModel = viewModel) },
                 onAddWidget = onShowAdd,
                 onDeleteWidget = onDeleteWidget,
                 onMoveWidget = onMoveWidget,

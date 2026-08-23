@@ -135,17 +135,21 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
-    // The reorderable drag expects the list to move within the same frame, so state updates
-    // synchronously here instead of waiting on the repository flow round-trip.
+    // The reorderable drag expects the list to move within the same frame, so the row state
+    // updates synchronously here. widgetIds waits for commit: the stack pager rebuilds on
+    // every order change, so mid-drag updates would inflate widget views on each crossing.
     fun moveWidget(fromWidgetId: Int, toWidgetId: Int) {
-        val reordered = widgetIds.movedItem(fromWidgetId, toWidgetId) ?: return
-        widgetIds = reordered.toImmutableList()
+        val reordered = managedWidgets.map { it.widgetId }
+            .movedItem(fromWidgetId, toWidgetId) ?: return
         val widgetsById = managedWidgets.associateBy { it.widgetId }
         managedWidgets = reordered.mapNotNull { widgetsById[it] }.toImmutableList()
-        widgetRepository.previewWidgetOrder(reordered)
     }
 
     fun commitWidgetOrder() {
+        val orderedIds = managedWidgets.map { it.widgetId }
+        // Ids without a loadable provider never become rows; keep them rather than drop them.
+        widgetIds = (orderedIds + widgetIds.filterNot { it in orderedIds }).toImmutableList()
+        widgetRepository.previewWidgetOrder(widgetIds)
         viewModelScope.launch {
             widgetRepository.commitWidgetOrder()
         }

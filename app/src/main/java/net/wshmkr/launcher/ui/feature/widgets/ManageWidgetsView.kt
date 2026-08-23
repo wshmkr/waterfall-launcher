@@ -73,6 +73,7 @@ private class QuickLongPressViewConfiguration(
 @Composable
 fun ManageWidgetsView(
     managedWidgets: ImmutableList<ManagedWidget>,
+    stackPreview: @Composable () -> Unit,
     onAddWidget: () -> Unit,
     onDeleteWidget: (Int) -> Unit,
     onMoveWidget: (Int, Int) -> Unit,
@@ -110,6 +111,10 @@ fun ManageWidgetsView(
                 bottom = Spacing.medium,
             )
     ) {
+        stackPreview()
+
+        Spacer(modifier = Modifier.height(Spacing.medium))
+
         Text(
             text = "Manage Widgets",
             fontSize = dimensions.fontTitle,
