@@ -20,9 +20,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.core.graphics.drawable.toBitmap
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
@@ -33,6 +31,7 @@ import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,17 +43,18 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
-import net.wshmkr.launcher.ui.theme.maxAppIconSize
+import net.wshmkr.launcher.util.maxAppIconSizePx
+import net.wshmkr.launcher.util.toBitmapPainter
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
-import kotlin.math.roundToInt
 
 @Singleton
 class AppsRepository @Inject constructor(
     private val application: Application,
     private val usageDataSource: UsageDataSource,
-    private val appPreferencesDataSource: AppPreferencesDataSource
+    private val appPreferencesDataSource: AppPreferencesDataSource,
+    private val iconPackRepository: IconPackRepository,
 ) {
     private val launcherApps: LauncherApps = application.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     private val userManager: UserManager = application.getSystemService(Context.USER_SERVICE) as UserManager
@@ -62,7 +62,7 @@ class AppsRepository @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val iconSizePx
-        get() = (maxAppIconSize.value * application.resources.displayMetrics.density).roundToInt()
+        get() = maxAppIconSizePx(application.resources)
 
     private var rasterizedDensityDpi = application.resources.configuration.densityDpi
     private var iconRefreshJob: Job? = null
@@ -102,11 +102,14 @@ class AppsRepository @Inject constructor(
     private fun refreshIconsIfDensityChanged() {
         val density = application.resources.configuration.densityDpi
         if (density == rasterizedDensityDpi) return
+        scheduleIconRefresh { rasterizedDensityDpi = density }
+    }
 
+    private fun scheduleIconRefresh(afterRefresh: () -> Unit = {}) {
         iconRefreshJob?.cancel()
         iconRefreshJob = scope.launch {
             refreshAppIcons(allApps.mapTo(HashSet()) { it.userHandle })
-            rasterizedDensityDpi = density
+            afterRefresh()
         }
     }
 
@@ -146,6 +149,12 @@ class AppsRepository @Inject constructor(
         application.registerReceiver(profileStateReceiver, filter)
         application.registerComponentCallbacks(densityCallbacks)
         launcherApps.registerCallback(launcherAppsCallback)
+
+        scope.launch {
+            iconPackRepository.iconsChanged.collect {
+                if (allApps.isNotEmpty()) scheduleIconRefresh()
+            }
+        }
     }
 
     private fun updateActiveProfiles() {
@@ -170,7 +179,14 @@ class AppsRepository @Inject constructor(
         val density = application.resources.configuration.densityDpi
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() } ?: listOf(Process.myUserHandle())
 
-        val storedFavorites = appPreferencesDataSource.getFavorites()
+        // Awaiting the icon-pack load keeps cold start from flashing system icons; overlapping it
+        // with the favorites read keeps it off the critical path when no pack is selected.
+        val storedFavorites = coroutineScope {
+            val packReady = launch { iconPackRepository.awaitInitialLoad() }
+            val favorites = appPreferencesDataSource.getFavorites()
+            packReady.join()
+            favorites
+        }
         val favoriteKeys = storedFavorites.toHashSet()
 
         val apps = withContext(Dispatchers.IO) {
@@ -237,7 +253,7 @@ class AppsRepository @Inject constructor(
         return AppInfo(
             label = label,
             packageName = appPackageName,
-            icon = toBitmapPainter(activity.getBadgedIcon(0), iconSizePx),
+            icon = resolveBadgedIcon(activity, userHandle).toBitmapPainter(iconSizePx),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
             isFavorite = keyFor(appPackageName, userHandle) in favoriteKeys,
@@ -246,6 +262,12 @@ class AppsRepository @Inject constructor(
             searchTokens = buildSearchTokens(label),
         )
     }
+
+    // getUserBadgedIcon is a no-op for the primary user and adds the work badge for managed profiles.
+    private fun resolveBadgedIcon(activity: LauncherActivityInfo, userHandle: UserHandle): Drawable =
+        iconPackRepository.resolveIcon(activity.componentName)
+            ?.let { application.packageManager.getUserBadgedIcon(it, userHandle) }
+            ?: activity.getBadgedIcon(0)
 
     private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
         if (packageName == application.packageName) return
@@ -321,8 +343,8 @@ class AppsRepository @Inject constructor(
                 try {
                     launcherApps.getActivityList(app.packageName, app.userHandle)
                         ?.firstOrNull()
-                        ?.getBadgedIcon(0)
-                        ?.let { app.key to toBitmapPainter(it, iconSizePx) }
+                        ?.let { resolveBadgedIcon(it, app.userHandle) }
+                        ?.let { app.key to it.toBitmapPainter(iconSizePx) }
                 } catch (_: Exception) {
                     null
                 }
@@ -448,15 +470,3 @@ private fun buildSearchTokens(label: String) =
         .split(' ')
         .filter { it.isNotEmpty() }
         .toImmutableList()
-
-private fun toBitmapPainter(drawable: Drawable, maxSizePx: Int): BitmapPainter {
-    val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxSizePx
-    val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxSizePx
-    val scale = minOf(1f, maxSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
-
-    val bitmap = drawable.toBitmap(
-        width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
-        height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
-    )
-    return BitmapPainter(bitmap.asImageBitmap())
-}

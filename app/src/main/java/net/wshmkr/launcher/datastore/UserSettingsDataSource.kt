@@ -42,6 +42,7 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_LAT = doublePreferencesKey("weather_location_latitude")
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
         private val KEY_PALETTE_STYLE = stringPreferencesKey("palette_style")
+        private val KEY_ICON_PACK = stringPreferencesKey("icon_pack_package")
     }
 
     val showClock: Flow<Boolean> = perField(KEY_SHOW_CLOCK) { true }
@@ -82,6 +83,8 @@ class UserSettingsDataSource @Inject constructor(
 
     val paletteStyle: Flow<PaletteStyle> =
         optionalField(KEY_PALETTE_STYLE).map(PaletteStyle::fromName)
+
+    val iconPack: Flow<String?> = optionalField(KEY_ICON_PACK)
 
     private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
         dataStore.data.map { it[key] ?: default() }.distinctUntilChanged()
@@ -142,6 +145,16 @@ class UserSettingsDataSource @Inject constructor(
     suspend fun setPaletteStyle(style: PaletteStyle) {
         dataStore.edit { preferences ->
             preferences[KEY_PALETTE_STYLE] = style.name
+        }
+    }
+
+    suspend fun setIconPack(packageName: String?) {
+        dataStore.edit { preferences ->
+            if (packageName == null) {
+                preferences.remove(KEY_ICON_PACK)
+            } else {
+                preferences[KEY_ICON_PACK] = packageName
+            }
         }
     }
 
