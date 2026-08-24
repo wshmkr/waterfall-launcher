@@ -220,7 +220,7 @@ fun WidgetStack(
                 }
 
                 if (!previewMode) {
-                    // A sibling, so the ripple draws above the opaque interop widget views.
+                    // Sibling so the ripple draws above the opaque interop widget views.
                     Box(
                         modifier = Modifier
                             .matchParentSize()
@@ -346,7 +346,6 @@ private fun DragHandle(
     }
 }
 
-/** Shortest virtual-page hop that lands on [targetIndex], so wrap-around jumps take the short way. */
 private fun PagerState.nearestVirtualPage(targetIndex: Int, pageCount: Int): Int {
     var delta = targetIndex - currentPage % pageCount
     if (delta > pageCount / 2) delta -= pageCount
@@ -370,7 +369,6 @@ private fun PageDashes(
             .indication(pressSource, ripple())
             .heightIn(min = PAGE_DASH_TOUCH_HEIGHT)
             .padding(start = Spacing.medium, top = PAGE_DASH_TOP_GAP, end = Spacing.medium)
-            // Drags on the indicator drive the pager directly, matching a swipe on the widget.
             .scrollable(
                 state = pagerState,
                 orientation = Orientation.Horizontal,
