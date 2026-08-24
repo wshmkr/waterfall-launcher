@@ -6,6 +6,7 @@ import android.util.SizeF
 import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -13,7 +14,6 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -144,7 +144,9 @@ fun WidgetStack(
             }
         }
 
-        Column(modifier = Modifier.fillMaxWidth()) {
+        val flingBehavior = PagerDefaults.flingBehavior(state = pagerState)
+
+        Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -165,10 +167,9 @@ fun WidgetStack(
             ) {
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(Corners.medium),
+                    modifier = Modifier.fillMaxSize(),
                     beyondViewportPageCount = 1,
+                    flingBehavior = flingBehavior,
                 ) { page ->
                     WidgetPage(
                         widgetId = widgetIds[page % pageCount],
@@ -232,6 +233,7 @@ fun WidgetStack(
                 PageDashes(
                     pagerState = pagerState,
                     pageCount = pageCount,
+                    flingBehavior = flingBehavior,
                     onLongPress = onManageWidgets,
                 )
             }
@@ -356,6 +358,7 @@ private fun PagerState.nearestVirtualPage(targetIndex: Int, pageCount: Int): Int
 private fun PageDashes(
     pagerState: PagerState,
     pageCount: Int,
+    flingBehavior: FlingBehavior,
     onLongPress: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -376,25 +379,11 @@ private fun PageDashes(
                     Orientation.Horizontal,
                     reverseScrolling = false,
                 ),
-                flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
+                flingBehavior = flingBehavior,
             )
-            .pointerInput(pageCount, onLongPress) {
-                // The press is emitted from onLongPress so taps and swipes never ripple.
-                var longPress: PressInteraction.Press? = null
+            .captureLongPress(interactionSource = pressSource, onLongPress = onLongPress)
+            .pointerInput(pageCount) {
                 detectTapGestures(
-                    onPress = {
-                        val released = tryAwaitRelease()
-                        longPress?.let { press ->
-                            pressSource.emit(
-                                if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press),
-                            )
-                        }
-                        longPress = null
-                    },
-                    onLongPress = { offset ->
-                        longPress = PressInteraction.Press(offset).also { pressSource.tryEmit(it) }
-                        onLongPress()
-                    },
                     onTap = { offset ->
                         val tappedIndex = (offset.x / size.width * pageCount).toInt()
                             .coerceIn(0, pageCount - 1)
@@ -407,7 +396,6 @@ private fun PageDashes(
                 )
             },
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-        verticalAlignment = Alignment.Top,
     ) {
         val currentPage = pagerState.currentPage % pageCount
         val dotColor = MaterialTheme.colorScheme.primary

@@ -33,18 +33,7 @@ fun Modifier.captureLongPress(
             )
             if (!enabled()) return@awaitEachGesture
 
-            var press: PressInteraction.Press? = null
-            fun endPress(cancelled: Boolean) {
-                val started = press ?: return
-                press = null
-                interactionSource.tryEmit(
-                    if (cancelled) PressInteraction.Cancel(started) else PressInteraction.Release(started),
-                )
-            }
-
             onTouchedChange(true)
-            // Cancellation (ACTION_CANCEL, node detach) unwinds here, so the shared
-            // interaction source can never be left latched in the pressed state.
             try {
                 val slop = viewConfiguration.touchSlop
                 // null means the timeout elapsed with the finger still down: a long press.
@@ -57,17 +46,26 @@ fun Modifier.captureLongPress(
                     return@awaitEachGesture
                 }
 
-                press = PressInteraction.Press(down.position).also { interactionSource.tryEmit(it) }
+                val press = PressInteraction.Press(down.position)
+                interactionSource.tryEmit(press)
                 onLongPress()
-                // Consume the rest of the gesture so it never completes below.
-                while (true) {
-                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                    event.changes.forEach { it.consume() }
-                    if (event.changes.none { it.pressed }) break
+                var released = false
+                // Cancellation (ACTION_CANCEL, node detach) unwinds here, so the shared
+                // interaction source can never be left latched in the pressed state.
+                try {
+                    // Consume the rest of the gesture so it never completes below.
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        event.changes.forEach { it.consume() }
+                        if (event.changes.none { it.pressed }) break
+                    }
+                    released = true
+                } finally {
+                    interactionSource.tryEmit(
+                        if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press),
+                    )
                 }
-                endPress(cancelled = false)
             } finally {
-                endPress(cancelled = true)
                 onTouchedChange(false)
             }
         }
