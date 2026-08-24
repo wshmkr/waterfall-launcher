@@ -77,7 +77,8 @@ private const val WIDGET_SIZE_DEBOUNCE_MS = 80L
 
 private val DRAG_HANDLE_HEIGHT = 32.dp
 
-private val PAGE_DASH_TOUCH_HEIGHT = 16.dp
+private val PAGE_DASH_TOUCH_HEIGHT = 12.dp
+private val PAGE_DASH_TOP_GAP = 4.dp
 
 private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     if (pageCount <= 1) return initialIndex
@@ -362,10 +363,10 @@ private fun PageDashes(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.medium)
-            .heightIn(min = PAGE_DASH_TOUCH_HEIGHT)
             .clip(Corners.small)
             .indication(pressSource, ripple())
+            .heightIn(min = PAGE_DASH_TOUCH_HEIGHT)
+            .padding(start = Spacing.medium, top = PAGE_DASH_TOP_GAP, end = Spacing.medium)
             // Drags on the indicator drive the pager directly, matching a swipe on the widget.
             .scrollable(
                 state = pagerState,
@@ -406,7 +407,7 @@ private fun PageDashes(
                 )
             },
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
         val currentPage = pagerState.currentPage % pageCount
         val dotColor = MaterialTheme.colorScheme.primary
