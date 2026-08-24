@@ -77,7 +77,7 @@ private const val WIDGET_SIZE_DEBOUNCE_MS = 80L
 
 private val DRAG_HANDLE_HEIGHT = 32.dp
 
-private val PAGE_DASH_TOUCH_HEIGHT = 24.dp
+private val PAGE_DASH_TOUCH_HEIGHT = 16.dp
 
 private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     if (pageCount <= 1) return initialIndex
