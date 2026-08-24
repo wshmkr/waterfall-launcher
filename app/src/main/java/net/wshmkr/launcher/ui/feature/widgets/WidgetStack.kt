@@ -86,8 +86,7 @@ private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     }
 
-// The caller must pass the app's single WidgetViewModel: a defaulted hiltViewModel() here
-// resolves per nav destination, forking stack state between home and the manage screen.
+// Requires the app's single WidgetViewModel: a defaulted hiltViewModel() resolves per nav destination.
 @Composable
 fun WidgetStack(
     viewModel: WidgetViewModel,
@@ -108,7 +107,6 @@ fun WidgetStack(
     val stackWidth = with(LocalDensity.current) { stackWidthPx.toDp() }
 
     // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
-    // commitStackHeight self-guards, so no mode check is needed.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
         viewModel.commitStackHeight()
         editing = false
@@ -262,8 +260,6 @@ private fun WidgetPage(
                 factory = { widgetView },
                 modifier = Modifier.fillMaxSize(),
             )
-            // Sits above the interop view so taps never reach the widget; the pager
-            // still intercepts horizontal drags for page swiping.
             Box(
                 modifier = Modifier
                     .fillMaxSize()

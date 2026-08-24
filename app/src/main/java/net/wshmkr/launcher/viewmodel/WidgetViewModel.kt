@@ -80,7 +80,6 @@ class WidgetViewModel @Inject constructor(
                     initialPageRestored = true
                 }
                 val ids = it.toImmutableList()
-                // moveWidget already applied this order; skipping the echo keeps drag reorders synchronous.
                 if (ids == widgetIds) return@collect
                 widgetIds = ids
                 refreshManagedWidgets(it)
@@ -135,9 +134,7 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
-    // The reorderable drag expects the list to move within the same frame, so the row state
-    // updates synchronously here. widgetIds waits for commit: the stack pager rebuilds on
-    // every order change, so mid-drag updates would inflate widget views on each crossing.
+    // The drag needs the move applied within the same frame; widgetIds intentionally waits for commit.
     fun moveWidget(fromWidgetId: Int, toWidgetId: Int) {
         val from = managedWidgets.firstOrNull { it.widgetId == fromWidgetId } ?: return
         val to = managedWidgets.firstOrNull { it.widgetId == toWidgetId } ?: return
@@ -175,8 +172,6 @@ class WidgetViewModel @Inject constructor(
     }
 
     private suspend fun refreshManagedWidgets(ids: List<Int>) {
-        // Entries that survive an add/remove keep their built labels; the IO hop is only
-        // paid when a new id actually needs building.
         val existing = managedWidgets.associateBy { it.widgetId }
         managedWidgets = if (ids.all { it in existing }) {
             ids.mapNotNull { existing[it] }.toImmutableList()

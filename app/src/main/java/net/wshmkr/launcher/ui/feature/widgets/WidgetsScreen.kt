@@ -40,7 +40,6 @@ fun WidgetsScreen(
     val onDeleteWidget = remember(viewModel) { { id: Int -> viewModel.removeWidget(id) } }
     val onMoveWidget = remember(viewModel) { viewModel::moveWidget }
     val onCommitOrder = remember(viewModel) { viewModel::commitWidgetOrder }
-    // Remembered so per-drag list updates don't recompose the preview's widget host views.
     val stackPreview: @Composable () -> Unit = remember(viewModel) {
         { WidgetStack(viewModel = viewModel, previewMode = true) }
     }
