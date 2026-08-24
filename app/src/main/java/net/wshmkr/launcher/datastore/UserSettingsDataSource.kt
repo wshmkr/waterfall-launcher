@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import net.wshmkr.launcher.model.HomeWidgetSettings
+import net.wshmkr.launcher.model.LauncherFont
 import net.wshmkr.launcher.model.PaletteStyle
 import java.util.Locale
 import javax.inject.Inject
@@ -42,6 +43,7 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_LAT = doublePreferencesKey("weather_location_latitude")
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
         private val KEY_PALETTE_STYLE = stringPreferencesKey("palette_style")
+        private val KEY_CUSTOM_FONT_PATH = stringPreferencesKey("custom_font_path")
     }
 
     val showClock: Flow<Boolean> = perField(KEY_SHOW_CLOCK) { true }
@@ -82,6 +84,11 @@ class UserSettingsDataSource @Inject constructor(
 
     val paletteStyle: Flow<PaletteStyle> =
         optionalField(KEY_PALETTE_STYLE).map(PaletteStyle::fromName)
+
+    val launcherFont: Flow<LauncherFont> =
+        optionalField(KEY_CUSTOM_FONT_PATH).map { path ->
+            path?.let(LauncherFont::UserFile) ?: LauncherFont.Bundled
+        }
 
     private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
         dataStore.data.map { it[key] ?: default() }.distinctUntilChanged()
@@ -142,6 +149,18 @@ class UserSettingsDataSource @Inject constructor(
     suspend fun setPaletteStyle(style: PaletteStyle) {
         dataStore.edit { preferences ->
             preferences[KEY_PALETTE_STYLE] = style.name
+        }
+    }
+
+    suspend fun setCustomFontPath(path: String) {
+        dataStore.edit { preferences ->
+            preferences[KEY_CUSTOM_FONT_PATH] = path
+        }
+    }
+
+    suspend fun clearCustomFontPath() {
+        dataStore.edit { preferences ->
+            preferences.remove(KEY_CUSTOM_FONT_PATH)
         }
     }
 

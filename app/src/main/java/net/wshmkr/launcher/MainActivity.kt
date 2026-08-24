@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import net.wshmkr.launcher.datastore.UserSettingsDataSource
+import net.wshmkr.launcher.model.LauncherFont
 import net.wshmkr.launcher.model.PaletteStyle
 import net.wshmkr.launcher.repository.WidgetRepository
 import net.wshmkr.launcher.ui.AppNavigation
@@ -46,7 +47,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val paletteStyle by userSettingsDataSource.paletteStyle
                 .collectAsStateWithLifecycle(PaletteStyle.Default)
-            WaterfallLauncherTheme(paletteStyle = paletteStyle) {
+            val launcherFont by userSettingsDataSource.launcherFont
+                .collectAsStateWithLifecycle(LauncherFont.Bundled)
+            WaterfallLauncherTheme(paletteStyle = paletteStyle, launcherFont = launcherFont) {
                 val navController = rememberNavController()
                 val widgetViewModel: WidgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {
