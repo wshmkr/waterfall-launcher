@@ -51,6 +51,7 @@ import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
+import net.wshmkr.launcher.viewmodel.WidgetViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val MIN_REORDERABLE_FAVORITES = 2
@@ -59,6 +60,7 @@ private const val MIN_REORDERABLE_FAVORITES = 2
 fun FavoritesView(
     navController: NavController,
     viewModel: HomeViewModel,
+    widgetViewModel: WidgetViewModel,
 ) {
     val reordering = viewModel.favoritesReordering
 
@@ -219,7 +221,10 @@ fun FavoritesView(
                 }
 
                 item(key = "widget_stack") {
-                    WidgetStack(onTouchedChange = onWidgetTouchedChange)
+                    WidgetStack(
+                        viewModel = widgetViewModel,
+                        onTouchedChange = onWidgetTouchedChange,
+                    )
                 }
 
                 item(key = "media_widget") {

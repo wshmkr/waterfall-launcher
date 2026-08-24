@@ -12,12 +12,14 @@ import net.wshmkr.launcher.ui.common.components.AppLauncher
 import net.wshmkr.launcher.ui.feature.search.SearchOverlay
 import net.wshmkr.launcher.ui.theme.OverWallpaper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
+import net.wshmkr.launcher.viewmodel.WidgetViewModel
 
 
 @Composable
 fun HomeScreen(
     navController: NavController,
     viewModel: HomeViewModel,
+    widgetViewModel: WidgetViewModel,
 ) {
     AppLauncher(launchAppIntent = viewModel.launchAppIntent)
 
@@ -39,6 +41,7 @@ fun HomeScreen(
                     FavoritesView(
                         navController = navController,
                         viewModel = viewModel,
+                        widgetViewModel = widgetViewModel,
                     )
                 } else {
                     AllAppsView(

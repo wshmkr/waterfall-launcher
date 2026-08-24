@@ -12,6 +12,7 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,7 +51,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.FlowPreview
@@ -86,10 +86,13 @@ private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     }
 
+// Requires the app's single WidgetViewModel: a defaulted hiltViewModel() resolves per nav destination.
 @Composable
 fun WidgetStack(
-    viewModel: WidgetViewModel = hiltViewModel(),
+    viewModel: WidgetViewModel,
     onTouchedChange: (Boolean) -> Unit = {},
+    // Preview mode: the resize handle is always shown and widget taps are blocked.
+    previewMode: Boolean = false,
 ) {
     val widgetIds = viewModel.widgetIds
 
@@ -105,10 +108,8 @@ fun WidgetStack(
 
     // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        if (editing) {
-            viewModel.commitStackHeight()
-            editing = false
-        }
+        viewModel.commitStackHeight()
+        editing = false
     }
 
     // Recreate the pager whenever the list changes so virtual pages always map
@@ -134,11 +135,17 @@ fun WidgetStack(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(Corners.medium)
-                .captureLongPress(
-                    interactionSource = pressSource,
-                    enabled = { !editing },
-                    onTouchedChange = onTouchedChange,
-                ) { editing = true },
+                .then(
+                    if (previewMode) {
+                        Modifier
+                    } else {
+                        Modifier.captureLongPress(
+                            interactionSource = pressSource,
+                            enabled = { !editing },
+                            onTouchedChange = onTouchedChange,
+                        ) { editing = true }
+                    }
+                ),
         ) {
             Column {
                 Box(
@@ -158,10 +165,15 @@ fun WidgetStack(
                             widgetId = widgetIds[page % pageCount],
                             widthDp = stackWidth.value.toInt(),
                             viewModel = viewModel,
+                            blockTouches = previewMode,
                         )
                     }
 
-                    if (editing) {
+                    if (previewMode) {
+                        StackResizeHandle(viewModel = viewModel)
+                    }
+
+                    if (editing || previewMode) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -171,6 +183,9 @@ fun WidgetStack(
                                     Corners.medium,
                                 ),
                         )
+                    }
+
+                    if (editing) {
                         Popup(
                             onDismissRequest = { editing = false },
                             properties = PopupProperties(focusable = true),
@@ -189,12 +204,7 @@ fun WidgetStack(
                                             detectTapGestures(onTap = { editing = false })
                                         },
                                 )
-                                DragHandle(
-                                    modifier = Modifier.align(Alignment.BottomCenter),
-                                    currentHeightDp = { viewModel.stackHeightDp },
-                                    onResize = viewModel::previewStackHeight,
-                                    onResizeEnd = viewModel::commitStackHeight,
-                                )
+                                StackResizeHandle(viewModel = viewModel)
                             }
                         }
                     }
@@ -205,12 +215,14 @@ fun WidgetStack(
                 }
             }
 
-            // A sibling, so the ripple draws above the opaque interop widget views.
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .indication(pressSource, ripple()),
-            )
+            if (!previewMode) {
+                // A sibling, so the ripple draws above the opaque interop widget views.
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .indication(pressSource, ripple()),
+                )
+            }
         }
     }
 }
@@ -221,6 +233,7 @@ private fun WidgetPage(
     widgetId: Int,
     widthDp: Int,
     viewModel: WidgetViewModel,
+    blockTouches: Boolean,
 ) {
     val context = LocalContext.current
     val widgetView = remember(widgetId) {
@@ -241,12 +254,34 @@ private fun WidgetPage(
 
     if (widgetView == null) {
         UnavailableWidget()
+    } else if (blockTouches) {
+        Box {
+            AndroidView(
+                factory = { widgetView },
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
+            )
+        }
     } else {
         AndroidView(
             factory = { widgetView },
             modifier = Modifier.fillMaxSize(),
         )
     }
+}
+
+@Composable
+private fun BoxScope.StackResizeHandle(viewModel: WidgetViewModel) {
+    DragHandle(
+        modifier = Modifier.align(Alignment.BottomCenter),
+        currentHeightDp = { viewModel.stackHeightDp },
+        onResize = viewModel::previewStackHeight,
+        onResizeEnd = viewModel::commitStackHeight,
+    )
 }
 
 @Composable

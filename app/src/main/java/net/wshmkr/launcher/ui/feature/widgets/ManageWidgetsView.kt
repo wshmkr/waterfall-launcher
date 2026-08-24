@@ -1,6 +1,7 @@
 package net.wshmkr.launcher.ui.feature.widgets
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,22 +11,31 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,22 +43,48 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
+import net.wshmkr.launcher.ui.common.components.ReorderHandle
+import net.wshmkr.launcher.ui.common.components.reorderActions
 import net.wshmkr.launcher.ui.common.icons.AddIcon
 import net.wshmkr.launcher.ui.common.icons.DeleteIcon
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.ManagedWidget
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableLazyListState
+import sh.calvin.reorderable.rememberReorderableLazyListState
+
+private const val MIN_REORDERABLE_WIDGETS = 2
+private const val ROW_DRAG_LONG_PRESS_TIMEOUT_MS = 200L
+
+private class QuickLongPressViewConfiguration(
+    delegate: ViewConfiguration,
+) : ViewConfiguration by delegate {
+    override val longPressTimeoutMillis = ROW_DRAG_LONG_PRESS_TIMEOUT_MS
+}
 
 @Composable
 fun ManageWidgetsView(
     managedWidgets: ImmutableList<ManagedWidget>,
+    stackPreview: @Composable () -> Unit,
     onAddWidget: () -> Unit,
     onDeleteWidget: (Int) -> Unit,
+    onMoveWidget: (Int, Int) -> Unit,
+    onCommitOrder: () -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val topPadding = calculateCenteredContentTopPadding()
+    val reorderState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromId = from.key as? Int
+        val toId = to.key as? Int
+        if (fromId != null && toId != null) {
+            onMoveWidget(fromId, toId)
+        }
+    }
+    val reorderable = managedWidgets.size >= MIN_REORDERABLE_WIDGETS
+
     val dimensions = LocalDimensions.current
+    val minHeaderHeight = calculateCenteredContentTopPadding()
 
     Column(
         modifier = Modifier
@@ -57,10 +93,18 @@ fun ManageWidgetsView(
             .padding(
                 start = dimensions.pagePadding,
                 end = dimensions.pagePadding,
-                top = topPadding,
                 bottom = Spacing.medium,
             )
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = minHeaderHeight)
+                .padding(vertical = Spacing.medium)
+        ) {
+            stackPreview()
+        }
+
         Text(
             text = "Manage Widgets",
             fontSize = dimensions.fontTitle,
@@ -74,27 +118,36 @@ fun ManageWidgetsView(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(Spacing.small),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(
-                    items = managedWidgets,
-                    key = { item -> item.widgetId }
-                ) { widget ->
-                    val onDelete = remember(widget.widgetId, onDeleteWidget) {
-                        { onDeleteWidget(widget.widgetId) }
+            val viewConfiguration = LocalViewConfiguration.current
+            val quickLongPressConfiguration = remember(viewConfiguration) {
+                QuickLongPressViewConfiguration(viewConfiguration)
+            }
+            CompositionLocalProvider(LocalViewConfiguration provides quickLongPressConfiguration) {
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.small),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    itemsIndexed(
+                        items = managedWidgets,
+                        key = { _, item -> item.widgetId }
+                    ) { index, widget ->
+                        ManagedWidgetRow(
+                            item = widget,
+                            previousId = managedWidgets.getOrNull(index - 1)?.widgetId,
+                            nextId = managedWidgets.getOrNull(index + 1)?.widgetId,
+                            reorderable = reorderable,
+                            reorderState = reorderState,
+                            onDelete = onDeleteWidget,
+                            onMove = onMoveWidget,
+                            onCommitOrder = onCommitOrder,
+                        )
                     }
-                    ManagedWidgetRow(
-                        item = widget,
-                        onDelete = onDelete,
-                    )
-                }
 
-                if (managedWidgets.size < WidgetDataSource.MAX_WIDGETS) {
-                    item {
-                        AddWidgetRow(onClick = onAddWidget)
+                    if (managedWidgets.size < WidgetDataSource.MAX_WIDGETS) {
+                        item {
+                            AddWidgetRow(onClick = onAddWidget)
+                        }
                     }
                 }
             }
@@ -103,53 +156,107 @@ fun ManageWidgetsView(
 }
 
 @Composable
-private fun ManagedWidgetRow(
+private fun LazyItemScope.ManagedWidgetRow(
     item: ManagedWidget,
-    onDelete: () -> Unit,
+    previousId: Int?,
+    nextId: Int?,
+    reorderable: Boolean,
+    reorderState: ReorderableLazyListState,
+    onDelete: (Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onCommitOrder: () -> Unit,
 ) {
     val dimensions = LocalDimensions.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Spacing.medium, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+    ReorderableItem(
+        state = reorderState,
+        key = item.widgetId,
+        enabled = reorderable,
     ) {
-        Image(
-            painter = rememberDrawablePainter(drawable = item.appIcon),
-            contentDescription = item.appName,
+        Row(
             modifier = Modifier
-                .size(dimensions.iconMedium)
-                .clip(Corners.medium)
-        )
-
-        Spacer(modifier = Modifier.width(Spacing.medium))
-
-        Column(
-            modifier = Modifier.weight(1f)
+                .fillMaxWidth()
+                .then(
+                    if (reorderable) {
+                        Modifier.longPressDraggableHandle(onDragStopped = onCommitOrder)
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = Spacing.medium, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = item.widgetName,
-                fontSize = dimensions.fontMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = item.appName,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = dimensions.fontCaption,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
+            if (reorderable) {
+                val actions = remember(item.widgetId, previousId, nextId, onMove) {
+                    reorderActions(item.widgetId, previousId, nextId, onMove)
+                }
+                ReorderHandle(
+                    label = item.widgetName,
+                    modifier = Modifier
+                        .draggableHandle(onDragStopped = onCommitOrder)
+                        .semantics { customActions = actions },
+                )
 
-        IconButton(onClick = onDelete) {
-            Icon(
-                painter = DeleteIcon(),
-                contentDescription = "Remove widget",
-            )
+                Spacer(modifier = Modifier.width(Spacing.small))
+            }
+
+            WidgetPreviewThumbnail(item = item)
+
+            Spacer(modifier = Modifier.width(Spacing.medium))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = item.widgetName,
+                    fontSize = dimensions.fontMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item.appName,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = dimensions.fontCaption,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            val onDeleteClick = remember(item.widgetId, onDelete) {
+                { onDelete(item.widgetId) }
+            }
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    painter = DeleteIcon(),
+                    contentDescription = "Remove widget",
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun WidgetPreviewThumbnail(item: ManagedWidget) {
+    val dimensions = LocalDimensions.current
+    val previewDrawable by rememberWidgetPreviewDrawable(item.providerInfo)
+    val thumbnailModifier = Modifier
+        .size(width = dimensions.widgetThumbnailWidth, height = dimensions.widgetThumbnailHeight)
+        .clip(Corners.small)
+
+    val drawable = previewDrawable
+    if (drawable != null) {
+        Image(
+            painter = rememberDrawablePainter(drawable = drawable),
+            contentDescription = item.widgetName,
+            modifier = thumbnailModifier,
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        Box(
+            modifier = thumbnailModifier
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+        )
     }
 }
 

@@ -24,6 +24,7 @@ import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.WidgetRepository
+import net.wshmkr.launcher.util.movedItem
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,7 +79,9 @@ class WidgetViewModel @Inject constructor(
                     initialPageIndex = it.indexOf(lastWidgetId).coerceAtLeast(0)
                     initialPageRestored = true
                 }
-                widgetIds = it.toImmutableList()
+                val ids = it.toImmutableList()
+                if (ids == widgetIds) return@collect
+                widgetIds = ids
                 refreshManagedWidgets(it)
             }
         }
@@ -131,6 +134,25 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
+    // The drag needs the move applied within the same frame; widgetIds intentionally waits for commit.
+    fun moveWidget(fromWidgetId: Int, toWidgetId: Int) {
+        val from = managedWidgets.firstOrNull { it.widgetId == fromWidgetId } ?: return
+        val to = managedWidgets.firstOrNull { it.widgetId == toWidgetId } ?: return
+        managedWidgets = managedWidgets.movedItem(from, to)?.toImmutableList() ?: return
+    }
+
+    fun commitWidgetOrder() {
+        val orderedIds = managedWidgets.map { it.widgetId }
+        // Ids without a loadable provider never become rows; keep them rather than drop them.
+        val merged = (orderedIds + widgetIds.filterNot { it in orderedIds }).toImmutableList()
+        if (merged == widgetIds) return
+        widgetIds = merged
+        widgetRepository.previewWidgetOrder(merged)
+        viewModelScope.launch {
+            widgetRepository.commitWidgetOrder()
+        }
+    }
+
     fun createWidgetView(context: Context, widgetId: Int): AppWidgetHostView? {
         return try {
             val info = widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId) ?: return null
@@ -150,29 +172,33 @@ class WidgetViewModel @Inject constructor(
     }
 
     private suspend fun refreshManagedWidgets(ids: List<Int>) {
+        val existing = managedWidgets.associateBy { it.widgetId }
+        managedWidgets = if (ids.all { it in existing }) {
+            ids.mapNotNull { existing[it] }.toImmutableList()
+        } else {
+            withContext(Dispatchers.IO) {
+                ids.mapNotNull { widgetId ->
+                    existing[widgetId] ?: buildManagedWidget(widgetId)
+                }.toImmutableList()
+            }
+        }
+    }
+
+    private fun buildManagedWidget(widgetId: Int): ManagedWidget? {
         val manager = widgetRepository.appWidgetManager
         val pm = widgetRepository.packageManager
-
-        val items = withContext(Dispatchers.IO) {
-            ids.mapNotNull { widgetId ->
-                val info = runCatching { manager.getAppWidgetInfo(widgetId) }
-                    .getOrNull() ?: return@mapNotNull null
-                val appInfo = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
-                    .getOrNull()
-                val appName = appInfo?.loadLabel(pm)?.toString() ?: info.provider.packageName
-                val widgetName = runCatching { info.loadLabel(pm)?.toString() }
-                    .getOrNull() ?: info.provider.className
-                val icon = appInfo?.loadIcon(pm)
-                ManagedWidget(
-                    widgetId = widgetId,
-                    widgetName = widgetName,
-                    appName = appName,
-                    appIcon = icon
-                )
-            }.toImmutableList()
-        }
-
-        managedWidgets = items
+        val info = runCatching { manager.getAppWidgetInfo(widgetId) }
+            .getOrNull() ?: return null
+        val appName = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
+            .getOrNull()?.loadLabel(pm)?.toString() ?: info.provider.packageName
+        val widgetName = runCatching { info.loadLabel(pm)?.toString() }
+            .getOrNull() ?: info.provider.className
+        return ManagedWidget(
+            widgetId = widgetId,
+            widgetName = widgetName,
+            appName = appName,
+            providerInfo = info
+        )
     }
 
     private fun buildWidgetAppListItems(providers: List<WidgetProviderAppInfo>): ImmutableList<WidgetAppListItem> {
@@ -249,5 +275,5 @@ data class ManagedWidget(
     val widgetId: Int,
     val widgetName: String,
     val appName: String,
-    val appIcon: Drawable?
+    val providerInfo: AppWidgetProviderInfo
 )
