@@ -36,6 +36,8 @@ data class Dimensions(
     val mediaAppIconSize: Dp,
     val albumArtSize: Dp,
     val searchButtonEndInset: Dp,
+    val widgetThumbnailWidth: Dp,
+    val widgetThumbnailHeight: Dp,
 
     val fontCaption: TextUnit,
     val fontSmall: TextUnit,
@@ -60,6 +62,8 @@ val standardDimensions = Dimensions(
     mediaAppIconSize = 56.dp,
     albumArtSize = 96.dp,
     searchButtonEndInset = 64.dp,
+    widgetThumbnailWidth = 72.dp,
+    widgetThumbnailHeight = 56.dp,
 
     fontCaption = 12.sp,
     fontSmall = 14.sp,
@@ -84,6 +88,8 @@ val compactDimensions = Dimensions(
     mediaAppIconSize = 48.dp,
     albumArtSize = 80.dp,
     searchButtonEndInset = 56.dp,
+    widgetThumbnailWidth = 64.dp,
+    widgetThumbnailHeight = 48.dp,
 
     fontCaption = 11.sp,
     fontSmall = 13.sp,
@@ -108,6 +114,8 @@ val largeDimensions = Dimensions(
     mediaAppIconSize = 64.dp,
     albumArtSize = 112.dp,
     searchButtonEndInset = 72.dp,
+    widgetThumbnailWidth = 80.dp,
+    widgetThumbnailHeight = 64.dp,
 
     fontCaption = 13.sp,
     fontSmall = 15.sp,

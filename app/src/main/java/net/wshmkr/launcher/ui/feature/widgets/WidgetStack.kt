@@ -12,6 +12,7 @@ import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -107,11 +108,10 @@ fun WidgetStack(
     val stackWidth = with(LocalDensity.current) { stackWidthPx.toDp() }
 
     // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
+    // commitStackHeight self-guards, so no mode check is needed.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        if (editing || previewMode) {
-            viewModel.commitStackHeight()
-            editing = false
-        }
+        viewModel.commitStackHeight()
+        editing = false
     }
 
     // Recreate the pager whenever the list changes so virtual pages always map
@@ -172,12 +172,7 @@ fun WidgetStack(
                     }
 
                     if (previewMode) {
-                        DragHandle(
-                            modifier = Modifier.align(Alignment.BottomCenter),
-                            currentHeightDp = { viewModel.stackHeightDp },
-                            onResize = viewModel::previewStackHeight,
-                            onResizeEnd = viewModel::commitStackHeight,
-                        )
+                        StackResizeHandle(viewModel = viewModel)
                     }
 
                     if (editing || previewMode) {
@@ -211,12 +206,7 @@ fun WidgetStack(
                                             detectTapGestures(onTap = { editing = false })
                                         },
                                 )
-                                DragHandle(
-                                    modifier = Modifier.align(Alignment.BottomCenter),
-                                    currentHeightDp = { viewModel.stackHeightDp },
-                                    onResize = viewModel::previewStackHeight,
-                                    onResizeEnd = viewModel::commitStackHeight,
-                                )
+                                StackResizeHandle(viewModel = viewModel)
                             }
                         }
                     }
@@ -266,23 +256,36 @@ private fun WidgetPage(
 
     if (widgetView == null) {
         UnavailableWidget()
-    } else {
+    } else if (blockTouches) {
         Box {
             AndroidView(
                 factory = { widgetView },
                 modifier = Modifier.fillMaxSize(),
             )
-            if (blockTouches) {
-                // Sits above the interop view so taps never reach the widget; the pager
-                // still intercepts horizontal drags for page swiping.
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) { detectTapGestures(onTap = {}) },
-                )
-            }
+            // Sits above the interop view so taps never reach the widget; the pager
+            // still intercepts horizontal drags for page swiping.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
+            )
         }
+    } else {
+        AndroidView(
+            factory = { widgetView },
+            modifier = Modifier.fillMaxSize(),
+        )
     }
+}
+
+@Composable
+private fun BoxScope.StackResizeHandle(viewModel: WidgetViewModel) {
+    DragHandle(
+        modifier = Modifier.align(Alignment.BottomCenter),
+        currentHeightDp = { viewModel.stackHeightDp },
+        onResize = viewModel::previewStackHeight,
+        onResizeEnd = viewModel::commitStackHeight,
+    )
 }
 
 @Composable

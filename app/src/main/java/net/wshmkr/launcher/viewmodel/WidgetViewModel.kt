@@ -139,17 +139,18 @@ class WidgetViewModel @Inject constructor(
     // updates synchronously here. widgetIds waits for commit: the stack pager rebuilds on
     // every order change, so mid-drag updates would inflate widget views on each crossing.
     fun moveWidget(fromWidgetId: Int, toWidgetId: Int) {
-        val reordered = managedWidgets.map { it.widgetId }
-            .movedItem(fromWidgetId, toWidgetId) ?: return
-        val widgetsById = managedWidgets.associateBy { it.widgetId }
-        managedWidgets = reordered.mapNotNull { widgetsById[it] }.toImmutableList()
+        val from = managedWidgets.firstOrNull { it.widgetId == fromWidgetId } ?: return
+        val to = managedWidgets.firstOrNull { it.widgetId == toWidgetId } ?: return
+        managedWidgets = managedWidgets.movedItem(from, to)?.toImmutableList() ?: return
     }
 
     fun commitWidgetOrder() {
         val orderedIds = managedWidgets.map { it.widgetId }
         // Ids without a loadable provider never become rows; keep them rather than drop them.
-        widgetIds = (orderedIds + widgetIds.filterNot { it in orderedIds }).toImmutableList()
-        widgetRepository.previewWidgetOrder(widgetIds)
+        val merged = (orderedIds + widgetIds.filterNot { it in orderedIds }).toImmutableList()
+        if (merged == widgetIds) return
+        widgetIds = merged
+        widgetRepository.previewWidgetOrder(merged)
         viewModelScope.launch {
             widgetRepository.commitWidgetOrder()
         }
@@ -174,12 +175,17 @@ class WidgetViewModel @Inject constructor(
     }
 
     private suspend fun refreshManagedWidgets(ids: List<Int>) {
-        // Reuse built entries so per-drag reorder emissions skip rebuilding labels.
+        // Entries that survive an add/remove keep their built labels; the IO hop is only
+        // paid when a new id actually needs building.
         val existing = managedWidgets.associateBy { it.widgetId }
-        managedWidgets = withContext(Dispatchers.IO) {
-            ids.mapNotNull { widgetId ->
-                existing[widgetId] ?: buildManagedWidget(widgetId)
-            }.toImmutableList()
+        managedWidgets = if (ids.all { it in existing }) {
+            ids.mapNotNull { existing[it] }.toImmutableList()
+        } else {
+            withContext(Dispatchers.IO) {
+                ids.mapNotNull { widgetId ->
+                    existing[widgetId] ?: buildManagedWidget(widgetId)
+                }.toImmutableList()
+            }
         }
     }
 

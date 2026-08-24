@@ -5,11 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavController
 import net.wshmkr.launcher.ui.theme.launcherScrim
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
@@ -37,6 +40,18 @@ fun WidgetsScreen(
     val onDeleteWidget = remember(viewModel) { { id: Int -> viewModel.removeWidget(id) } }
     val onMoveWidget = remember(viewModel) { viewModel::moveWidget }
     val onCommitOrder = remember(viewModel) { viewModel::commitWidgetOrder }
+    // Remembered so per-drag list updates don't recompose the preview's widget host views.
+    val stackPreview: @Composable () -> Unit = remember(viewModel) {
+        { WidgetStack(viewModel = viewModel, previewMode = true) }
+    }
+
+    // A drag torn down with the screen never stops cleanly, so the order is also committed here.
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        onCommitOrder()
+    }
+    DisposableEffect(onCommitOrder) {
+        onDispose { onCommitOrder() }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -53,7 +68,7 @@ fun WidgetsScreen(
         } else {
             ManageWidgetsView(
                 managedWidgets = managedWidgets,
-                stackPreview = { WidgetStack(viewModel = viewModel, previewMode = true) },
+                stackPreview = stackPreview,
                 onAddWidget = onShowAdd,
                 onDeleteWidget = onDeleteWidget,
                 onMoveWidget = onMoveWidget,

@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,8 +39,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import kotlinx.collections.immutable.ImmutableList
 import net.wshmkr.launcher.datastore.WidgetDataSource
@@ -60,9 +57,6 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val MIN_REORDERABLE_WIDGETS = 2
 private const val ROW_DRAG_LONG_PRESS_TIMEOUT_MS = 200L
-
-private val PreviewThumbnailWidth = 72.dp
-private val PreviewThumbnailHeight = 56.dp
 
 // The system long-press timeout (~400ms) feels sluggish for starting a row drag.
 private class QuickLongPressViewConfiguration(
@@ -90,14 +84,6 @@ fun ManageWidgetsView(
     }
     val reorderable = managedWidgets.size >= MIN_REORDERABLE_WIDGETS
 
-    // A drag torn down with the screen never stops cleanly, so the order is also committed here.
-    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        onCommitOrder()
-    }
-    DisposableEffect(onCommitOrder) {
-        onDispose { onCommitOrder() }
-    }
-
     val dimensions = LocalDimensions.current
     val minHeaderHeight = calculateCenteredContentTopPadding()
 
@@ -117,12 +103,9 @@ fun ManageWidgetsView(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = minHeaderHeight)
+                .padding(vertical = Spacing.medium)
         ) {
-            Column {
-                Spacer(modifier = Modifier.height(Spacing.medium))
-                stackPreview()
-                Spacer(modifier = Modifier.height(Spacing.medium))
-            }
+            stackPreview()
         }
 
         Text(
@@ -138,30 +121,36 @@ fun ManageWidgetsView(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(Spacing.small),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                itemsIndexed(
-                    items = managedWidgets,
-                    key = { _, item -> item.widgetId }
-                ) { index, widget ->
-                    ManagedWidgetRow(
-                        item = widget,
-                        previousId = managedWidgets.getOrNull(index - 1)?.widgetId,
-                        nextId = managedWidgets.getOrNull(index + 1)?.widgetId,
-                        reorderable = reorderable,
-                        reorderState = reorderState,
-                        onDelete = onDeleteWidget,
-                        onMove = onMoveWidget,
-                        onCommitOrder = onCommitOrder,
-                    )
-                }
+            val viewConfiguration = LocalViewConfiguration.current
+            val quickLongPressConfiguration = remember(viewConfiguration) {
+                QuickLongPressViewConfiguration(viewConfiguration)
+            }
+            CompositionLocalProvider(LocalViewConfiguration provides quickLongPressConfiguration) {
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.small),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    itemsIndexed(
+                        items = managedWidgets,
+                        key = { _, item -> item.widgetId }
+                    ) { index, widget ->
+                        ManagedWidgetRow(
+                            item = widget,
+                            previousId = managedWidgets.getOrNull(index - 1)?.widgetId,
+                            nextId = managedWidgets.getOrNull(index + 1)?.widgetId,
+                            reorderable = reorderable,
+                            reorderState = reorderState,
+                            onDelete = onDeleteWidget,
+                            onMove = onMoveWidget,
+                            onCommitOrder = onCommitOrder,
+                        )
+                    }
 
-                if (managedWidgets.size < WidgetDataSource.MAX_WIDGETS) {
-                    item {
-                        AddWidgetRow(onClick = onAddWidget)
+                    if (managedWidgets.size < WidgetDataSource.MAX_WIDGETS) {
+                        item {
+                            AddWidgetRow(onClick = onAddWidget)
+                        }
                     }
                 }
             }
@@ -181,77 +170,69 @@ private fun LazyItemScope.ManagedWidgetRow(
     onCommitOrder: () -> Unit,
 ) {
     val dimensions = LocalDimensions.current
-    val viewConfiguration = LocalViewConfiguration.current
-    val quickLongPressConfiguration = remember(viewConfiguration) {
-        QuickLongPressViewConfiguration(viewConfiguration)
-    }
     ReorderableItem(
         state = reorderState,
         key = item.widgetId,
         enabled = reorderable,
     ) {
-        CompositionLocalProvider(LocalViewConfiguration provides quickLongPressConfiguration) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        // Long-press keeps list scrolling and the delete button's tap working.
-                        if (reorderable) {
-                            Modifier.longPressDraggableHandle(onDragStopped = onCommitOrder)
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .padding(horizontal = Spacing.medium, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (reorderable) {
-                    val actions = remember(item.widgetId, previousId, nextId, onMove) {
-                        reorderActions(item.widgetId, previousId, nextId, onMove)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    // Long-press keeps list scrolling and the delete button's tap working.
+                    if (reorderable) {
+                        Modifier.longPressDraggableHandle(onDragStopped = onCommitOrder)
+                    } else {
+                        Modifier
                     }
-                    ReorderHandle(
-                        label = item.widgetName,
-                        modifier = Modifier
-                            .draggableHandle(onDragStopped = onCommitOrder)
-                            .semantics { customActions = actions },
-                    )
-
-                    Spacer(modifier = Modifier.width(Spacing.small))
+                )
+                .padding(horizontal = Spacing.medium, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (reorderable) {
+                val actions = remember(item.widgetId, previousId, nextId, onMove) {
+                    reorderActions(item.widgetId, previousId, nextId, onMove)
                 }
+                ReorderHandle(
+                    label = item.widgetName,
+                    modifier = Modifier.semantics { customActions = actions },
+                )
 
-                WidgetPreviewThumbnail(item = item)
+                Spacer(modifier = Modifier.width(Spacing.small))
+            }
 
-                Spacer(modifier = Modifier.width(Spacing.medium))
+            WidgetPreviewThumbnail(item = item)
 
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = item.widgetName,
-                        fontSize = dimensions.fontMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = item.appName,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = dimensions.fontCaption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            Spacer(modifier = Modifier.width(Spacing.medium))
 
-                val onDeleteClick = remember(item.widgetId, onDelete) {
-                    { onDelete(item.widgetId) }
-                }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        painter = DeleteIcon(),
-                        contentDescription = "Remove widget",
-                    )
-                }
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = item.widgetName,
+                    fontSize = dimensions.fontMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item.appName,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = dimensions.fontCaption,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            val onDeleteClick = remember(item.widgetId, onDelete) {
+                { onDelete(item.widgetId) }
+            }
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    painter = DeleteIcon(),
+                    contentDescription = "Remove widget",
+                )
             }
         }
     }
@@ -259,9 +240,10 @@ private fun LazyItemScope.ManagedWidgetRow(
 
 @Composable
 private fun WidgetPreviewThumbnail(item: ManagedWidget) {
+    val dimensions = LocalDimensions.current
     val previewDrawable by rememberWidgetPreviewDrawable(item.providerInfo)
     val thumbnailModifier = Modifier
-        .size(width = PreviewThumbnailWidth, height = PreviewThumbnailHeight)
+        .size(width = dimensions.widgetThumbnailWidth, height = dimensions.widgetThumbnailHeight)
         .clip(Corners.small)
 
     val drawable = previewDrawable
