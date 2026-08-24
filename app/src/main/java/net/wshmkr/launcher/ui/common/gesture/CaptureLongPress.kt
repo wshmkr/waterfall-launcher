@@ -14,8 +14,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 /**
  * Detects a still long press without blocking taps or swipes below, then consumes the rest
  * of the gesture so children never see a click (interop views get ACTION_CANCEL).
- * Emits press interactions on [interactionSource] so an indication (e.g. ripple) can show the
- * touched area. [onTouchedChange] brackets the whole gesture, staying true until the last pointer
+ * Emits a press on [interactionSource] once the long press is recognized.
+ * [onTouchedChange] brackets the whole gesture, staying true until the last pointer
  * lifts even once the press itself has ended, so an ancestor gesture can defer to it.
  * [enabled] is evaluated at pointer-down.
  */
@@ -33,19 +33,7 @@ fun Modifier.captureLongPress(
             )
             if (!enabled()) return@awaitEachGesture
 
-            var press: PressInteraction.Press? = PressInteraction.Press(down.position)
-                .also { interactionSource.tryEmit(it) }
-            fun endPress(cancelled: Boolean) {
-                val started = press ?: return
-                press = null
-                interactionSource.tryEmit(
-                    if (cancelled) PressInteraction.Cancel(started) else PressInteraction.Release(started),
-                )
-            }
-
             onTouchedChange(true)
-            // Cancellation (ACTION_CANCEL, node detach) unwinds here, so the shared
-            // interaction source can never be left latched in the pressed state.
             try {
                 val slop = viewConfiguration.touchSlop
                 // null means the timeout elapsed with the finger still down: a long press.
@@ -54,21 +42,24 @@ fun Modifier.captureLongPress(
                 }
 
                 if (movedOutOfSlop != null) {
-                    endPress(cancelled = movedOutOfSlop)
                     awaitAllPointersUp()
                     return@awaitEachGesture
                 }
 
+                val press = PressInteraction.Press(down.position)
+                interactionSource.tryEmit(press)
                 onLongPress()
-                // Consume the rest of the gesture so it never completes below.
-                while (true) {
-                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                    event.changes.forEach { it.consume() }
-                    if (event.changes.none { it.pressed }) break
+                var released = false
+                // finally also runs on ACTION_CANCEL / node detach, so the press is never left latched.
+                try {
+                    consumeUntilAllPointersUp()
+                    released = true
+                } finally {
+                    interactionSource.tryEmit(
+                        if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press),
+                    )
                 }
-                endPress(cancelled = false)
             } finally {
-                endPress(cancelled = true)
                 onTouchedChange(false)
             }
         }
@@ -86,6 +77,14 @@ private suspend fun AwaitPointerEventScope.awaitSlopOrRelease(
         val dx = change.position.x - down.position.x
         val dy = change.position.y - down.position.y
         if (dx * dx + dy * dy > slopSquared) return true
+    }
+}
+
+private suspend fun AwaitPointerEventScope.consumeUntilAllPointersUp() {
+    while (true) {
+        val event = awaitPointerEvent(PointerEventPass.Initial)
+        event.changes.forEach { it.consume() }
+        if (event.changes.none { it.pressed }) break
     }
 }
 

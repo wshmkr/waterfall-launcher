@@ -64,7 +64,7 @@ fun MediaControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(Spacing.small)
+            .padding(start = Spacing.small, end = Spacing.small, bottom = Spacing.small)
             .clip(Corners.small)
             .clickable(onClick = onMediaAppClick)
             .padding(horizontal = Spacing.small),

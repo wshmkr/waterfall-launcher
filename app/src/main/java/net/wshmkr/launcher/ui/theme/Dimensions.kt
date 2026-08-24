@@ -164,4 +164,4 @@ private const val ALPHABET_BOTTOM_LIFT_FRACTION = 0.11f
 private const val ALPHABET_HEIGHT_FRACTION = 0.45f
 private val ALPHABET_MAX_LETTER_PITCH = 18.dp
 private const val SEARCH_BUTTON_BOTTOM_FRACTION = 0.055f
-private const val HOME_WIDGET_GAP_FRACTION = 0.018f
+private const val HOME_WIDGET_GAP_FRACTION = 0.010f
