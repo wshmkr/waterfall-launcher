@@ -39,6 +39,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
@@ -224,6 +225,7 @@ fun FavoritesView(
                     WidgetStack(
                         viewModel = widgetViewModel,
                         onTouchedChange = onWidgetTouchedChange,
+                        onManageWidgets = { navController.navigate(Screen.WidgetList.route) },
                     )
                 }
 
