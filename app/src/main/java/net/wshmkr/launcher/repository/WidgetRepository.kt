@@ -10,6 +10,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
@@ -31,6 +33,8 @@ class WidgetRepository @Inject constructor(
     val widgetIds = _widgetIds.asStateFlow()
 
     private var persistedWidgetIds: List<Int> = emptyList()
+
+    private val widgetMutations = Mutex()
 
     suspend fun getLastPageWidgetId(): Int? = widgetDataSource.getLastPageWidgetId()
 
@@ -55,13 +59,14 @@ class WidgetRepository @Inject constructor(
         _widgetIds.value = ids
     }
 
-    suspend fun commitWidgetOrder() {
+    suspend fun commitWidgetOrder() = widgetMutations.withLock {
         val ids = _widgetIds.value
-        if (ids == persistedWidgetIds) return
-        persistedWidgetIds = ids
+        if (ids == persistedWidgetIds) return@withLock
         withContext(Dispatchers.IO) {
             widgetDataSource.setWidgetOrder(ids)
         }
+        // Only marked persisted after the write succeeds, so a failed commit stays retryable.
+        persistedWidgetIds = ids
     }
 
     fun allocateWidgetId(): Int = appWidgetHost.allocateAppWidgetId()
@@ -87,7 +92,7 @@ class WidgetRepository @Inject constructor(
     fun startListening() = appWidgetHost.startListening()
     fun stopListening() = appWidgetHost.stopListening()
 
-    private suspend fun updateIdsOnIo(block: suspend () -> Unit) {
+    private suspend fun updateIdsOnIo(block: suspend () -> Unit) = widgetMutations.withLock {
         val updated = withContext(Dispatchers.IO) {
             block()
             widgetDataSource.getWidgetIds()
