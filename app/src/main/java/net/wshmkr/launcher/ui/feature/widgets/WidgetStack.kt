@@ -378,16 +378,22 @@ private fun PageDashes(
                 flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
             )
             .pointerInput(pageCount, onLongPress) {
+                // The press is emitted from onLongPress so taps and swipes never ripple.
+                var longPress: PressInteraction.Press? = null
                 detectTapGestures(
-                    onPress = { offset ->
-                        val press = PressInteraction.Press(offset)
-                        pressSource.emit(press)
+                    onPress = {
                         val released = tryAwaitRelease()
-                        pressSource.emit(
-                            if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press),
-                        )
+                        longPress?.let { press ->
+                            pressSource.emit(
+                                if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press),
+                            )
+                        }
+                        longPress = null
                     },
-                    onLongPress = { onLongPress() },
+                    onLongPress = { offset ->
+                        longPress = PressInteraction.Press(offset).also { pressSource.tryEmit(it) }
+                        onLongPress()
+                    },
                     onTap = { offset ->
                         val tappedIndex = (offset.x / size.width * pageCount).toInt()
                             .coerceIn(0, pageCount - 1)
