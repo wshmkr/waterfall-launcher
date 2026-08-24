@@ -58,7 +58,6 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 private const val MIN_REORDERABLE_WIDGETS = 2
 private const val ROW_DRAG_LONG_PRESS_TIMEOUT_MS = 200L
 
-// The system long-press timeout (~400ms) feels sluggish for starting a row drag.
 private class QuickLongPressViewConfiguration(
     delegate: ViewConfiguration,
 ) : ViewConfiguration by delegate {
@@ -97,8 +96,6 @@ fun ManageWidgetsView(
                 bottom = Spacing.medium,
             )
     ) {
-        // The preview pins to the top and the title never sits higher than it used to,
-        // only pushed down when the stack outgrows the reserved space.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -179,7 +176,6 @@ private fun LazyItemScope.ManagedWidgetRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    // Long-press keeps list scrolling and the delete button's tap working.
                     if (reorderable) {
                         Modifier.longPressDraggableHandle(onDragStopped = onCommitOrder)
                     } else {
@@ -195,7 +191,9 @@ private fun LazyItemScope.ManagedWidgetRow(
                 }
                 ReorderHandle(
                     label = item.widgetName,
-                    modifier = Modifier.semantics { customActions = actions },
+                    modifier = Modifier
+                        .draggableHandle(onDragStopped = onCommitOrder)
+                        .semantics { customActions = actions },
                 )
 
                 Spacer(modifier = Modifier.width(Spacing.small))
