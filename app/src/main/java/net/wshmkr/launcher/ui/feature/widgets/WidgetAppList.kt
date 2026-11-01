@@ -58,7 +58,8 @@ fun WidgetAppList(
                             is WidgetAppListItem.SectionHeader -> "widget_header_${item.letter}"
                             is WidgetAppListItem.Provider -> "widget_provider_${item.packageName}"
                         }
-                    }
+                    },
+                    contentType = { _, item -> item::class },
                 ) { index, listItem ->
                     when (listItem) {
                         is WidgetAppListItem.SectionHeader -> {

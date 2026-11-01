@@ -3,8 +3,9 @@ package net.wshmkr.launcher.util
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
-import android.content.ComponentName
 import android.content.Intent
+import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
@@ -13,6 +14,11 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.repository.WidgetRepository
 
+private const val TAG = "WidgetPickerHelper"
+private const val SAVED_STATE_KEY = "widget_picker_pending"
+private const val KEY_WIDGET_ID = "widget_id"
+private const val KEY_WIDGET_INFO = "widget_info"
+private const val KEY_REQUEST = "request"
 
 class WidgetPickerHelper(
     private val activity: ComponentActivity,
@@ -32,68 +38,59 @@ class WidgetPickerHelper(
             ActivityResultContracts.StartActivityForResult(),
             ::handleBindOrConfigureResult
         )
+        // The bind/configure activity can outlive this activity instance across a config change.
+        restorePendingWidget()
+        activity.savedStateRegistry.registerSavedStateProvider(SAVED_STATE_KEY) { savePendingWidget() }
     }
 
     fun bindOrConfigure(widgetId: Int, info: AppWidgetProviderInfo) {
+        // A flow still pending here never delivered its result; release its id.
+        clearPendingWidget(deleteFromHost = true)
+        pendingWidgetId = widgetId
         pendingWidgetInfo = info
-        if (!tryBind(widgetId, info.provider)) {
-            launchBindPermissionRequest(widgetId, info.provider)
-            return
-        }
-
-        if (info.configure != null) {
-            launchConfiguration(widgetId, info)
-        } else {
-            saveWidget(widgetId)
-            pendingWidgetInfo = null
+        runOrAbandon {
+            if (widgetRepository.bindAppWidgetIdIfAllowed(widgetId, info.provider)) {
+                configureOrSave(widgetId, info)
+            } else {
+                launchBindPermissionRequest(widgetId, info)
+            }
         }
     }
 
     private fun handleBindOrConfigureResult(result: ActivityResult) {
         val widgetId = pendingWidgetId ?: return
-
-        if (result.resultCode == Activity.RESULT_OK) {
-            when (pendingRequest) {
-                PendingRequest.BIND -> {
-                    val info = pendingWidgetInfo
-                    if (info == null) {
-                        clearPendingWidget(deleteFromHost = true)
-                        return
-                    }
-                    if (info.configure != null) {
-                        launchConfiguration(widgetId, info)
-                    } else {
-                        saveWidget(widgetId)
-                        clearPendingWidget()
-                    }
-                }
-                PendingRequest.CONFIG -> {
-                    saveWidget(widgetId)
-                    clearPendingWidget()
-                }
-                PendingRequest.NONE -> clearPendingWidget()
-            }
-        } else {
+        val info = pendingWidgetInfo
+        if (result.resultCode != Activity.RESULT_OK || info == null) {
             clearPendingWidget(deleteFromHost = true)
+            return
+        }
+        runOrAbandon {
+            when (pendingRequest) {
+                PendingRequest.BIND -> configureOrSave(widgetId, info)
+                PendingRequest.CONFIG -> saveWidget(widgetId)
+                PendingRequest.NONE -> clearPendingWidget(deleteFromHost = true)
+            }
         }
     }
 
-    private fun tryBind(widgetId: Int, provider: ComponentName): Boolean {
-        return widgetRepository.bindAppWidgetIdIfAllowed(widgetId, provider)
+    private fun configureOrSave(widgetId: Int, info: AppWidgetProviderInfo) {
+        if (info.configure != null) {
+            launchConfiguration(widgetId, info)
+        } else {
+            saveWidget(widgetId)
+        }
     }
 
-    private fun launchBindPermissionRequest(widgetId: Int, provider: ComponentName) {
-        pendingWidgetId = widgetId
+    private fun launchBindPermissionRequest(widgetId: Int, info: AppWidgetProviderInfo) {
         pendingRequest = PendingRequest.BIND
         val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider)
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
         }
         widgetResultLauncher.launch(intent)
     }
 
     private fun launchConfiguration(widgetId: Int, info: AppWidgetProviderInfo) {
-        pendingWidgetId = widgetId
         pendingRequest = PendingRequest.CONFIG
         val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
             component = info.configure
@@ -103,19 +100,45 @@ class WidgetPickerHelper(
     }
 
     private fun saveWidget(widgetId: Int) {
+        clearPendingWidget()
         lifecycleScope.launch {
             widgetRepository.addWidget(widgetId)
         }
     }
 
-    private fun clearPendingWidget(deleteFromHost: Boolean = false) {
-        pendingWidgetId?.let { id ->
-            if (deleteFromHost) {
-                widgetRepository.appWidgetHost.deleteAppWidgetId(id)
-            }
+    private inline fun runOrAbandon(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to bind or configure widget id=$pendingWidgetId", e)
+            clearPendingWidget(deleteFromHost = true)
         }
+    }
+
+    private fun clearPendingWidget(deleteFromHost: Boolean = false) {
+        val widgetId = pendingWidgetId
         pendingWidgetId = null
         pendingWidgetInfo = null
         pendingRequest = PendingRequest.NONE
+        if (deleteFromHost && widgetId != null) {
+            widgetRepository.deleteWidgetId(widgetId)
+        }
+    }
+
+    private fun savePendingWidget(): Bundle = Bundle().apply {
+        val widgetId = pendingWidgetId ?: return@apply
+        putInt(KEY_WIDGET_ID, widgetId)
+        putParcelable(KEY_WIDGET_INFO, pendingWidgetInfo)
+        putString(KEY_REQUEST, pendingRequest.name)
+    }
+
+    private fun restorePendingWidget() {
+        val state = activity.savedStateRegistry.consumeRestoredStateForKey(SAVED_STATE_KEY) ?: return
+        if (!state.containsKey(KEY_WIDGET_ID)) return
+        pendingWidgetId = state.getInt(KEY_WIDGET_ID)
+        pendingWidgetInfo = state.getParcelable(KEY_WIDGET_INFO, AppWidgetProviderInfo::class.java)
+        pendingRequest = state.getString(KEY_REQUEST)
+            ?.let { runCatching { PendingRequest.valueOf(it) }.getOrNull() }
+            ?: PendingRequest.NONE
     }
 }

@@ -4,17 +4,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,7 +35,7 @@ fun WidgetListItem(
     alphaProvider: () -> Float = { 1f },
     onClick: () -> Unit = {}
 ) {
-    val previewDrawable by rememberWidgetPreviewDrawable(widgetOption.info)
+    val drawable = rememberWidgetPreviewDrawable(widgetOption.info).value
 
     val dimensions = LocalDimensions.current
 
@@ -49,47 +48,38 @@ fun WidgetListItem(
             .padding(horizontal = Spacing.medium, vertical = 12.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            val density = LocalDensity.current
-            val maxWidthPx = with(density) { maxWidth.toPx() }
-            val fallbackHeightPx = with(density) { 120.dp.toPx() }
+        val intrinsicWidthPx = drawable?.intrinsicWidth?.takeIf { it > 0 }
+        val intrinsicHeightPx = drawable?.intrinsicHeight?.takeIf { it > 0 }
+        val previewSizeModifier = if (intrinsicWidthPx != null && intrinsicHeightPx != null) {
+            val intrinsicWidth = with(LocalDensity.current) { intrinsicWidthPx.toDp() }
+            Modifier
+                .widthIn(max = intrinsicWidth)
+                .fillMaxWidth()
+                .aspectRatio(intrinsicWidthPx.toFloat() / intrinsicHeightPx)
+        } else {
+            Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+        }
+        val previewModifier = previewSizeModifier.clip(Corners.small)
 
-            val intrinsicWidthPx = previewDrawable?.intrinsicWidth?.takeIf { it > 0 }?.toFloat()
-            val intrinsicHeightPx = previewDrawable?.intrinsicHeight?.takeIf { it > 0 }?.toFloat()
-
-            val targetWidthPx = intrinsicWidthPx?.coerceAtMost(maxWidthPx) ?: maxWidthPx
-            val targetHeightPx = if (intrinsicWidthPx != null && intrinsicHeightPx != null) {
-                intrinsicHeightPx * (targetWidthPx / intrinsicWidthPx)
-            } else {
-                fallbackHeightPx
-            }
-
-            val previewModifier = Modifier
-                .width(with(density) { targetWidthPx.toDp() })
-                .height(with(density) { targetHeightPx.toDp() })
-                .clip(Corners.small)
-
-            if (previewDrawable != null) {
-                Image(
-                    painter = rememberDrawablePainter(drawable = previewDrawable),
-                    contentDescription = widgetOption.label,
-                    modifier = previewModifier,
-                    contentScale = ContentScale.FillBounds
+        if (drawable != null) {
+            Image(
+                painter = rememberDrawablePainter(drawable = drawable),
+                contentDescription = widgetOption.label,
+                modifier = previewModifier,
+                contentScale = ContentScale.FillBounds
+            )
+        } else {
+            Box(
+                modifier = previewModifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Preview unavailable",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = dimensions.fontCaption
                 )
-            } else {
-                Box(
-                    modifier = previewModifier.background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Preview unavailable",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = dimensions.fontCaption
-                    )
-                }
             }
         }
 
