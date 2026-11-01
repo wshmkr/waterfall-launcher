@@ -77,7 +77,7 @@ fun FavoritesView(
     val widgetTouched = remember { mutableStateOf(false) }
     val onWidgetTouchedChange = remember { { touched: Boolean -> widgetTouched.value = touched } }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
-    val favoritesVisible by viewModel.favoritesVisible.collectAsState()
+    val homeVisible by viewModel.homeVisible.collectAsState()
     val favoriteApps = viewModel.favoriteApps
     val widgetSettings = viewModel.homeWidgetSettings
     val todayEvents by viewModel.todayEvents.collectAsState()
@@ -104,8 +104,8 @@ fun FavoritesView(
         }
     }
 
-    LaunchedEffect(favoritesVisible) {
-        if (favoritesVisible) {
+    LaunchedEffect(homeVisible) {
+        if (homeVisible) {
             isVisible = true
         }
     }

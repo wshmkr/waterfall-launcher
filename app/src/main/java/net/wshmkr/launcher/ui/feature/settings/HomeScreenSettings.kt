@@ -158,7 +158,7 @@ private fun WeatherLocationRow(
     val lon by viewModel.weatherLon.collectAsStateWithLifecycle()
     val label = if (lat != null && lon != null && !name.isNullOrBlank()) name else "Device location"
     val onClick = remember(navController) {
-        { navController.navigate(Screen.WeatherLocation.route); Unit }
+        { navController.navigate(Screen.WeatherLocation.route) { launchSingleTop = true }; Unit }
     }
     MenuOption(
         text = "Weather location",
@@ -184,7 +184,7 @@ private fun MediaControlsRow(viewModel: SettingsViewModel) {
 @Composable
 private fun ManageWidgetsRow(navController: NavController) {
     val onClick = remember(navController) {
-        { navController.navigate(Screen.WidgetList.route); Unit }
+        { navController.navigate(Screen.WidgetList.route) { launchSingleTop = true }; Unit }
     }
     MenuOption(
         icon = WidgetsIcon(),

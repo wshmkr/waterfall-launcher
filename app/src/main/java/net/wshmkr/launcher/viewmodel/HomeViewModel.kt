@@ -69,15 +69,7 @@ class HomeViewModel @Inject constructor(
     }
 
     val alphabetLetters by derivedStateOf {
-        buildList {
-            add(STAR_SYMBOL)
-            val letters = appsRepository.allApps
-                .filter { !it.isHidden }
-                .map { it.label.sectionLetter }
-                .distinct()
-                .sorted()
-            addAll(letters)
-        }
+        listOf(STAR_SYMBOL) + letterPositions.keys
     }
 
     // Own derived state, so a favorites write (every drag move) doesn't rebuild it.
@@ -87,7 +79,8 @@ class HomeViewModel @Inject constructor(
 
     val favoriteApps by derivedStateOf { buildFavoriteAppsList() }
 
-    val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
+    // Home must stay reachable even when every app is hidden or unsuggested.
+    val homeVisible: StateFlow<Boolean> = snapshotFlow { appsRepository.allApps.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     @OptIn(ExperimentalCoroutinesApi::class)

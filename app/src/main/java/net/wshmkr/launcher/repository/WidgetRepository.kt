@@ -15,6 +15,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
+import net.wshmkr.launcher.model.labelOrder
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -87,7 +88,7 @@ class WidgetRepository @Inject constructor(
                     widgets = infos.toImmutableList()
                 )
             }
-            .sortedBy { it.label.lowercase() }
+            .sortedWith(compareBy(labelOrder) { it.label })
 
     fun startListening() = appWidgetHost.startListening()
     fun stopListening() = appWidgetHost.stopListening()

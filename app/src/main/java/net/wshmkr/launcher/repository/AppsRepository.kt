@@ -44,6 +44,7 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
+import net.wshmkr.launcher.model.labelOrder
 import net.wshmkr.launcher.ui.theme.maxAppIconSize
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -82,7 +83,7 @@ class AppsRepository @Inject constructor(
     val activeProfiles = _activeProfiles.asStateFlow()
 
     private val appComparator =
-        compareBy<AppInfo> { it.label.lowercase() }.thenBy { it.userHandle.hashCode() }
+        compareBy<AppInfo, String>(labelOrder) { it.label }.thenBy { it.userHandle.hashCode() }
 
     private val profileStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
