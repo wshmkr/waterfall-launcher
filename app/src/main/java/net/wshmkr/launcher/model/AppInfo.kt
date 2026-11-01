@@ -20,8 +20,7 @@ data class AppInfo(
     val isSuggested: Boolean = false,
     val searchTokens: ImmutableList<String> = persistentListOf(),
 ) {
-    val key: String
-        get() = keyFor(packageName, userHandle)
+    val key: String = keyFor(packageName, userHandle)
 }
 
 fun keyFor(packageName: String, userHandle: UserHandle): String {

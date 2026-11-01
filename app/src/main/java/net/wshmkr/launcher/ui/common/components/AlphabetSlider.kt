@@ -25,13 +25,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -46,7 +47,6 @@ import kotlin.math.roundToInt
 
 const val STAR_SYMBOL = "★"
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AlphabetSlider(
     letters: List<String>,
@@ -66,46 +66,21 @@ fun AlphabetSlider(
 
     val viewModelActiveLetter = viewModel.activeLetter
 
+    val currentOnLetterSelected by rememberUpdatedState(onLetterSelected)
+    val currentOnSelectionCleared by rememberUpdatedState(onSelectionCleared)
     LaunchedEffect(viewModelActiveLetter) {
         if (viewModelActiveLetter != null) {
-            onLetterSelected(viewModelActiveLetter)
+            currentOnLetterSelected(viewModelActiveLetter)
         } else {
-            onSelectionCleared()
+            currentOnSelectionCleared()
         }
     }
 
-    val touchHandler = remember(viewModel, density, screenWidthDp) {
-        { trackHorizontalMovement: Boolean ->
-            Modifier.pointerInteropFilter { event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        viewModel.updateTouchPosition(
-                            y = event.y,
-                            x = if (trackHorizontalMovement) event.x else null,
-                            isInitialTouch = true,
-                            density = density.density,
-                            screenWidthDp = screenWidthDp
-                        )
-                        true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        viewModel.updateTouchPosition(
-                            y = event.y,
-                            x = if (trackHorizontalMovement) event.x else null,
-                            isInitialTouch = false,
-                            density = density.density,
-                            screenWidthDp = screenWidthDp
-                        )
-                        true
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        viewModel.updateTouchPosition(null)
-                        true
-                    }
-                    else -> false
-                }
-            }
-        }
+    val passiveTouchModifier = remember(viewModel, density, screenWidthDp) {
+        sliderTouchModifier(viewModel, trackHorizontalMovement = false, density.density, screenWidthDp)
+    }
+    val trackingTouchModifier = remember(viewModel, density, screenWidthDp) {
+        sliderTouchModifier(viewModel, trackHorizontalMovement = true, density.density, screenWidthDp)
     }
 
     val bottomLift = alphabetBottomLift()
@@ -122,7 +97,7 @@ fun AlphabetSlider(
         Box(
             modifier = Modifier
                 .padding(bottom = bottomLift)
-                .then(touchHandler(false))
+                .then(passiveTouchModifier)
         ) {
             InvisibleLettersColumn(letters = letters)
         }
@@ -132,7 +107,7 @@ fun AlphabetSlider(
         Box(
             modifier = Modifier
                 .padding(bottom = bottomLift)
-                .then(touchHandler(true))
+                .then(trackingTouchModifier)
         ) {
             AnimatedLettersList(
                 letters = letters,
@@ -140,6 +115,32 @@ fun AlphabetSlider(
                 viewModel = viewModel,
             )
         }
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+private fun sliderTouchModifier(
+    viewModel: AlphabetSliderViewModel,
+    trackHorizontalMovement: Boolean,
+    density: Float,
+    screenWidthDp: Int,
+): Modifier = Modifier.pointerInteropFilter { event ->
+    when (event.action) {
+        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+            viewModel.updateTouchPosition(
+                y = event.y,
+                x = if (trackHorizontalMovement) event.x else null,
+                isInitialTouch = event.action == MotionEvent.ACTION_DOWN,
+                density = density,
+                screenWidthDp = screenWidthDp,
+            )
+            true
+        }
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            viewModel.updateTouchPosition(null)
+            true
+        }
+        else -> false
     }
 }
 
@@ -215,7 +216,7 @@ private fun AnimatedLettersList(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .onGloballyPositioned { coordinates ->
+                    .onPlaced { coordinates ->
                         val bounds = coordinates.boundsInParent()
                         viewModel.updateLetterBounds(index, bounds.top, bounds.bottom)
                     },
