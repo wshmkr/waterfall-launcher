@@ -124,7 +124,7 @@ private fun MediaAlbumArt(albumArt: Bitmap?, artExpected: Boolean, ownerPackage:
         Crossfade(targetState = displayedArt, label = "albumArt") { art ->
             if (art != null) {
                 Image(
-                    bitmap = art.asImageBitmap(),
+                    bitmap = remember(art) { art.asImageBitmap() },
                     contentDescription = "Album art",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop

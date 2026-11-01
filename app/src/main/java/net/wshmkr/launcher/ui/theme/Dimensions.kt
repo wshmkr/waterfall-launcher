@@ -131,6 +131,9 @@ val LocalDimensions = staticCompositionLocalOf { standardDimensions }
 // Largest size an app icon is ever drawn at, so icons can be rasterized once without upscaling.
 val maxAppIconSize: Dp = maxOf(compactDimensions.iconLarge, standardDimensions.iconLarge, largeDimensions.iconLarge)
 
+// Largest album art slot, so URI art is decoded once without upscaling.
+val maxAlbumArtSize: Dp = maxOf(compactDimensions.albumArtSize, standardDimensions.albumArtSize, largeDimensions.albumArtSize)
+
 fun dimensionsFor(screenWidthDp: Int): Dimensions = when {
     screenWidthDp < COMPACT_WIDTH_THRESHOLD_DP -> compactDimensions
     screenWidthDp < LARGE_WIDTH_THRESHOLD_DP -> standardDimensions
