@@ -51,7 +51,7 @@ fun Modifier.verticalSwipeDetection(
         .graphicsLayer {
             translationY = verticalDragFeedback(offsetY.value)
         }
-        .pointerInput(listState) {
+        .pointerInput(listState, thresholdPx, flingBehavior) {
             var committed = 0f
             var scrolled = false
             var bandY = 0f

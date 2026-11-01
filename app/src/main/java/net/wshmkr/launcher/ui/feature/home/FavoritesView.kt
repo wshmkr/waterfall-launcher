@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.ui.Screen
@@ -77,10 +79,10 @@ fun FavoritesView(
     val widgetTouched = remember { mutableStateOf(false) }
     val onWidgetTouchedChange = remember { { touched: Boolean -> widgetTouched.value = touched } }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
-    val favoritesVisible by viewModel.favoritesVisible.collectAsState()
     val favoriteApps = viewModel.favoriteApps
+    val hasFavoriteApps = favoriteApps.isNotEmpty()
     val widgetSettings = viewModel.homeWidgetSettings
-    val todayEvents by viewModel.todayEvents.collectAsState()
+    val todayEvents by viewModel.todayEvents.collectAsStateWithLifecycle()
     val onCalendarPermissionGranted = remember(viewModel) { viewModel::refreshCalendarEvents }
     val onWeatherRefresh = remember(viewModel) { viewModel::requestWeatherRefresh }
 
@@ -104,8 +106,8 @@ fun FavoritesView(
         }
     }
 
-    LaunchedEffect(favoritesVisible) {
-        if (favoritesVisible) {
+    LaunchedEffect(hasFavoriteApps) {
+        if (hasFavoriteApps) {
             isVisible = true
         }
     }
@@ -222,10 +224,13 @@ fun FavoritesView(
                 }
 
                 item(key = "widget_stack") {
+                    val onManageWidgets = remember(navController) {
+                        { navController.navigate(Screen.WidgetList.route) { launchSingleTop = true } }
+                    }
                     WidgetStack(
                         viewModel = widgetViewModel,
                         onTouchedChange = onWidgetTouchedChange,
-                        onManageWidgets = { navController.navigate(Screen.WidgetList.route) },
+                        onManageWidgets = onManageWidgets,
                     )
                 }
 
@@ -243,9 +248,9 @@ fun FavoritesView(
                     },
                 ) { index, item ->
                     FavoriteRow(
-                        index = index,
                         item = item,
-                        favoriteApps = favoriteApps,
+                        previousFavoriteKey = favoriteApps.favoriteKeyAt(index - 1),
+                        nextFavoriteKey = favoriteApps.favoriteKeyAt(index + 1),
                         reordering = reordering,
                         reorderState = reorderState,
                         activeProfiles = activeProfiles,
@@ -266,7 +271,8 @@ fun FavoritesView(
                 animationSpec = tween(durationMillis = 300),
                 label = "outlineAlpha",
             )
-            if (outlineAlpha.value > 0f) {
+            val outlineShown by remember { derivedStateOf { outlineAlpha.value > 0f } }
+            if (outlineShown) {
                 FavoritesOutline(listState = listState, alphaProvider = outlineAlpha::value)
             }
         }
@@ -306,3 +312,6 @@ private fun PointerInputScope.isInsideFavoritesOutline(
         position.x >= dimensions.favoritesOutlineStart.toPx() &&
         position.x <= size.width - dimensions.favoritesOutlineEnd.toPx()
 }
+
+private fun List<AppInfo>.favoriteKeyAt(index: Int): String? =
+    getOrNull(index)?.takeUnless { it.isSuggested }?.key

@@ -1,5 +1,9 @@
 package net.wshmkr.launcher
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -21,9 +25,6 @@ import net.wshmkr.launcher.util.WidgetPickerHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
 import javax.inject.Inject
-import android.content.BroadcastReceiver
-import android.content.Intent
-import android.content.IntentFilter
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -36,17 +37,25 @@ class MainActivity : ComponentActivity() {
 
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var widgetPickerHelper: WidgetPickerHelper
-    private var screenOffReceiver: BroadcastReceiver? = null
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                homeViewModel.navigateToFavorites()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         initWidgetPickerHelper()
-        registerScreenOffReceiver()
+        registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
         setContent {
+            // Drawing nothing until the stored palette loads avoids a frame in the default palette.
             val paletteStyle by userSettingsDataSource.paletteStyle
-                .collectAsStateWithLifecycle(PaletteStyle.Default)
-            WaterfallLauncherTheme(paletteStyle = paletteStyle) {
+                .collectAsStateWithLifecycle<PaletteStyle, PaletteStyle?>(initialValue = null)
+            val loadedPaletteStyle = paletteStyle ?: return@setContent
+            WaterfallLauncherTheme(paletteStyle = loadedPaletteStyle) {
                 val navController = rememberNavController()
                 val widgetViewModel: WidgetViewModel = hiltViewModel()
                 LaunchedEffect(widgetViewModel) {
@@ -87,8 +96,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        screenOffReceiver?.let { unregisterReceiver(it) }
-        screenOffReceiver = null
+        unregisterReceiver(screenOffReceiver)
     }
 
     private fun initWidgetPickerHelper() {
@@ -98,17 +106,5 @@ class MainActivity : ComponentActivity() {
             lifecycleScope = lifecycleScope,
         )
         widgetPickerHelper.registerLaunchers()
-    }
-
-    private fun registerScreenOffReceiver() {
-        if (screenOffReceiver != null) return
-        screenOffReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: android.content.Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                    homeViewModel.navigateToFavorites()
-                }
-            }
-        }
-        registerReceiver(screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
     }
 }

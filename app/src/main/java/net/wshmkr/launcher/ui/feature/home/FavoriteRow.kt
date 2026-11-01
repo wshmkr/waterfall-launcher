@@ -26,9 +26,9 @@ private const val SUGGESTION_DIM_ALPHA = 0.4f
 
 @Composable
 fun LazyItemScope.FavoriteRow(
-    index: Int,
     item: AppInfo,
-    favoriteApps: List<AppInfo>,
+    previousFavoriteKey: String?,
+    nextFavoriteKey: String?,
     reordering: Boolean,
     reorderState: ReorderableLazyListState,
     activeProfiles: Set<UserHandle>,
@@ -68,8 +68,8 @@ fun LazyItemScope.FavoriteRow(
                     .semantics {
                         customActions = reorderActions(
                             key = item.key,
-                            previousKey = favoriteApps.getOrNull(index - 1)?.takeUnless { it.isSuggested }?.key,
-                            nextKey = favoriteApps.getOrNull(index + 1)?.takeUnless { it.isSuggested }?.key,
+                            previousKey = previousFavoriteKey,
+                            nextKey = nextFavoriteKey,
                             move = onMoveFavorite,
                         )
                     }
