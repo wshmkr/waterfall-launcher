@@ -29,6 +29,7 @@ fun <T> SegmentedMenuOption(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = LocalDimensions.current
+    val colors = accentSegmentedColors()
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -46,7 +47,7 @@ fun <T> SegmentedMenuOption(
                     selected = option == selected,
                     onClick = { onSelect(option) },
                     shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                    colors = accentSegmentedColors(),
+                    colors = colors,
                     contentPadding = SEGMENT_CONTENT_PADDING,
                     // The fill already marks the selection, so no icon leaves room for labels.
                     icon = {},

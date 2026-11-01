@@ -154,9 +154,7 @@ private fun WeatherLocationRow(
     viewModel: SettingsViewModel,
 ) {
     val name by viewModel.weatherLocationName.collectAsStateWithLifecycle()
-    val lat by viewModel.weatherLat.collectAsStateWithLifecycle()
-    val lon by viewModel.weatherLon.collectAsStateWithLifecycle()
-    val label = if (lat != null && lon != null && !name.isNullOrBlank()) name else "Device location"
+    val label = name?.takeIf { it.isNotBlank() } ?: "Device location"
     val onClick = remember(navController) {
         { navController.navigate(Screen.WeatherLocation.route); Unit }
     }

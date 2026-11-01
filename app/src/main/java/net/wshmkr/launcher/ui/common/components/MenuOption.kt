@@ -32,7 +32,7 @@ import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.ui.theme.accentSwitchColors
 
 enum class MenuOptionTextSize {
-    Small, Medium, Large
+    Small, Medium
 }
 
 @Composable
@@ -49,13 +49,11 @@ fun MenuOption(
     val fontSize = when (textSize) {
         MenuOptionTextSize.Small -> dimensions.fontMedium
         MenuOptionTextSize.Medium -> dimensions.fontLarge
-        MenuOptionTextSize.Large -> dimensions.fontXLarge
     }
 
     val subtextSize = when (textSize) {
         MenuOptionTextSize.Small -> dimensions.fontSmall
         MenuOptionTextSize.Medium -> dimensions.fontMedium
-        MenuOptionTextSize.Large -> dimensions.fontLarge
     }
 
     Row(
@@ -74,7 +72,7 @@ fun MenuOption(
         icon?.let {
             Icon(
                 painter = icon,
-                contentDescription = text,
+                contentDescription = null,
                 modifier = Modifier.size(dimensions.iconSmall),
             )
             Spacer(modifier = Modifier.width(Spacing.large))
@@ -131,7 +129,7 @@ fun ToggleMenuOption(
 }
 
 @Composable
-fun MenuOptionSwitch(
+private fun MenuOptionSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,

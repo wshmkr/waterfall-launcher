@@ -1,6 +1,7 @@
 package net.wshmkr.launcher.ui.feature.settings
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,10 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import net.wshmkr.launcher.service.LauncherAccessibilityService
 import net.wshmkr.launcher.ui.common.components.ToggleMenuOption
+import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.util.isPermissionPermanentlyDenied
 import net.wshmkr.launcher.util.openAppDetailsSettings
 
@@ -24,103 +26,109 @@ import net.wshmkr.launcher.util.openAppDetailsSettings
 fun PermissionSettings(
     context: Context
 ) {
-    var isAccessibilityEnabled by remember { mutableStateOf(false) }
-    var isNotificationAccessEnabled by remember { mutableStateOf(false) }
-    var isLocationEnabled by remember { mutableStateOf(false) }
-    var isCalendarEnabled by remember { mutableStateOf(false) }
-
-    fun checkPermissions() {
-        val enabledServices = Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: ""
-        isAccessibilityEnabled = enabledServices.contains(context.packageName)
-
-        val enabledListeners = NotificationManagerCompat.getEnabledListenerPackages(context)
-        isNotificationAccessEnabled = enabledListeners.contains(context.packageName)
-
-        isLocationEnabled = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                PackageManager.PERMISSION_GRANTED
-
-        isCalendarEnabled = context.checkSelfPermission(Manifest.permission.READ_CALENDAR) ==
-                PackageManager.PERMISSION_GRANTED
-    }
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        isLocationEnabled = isGranted
-    }
-
-    var isCalendarPermanentlyDenied by remember { mutableStateOf(false) }
-
-    val calendarPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        isCalendarEnabled = isGranted
-        isCalendarPermanentlyDenied = !isGranted &&
-            isPermissionPermanentlyDenied(context, Manifest.permission.READ_CALENDAR)
-    }
-
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        checkPermissions()
-    }
-
-    val openAccessibilitySettings = remember(context) {
-        { _: Boolean -> context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-    }
-    val openNotificationListenerSettings = remember(context) {
-        { _: Boolean -> context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-    }
-    val handleLocationClick = remember(context, locationPermissionLauncher) {
-        { _: Boolean ->
-            if (isLocationEnabled) {
-                openAppDetailsSettings(context)
-            } else {
-                locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
-        }
-    }
-
-    val handleCalendarClick = remember(context, calendarPermissionLauncher, isCalendarPermanentlyDenied) {
-        { _: Boolean ->
-            if (isCalendarEnabled || isCalendarPermanentlyDenied) {
-                openAppDetailsSettings(context)
-            } else {
-                calendarPermissionLauncher.launch(Manifest.permission.READ_CALENDAR)
-            }
-        }
-    }
-
     Column {
         SettingsSectionHeader("Permissions")
 
-        ToggleMenuOption(
+        SpecialAccessOption(
+            context = context,
             text = "Accessibility service",
             subtext = "Used for notification drawer control",
-            checked = isAccessibilityEnabled,
-            onCheckedChange = openAccessibilitySettings,
+            settingsAction = Settings.ACTION_ACCESSIBILITY_SETTINGS,
+            isEnabled = ::isAccessibilityServiceEnabled,
         )
 
-        ToggleMenuOption(
+        SpecialAccessOption(
+            context = context,
             text = "Notification access",
             subtext = "Used for media controls",
-            checked = isNotificationAccessEnabled,
-            onCheckedChange = openNotificationListenerSettings,
+            settingsAction = Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS,
+            isEnabled = NotificationPanelHelper::isNotificationListenerEnabled,
         )
 
-        ToggleMenuOption(
+        RuntimePermissionOption(
+            context = context,
             text = "Location access",
             subtext = "Used for weather",
-            checked = isLocationEnabled,
-            onCheckedChange = handleLocationClick,
+            permission = Manifest.permission.ACCESS_COARSE_LOCATION,
         )
 
-        ToggleMenuOption(
+        RuntimePermissionOption(
+            context = context,
             text = "Calendar access",
             subtext = "Used for today's events",
-            checked = isCalendarEnabled,
-            onCheckedChange = handleCalendarClick,
+            permission = Manifest.permission.READ_CALENDAR,
         )
     }
+}
+
+// Seeded eagerly so the switch doesn't animate from off when the screen opens.
+@Composable
+private fun SpecialAccessOption(
+    context: Context,
+    text: String,
+    subtext: String,
+    settingsAction: String,
+    isEnabled: (Context) -> Boolean,
+) {
+    var enabled by remember { mutableStateOf(isEnabled(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        enabled = isEnabled(context)
+    }
+    val openSettings = remember(context, settingsAction) {
+        { _: Boolean -> context.startActivity(Intent(settingsAction)) }
+    }
+    ToggleMenuOption(
+        text = text,
+        subtext = subtext,
+        checked = enabled,
+        onCheckedChange = openSettings,
+    )
+}
+
+@Composable
+private fun RuntimePermissionOption(
+    context: Context,
+    text: String,
+    subtext: String,
+    permission: String,
+) {
+    var granted by remember { mutableStateOf(context.isGranted(permission)) }
+    var permanentlyDenied by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        granted = isGranted
+        permanentlyDenied = !isGranted && isPermissionPermanentlyDenied(context, permission)
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        granted = context.isGranted(permission)
+        if (granted) permanentlyDenied = false
+    }
+    val onClick = remember(context, permission, permissionLauncher) {
+        { _: Boolean ->
+            if (granted || permanentlyDenied) {
+                openAppDetailsSettings(context)
+            } else {
+                permissionLauncher.launch(permission)
+            }
+        }
+    }
+    ToggleMenuOption(
+        text = text,
+        subtext = subtext,
+        checked = granted,
+        onCheckedChange = onClick,
+    )
+}
+
+private fun Context.isGranted(permission: String): Boolean =
+    checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+private fun isAccessibilityServiceEnabled(context: Context): Boolean {
+    val service = ComponentName(context, LauncherAccessibilityService::class.java)
+    val enabledServices = Settings.Secure.getString(
+        context.contentResolver,
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    ) ?: return false
+    return enabledServices.split(':').any { ComponentName.unflattenFromString(it) == service }
 }
