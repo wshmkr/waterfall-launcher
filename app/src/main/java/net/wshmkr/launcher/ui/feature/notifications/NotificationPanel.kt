@@ -117,15 +117,15 @@ fun NotificationPanel(
         ) {
             // Instances rather than a set of keys, so a repost under a key revives its card.
             val dismissed = remember { mutableStateMapOf<String, NotificationInfo>() }
+            val firstVisibleIndex = notifications.indexOfFirst {
+                dismissed[it.key]?.isSameInstanceAs(it) != true
+            }
             notifications.forEachIndexed { index, notification ->
                 // A repost of a key whose cancel didn't stick gets a fresh card.
                 key(notification.key, notification.postTime) {
-                    val hasVisibleCardAbove = notifications.take(index).any {
-                        dismissed[it.key]?.isSameInstanceAs(it) != true
-                    }
                     NotificationCard(
                         notification = notification,
-                        hasDividerAbove = hasVisibleCardAbove,
+                        hasDividerAbove = firstVisibleIndex in 0 until index,
                         onOpen = onDismiss,
                         onDismissNotification = { onClearNotifications(listOf(notification)) },
                         onDismissStarted = { dismissed[notification.key] = notification },
