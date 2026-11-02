@@ -10,7 +10,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.res.Configuration
-import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
@@ -31,10 +30,10 @@ import kotlinx.collections.immutable.toPersistentSet
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -44,13 +43,7 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
-<<<<<<< ours
-import net.wshmkr.launcher.util.maxAppIconSizePx
-import net.wshmkr.launcher.util.toBitmapPainter
-=======
 import net.wshmkr.launcher.model.labelOrder
-import net.wshmkr.launcher.ui.theme.maxAppIconSize
->>>>>>> theirs
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
@@ -66,9 +59,6 @@ class AppsRepository @Inject constructor(
     private val userManager: UserManager = application.getSystemService(Context.USER_SERVICE) as UserManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    private val iconSizePx
-        get() = maxAppIconSizePx(application.resources)
 
     private var rasterizedDensityDpi = application.resources.configuration.densityDpi
     private var iconRefreshJob: Job? = null
@@ -98,24 +88,21 @@ class AppsRepository @Inject constructor(
 
     // Icons are rasterized for the density at load time, so a display-size change leaves them all stale.
     private val densityCallbacks = object : ComponentCallbacks {
-        override fun onConfigurationChanged(newConfig: Configuration) = refreshIconsIfDensityChanged()
+        override fun onConfigurationChanged(newConfig: Configuration) = refreshIcons(onlyIfDensityChanged = true)
 
         @Suppress("OVERRIDE_DEPRECATION")
         override fun onLowMemory() = Unit
     }
 
     // Density is recorded after the publish, so a refresh racing loadInstalledApps can't strand stale icons.
-    private fun refreshIconsIfDensityChanged() {
+    private fun refreshIcons(onlyIfDensityChanged: Boolean = false) {
         val density = application.resources.configuration.densityDpi
-        if (density == rasterizedDensityDpi) return
-        scheduleIconRefresh { rasterizedDensityDpi = density }
-    }
+        if (onlyIfDensityChanged && density == rasterizedDensityDpi) return
 
-    private fun scheduleIconRefresh(afterRefresh: () -> Unit = {}) {
         iconRefreshJob?.cancel()
         iconRefreshJob = scope.launch {
             refreshAppIcons(allApps.mapTo(HashSet()) { it.userHandle })
-            afterRefresh()
+            rasterizedDensityDpi = density
         }
     }
 
@@ -158,7 +145,7 @@ class AppsRepository @Inject constructor(
 
         scope.launch {
             iconPackRepository.iconsChanged.collect {
-                if (allApps.isNotEmpty()) scheduleIconRefresh()
+                if (allApps.isNotEmpty()) refreshIcons()
             }
         }
     }
@@ -188,10 +175,8 @@ class AppsRepository @Inject constructor(
         // Awaiting the icon-pack load keeps cold start from flashing system icons; overlapping it
         // with the favorites read keeps it off the critical path when no pack is selected.
         val storedFavorites = coroutineScope {
-            val packReady = launch { iconPackRepository.awaitInitialLoad() }
-            val favorites = appPreferencesDataSource.getFavorites()
-            packReady.join()
-            favorites
+            launch { iconPackRepository.awaitInitialLoad() }
+            appPreferencesDataSource.getFavorites()
         }
         val favoriteKeys = storedFavorites.toHashSet()
 
@@ -242,7 +227,7 @@ class AppsRepository @Inject constructor(
             usageLoaded = true
         }
 
-        refreshIconsIfDensityChanged()
+        refreshIcons(onlyIfDensityChanged = true)
     }
 
     private fun buildAppInfo(
@@ -259,7 +244,7 @@ class AppsRepository @Inject constructor(
         return AppInfo(
             label = label,
             packageName = appPackageName,
-            icon = resolveBadgedIcon(activity, userHandle).toBitmapPainter(iconSizePx),
+            icon = iconPackRepository.renderIcon(activity),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
             isFavorite = keyFor(appPackageName, userHandle) in favoriteKeys,
@@ -268,12 +253,6 @@ class AppsRepository @Inject constructor(
             searchTokens = buildSearchTokens(label),
         )
     }
-
-    // getUserBadgedIcon is a no-op for the primary user and adds the work badge for managed profiles.
-    private fun resolveBadgedIcon(activity: LauncherActivityInfo, userHandle: UserHandle): Drawable =
-        iconPackRepository.resolveIcon(activity.componentName)
-            ?.let { application.packageManager.getUserBadgedIcon(it, userHandle) }
-            ?: activity.getBadgedIcon(0)
 
     private suspend fun syncPackage(packageName: String, userHandle: UserHandle) {
         if (packageName == application.packageName) return
@@ -349,8 +328,7 @@ class AppsRepository @Inject constructor(
                 try {
                     launcherApps.getActivityList(app.packageName, app.userHandle)
                         ?.firstOrNull()
-                        ?.let { resolveBadgedIcon(it, app.userHandle) }
-                        ?.let { app.key to it.toBitmapPainter(iconSizePx) }
+                        ?.let { app.key to iconPackRepository.renderIcon(it) }
                 } catch (_: Exception) {
                     null
                 }

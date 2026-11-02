@@ -63,12 +63,9 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_LAT = doublePreferencesKey("weather_location_latitude")
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
         private val KEY_PALETTE_STYLE = stringPreferencesKey("palette_style")
-<<<<<<< ours
         private val KEY_ICON_PACK = stringPreferencesKey("icon_pack_package")
-=======
 
         private const val DEFAULT_SHOW_WIDGET = true
->>>>>>> theirs
     }
 
     val showClock: Flow<Boolean> = perField(KEY_SHOW_CLOCK) { DEFAULT_SHOW_WIDGET }
@@ -105,22 +102,13 @@ class UserSettingsDataSource @Inject constructor(
         }
         .distinctUntilChanged()
 
-<<<<<<< ours
-    val paletteStyle: Flow<PaletteStyle> =
-        optionalField(KEY_PALETTE_STYLE).map(PaletteStyle::fromName)
-
-    val iconPack: Flow<String?> = optionalField(KEY_ICON_PACK)
-
-    private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
-        dataStore.data.map { it[key] ?: default() }.distinctUntilChanged()
-
-    private fun <T> optionalField(key: Preferences.Key<T>): Flow<T?> =
-        dataStore.data.map { it[key] }.distinctUntilChanged()
-=======
     val paletteStyle: Flow<PaletteStyle> = preferences
         .map { PaletteStyle.fromName(it[KEY_PALETTE_STYLE]) }
         .distinctUntilChanged()
->>>>>>> theirs
+
+    val iconPack: Flow<String?> = preferences
+        .map { it[KEY_ICON_PACK] }
+        .distinctUntilChanged()
 
     private fun Preferences.weatherLocation(): Pair<Double, Double>? {
         val latitude = this[KEY_WEATHER_LOCATION_LAT] ?: return null
@@ -169,15 +157,8 @@ class UserSettingsDataSource @Inject constructor(
         }
     }
 
-<<<<<<< ours
-    suspend fun setPaletteStyle(style: PaletteStyle) {
-        dataStore.edit { preferences ->
-            preferences[KEY_PALETTE_STYLE] = style.name
-        }
-    }
-
     suspend fun setIconPack(packageName: String?) {
-        dataStore.edit { preferences ->
+        persist { preferences ->
             if (packageName == null) {
                 preferences.remove(KEY_ICON_PACK)
             } else {
@@ -186,8 +167,12 @@ class UserSettingsDataSource @Inject constructor(
         }
     }
 
-=======
->>>>>>> theirs
+    suspend fun clearIconPackIfSelected(packageName: String) {
+        persist { preferences ->
+            if (preferences[KEY_ICON_PACK] == packageName) preferences.remove(KEY_ICON_PACK)
+        }
+    }
+
     suspend fun clearWeatherLocation() {
         persist { preferences ->
             preferences.remove(KEY_WEATHER_LOCATION_NAME)

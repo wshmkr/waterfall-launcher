@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.LauncherActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.graphics.drawable.Drawable
@@ -18,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -69,15 +71,16 @@ class IconPackRepository @Inject constructor(
 
     private val packChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val pack = activePack ?: return
-            if (intent?.data?.schemeSpecificPart != pack.packageName) return
+            val packageName = intent?.data?.schemeSpecificPart ?: return
             when (intent.action) {
                 Intent.ACTION_PACKAGE_REMOVED ->
                     if (!intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) {
-                        scope.launch { userSettingsDataSource.setIconPack(null) }
+                        scope.launch { userSettingsDataSource.clearIconPackIfSelected(packageName) }
                     }
                 Intent.ACTION_PACKAGE_REPLACED ->
-                    scope.launch { applyPack(pack.packageName) }
+                    scope.launch {
+                        if (userSettingsDataSource.iconPack.first() == packageName) applySelectedPack()
+                    }
             }
         }
     }
@@ -91,8 +94,8 @@ class IconPackRepository @Inject constructor(
         application.registerReceiver(packChangeReceiver, filter)
 
         scope.launch {
-            userSettingsDataSource.iconPack.collect { packageName ->
-                applyPack(packageName)
+            userSettingsDataSource.iconPack.collect {
+                applySelectedPack()
                 initialLoad.complete(Unit)
             }
         }
@@ -100,7 +103,19 @@ class IconPackRepository @Inject constructor(
 
     suspend fun awaitInitialLoad() = initialLoad.await()
 
-    fun resolveIcon(componentName: ComponentName): Drawable? {
+    // Pack drawables are third-party and may only fail once rasterized, so that stays inside the fallback.
+    fun renderIcon(activity: LauncherActivityInfo): BitmapPainter {
+        val iconSizePx = maxAppIconSizePx(application.resources)
+        return try {
+            resolvePackDrawable(activity.componentName)
+                ?.let { application.packageManager.getUserBadgedIcon(it, activity.user) }
+                ?.toBitmapPainter(iconSizePx)
+        } catch (_: Exception) {
+            null
+        } ?: activity.getBadgedIcon(0).toBitmapPainter(iconSizePx)
+    }
+
+    private fun resolvePackDrawable(componentName: ComponentName): Drawable? {
         val pack = activePack ?: return null
         val drawableName = pack.appFilter.componentToDrawable[componentName.flattenToString()]
             ?: pack.appFilter.packageFallback[componentName.packageName]
@@ -109,11 +124,7 @@ class IconPackRepository @Inject constructor(
             pack.resources.getIdentifier(drawableName, "drawable", pack.packageName)
         }
         if (id == 0) return null
-        return try {
-            ResourcesCompat.getDrawable(pack.resources, id, null)
-        } catch (_: Exception) {
-            null
-        }
+        return ResourcesCompat.getDrawable(pack.resources, id, null)
     }
 
     fun packLabel(packageName: String): String? = try {
@@ -144,11 +155,16 @@ class IconPackRepository @Inject constructor(
             .sortedBy { it.label.lowercase() }
     }
 
-    private suspend fun applyPack(packageName: String?) {
+    // Reads the selection under the lock so a queued reload can't overwrite a newer choice.
+    private suspend fun applySelectedPack() {
         applyMutex.withLock {
-            // A selected pack that fails to load degrades to system icons without erasing the
-            // user's choice; only the uninstall broadcast clears the setting.
-            val loaded = packageName?.let { withContext(Dispatchers.IO) { loadPack(it) } }
+            val selected = userSettingsDataSource.iconPack.first()
+            // The uninstall broadcast is missed while the process is dead, so absence is rechecked here.
+            if (selected != null && !isInstalled(selected)) {
+                userSettingsDataSource.clearIconPackIfSelected(selected)
+            }
+            // A selected pack that fails to load degrades to system icons without erasing the choice.
+            val loaded = selected?.let { withContext(Dispatchers.IO) { loadPack(it) } }
             val hadPack = activePack != null
             activePack = loaded
             if (hadPack || loaded != null) {
@@ -157,16 +173,20 @@ class IconPackRepository @Inject constructor(
         }
     }
 
-    private fun loadPack(packageName: String): LoadedPack? {
-        val packResources = try {
-            application.packageManager.getResourcesForApplication(packageName)
-        } catch (_: Exception) {
-            return null
-        }
+    private fun isInstalled(packageName: String): Boolean = try {
+        application.packageManager.getApplicationInfo(packageName, 0)
+        true
+    } catch (_: PackageManager.NameNotFoundException) {
+        false
+    }
+
+    private fun loadPack(packageName: String): LoadedPack? = try {
+        val packResources = application.packageManager.getResourcesForApplication(packageName)
         val appFilter = parseAppFilterAsset(packResources)
             ?: parseAppFilterResource(packageName, packResources)
-            ?: return null
-        return LoadedPack(packageName, packResources, appFilter)
+        appFilter?.let { LoadedPack(packageName, packResources, it) }
+    } catch (_: Exception) {
+        null
     }
 
     private fun parseAppFilterAsset(packResources: Resources): AppFilter? = try {
@@ -195,31 +215,36 @@ class IconPackRepository @Inject constructor(
     }
 
     // Packs commonly ship slightly malformed XML; whatever parsed before a failure is kept.
-    private fun parseAppFilter(parser: XmlPullParser): AppFilter {
+    private fun parseAppFilter(parser: XmlPullParser): AppFilter? {
         val componentToDrawable = HashMap<String, String>()
         val packageFallback = HashMap<String, String>()
         try {
             var event = parser.eventType
             while (event != XmlPullParser.END_DOCUMENT) {
                 if (event == XmlPullParser.START_TAG && parser.name == "item") {
-                    val component = parser.getAttributeValue(null, "component")
-                    val drawableName = parser.getAttributeValue(null, "drawable")
-                    if (component != null && !drawableName.isNullOrBlank() &&
-                        component.startsWith(COMPONENT_PREFIX) && component.endsWith("}")
-                    ) {
-                        val flattened = component.substring(COMPONENT_PREFIX.length, component.length - 1)
-                        // Normalization matters: appfilters mix "pkg/pkg.Cls" and "pkg/.Cls" forms.
-                        ComponentName.unflattenFromString(flattened)?.let {
-                            componentToDrawable.putIfAbsent(it.flattenToString(), drawableName)
-                            packageFallback.putIfAbsent(it.packageName, drawableName)
-                        }
-                    }
+                    addAppFilterItem(parser, componentToDrawable, packageFallback)
                 }
                 event = parser.next()
             }
         } catch (_: Exception) {
         }
-        return AppFilter(componentToDrawable, packageFallback)
+        return AppFilter(componentToDrawable, packageFallback).takeIf { componentToDrawable.isNotEmpty() }
+    }
+
+    private fun addAppFilterItem(
+        parser: XmlPullParser,
+        componentToDrawable: MutableMap<String, String>,
+        packageFallback: MutableMap<String, String>,
+    ) {
+        val drawableName = parser.getAttributeValue(null, "drawable")?.takeIf { it.isNotBlank() } ?: return
+        // Normalization matters: appfilters mix "pkg/pkg.Cls" and "pkg/.Cls" forms.
+        val component = parser.getAttributeValue(null, "component")
+            ?.takeIf { it.startsWith(COMPONENT_PREFIX) && it.endsWith("}") }
+            ?.removeSurrounding(COMPONENT_PREFIX, "}")
+            ?.let(ComponentName::unflattenFromString)
+            ?: return
+        componentToDrawable.putIfAbsent(component.flattenToString(), drawableName)
+        packageFallback.putIfAbsent(component.packageName, drawableName)
     }
 
     // Must mirror the icon-pack <queries> block in AndroidManifest.xml, and vice versa.
