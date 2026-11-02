@@ -22,7 +22,8 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
-import java.time.LocalTime
+import java.time.Instant
+import java.time.ZoneId
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -52,7 +53,7 @@ object WeatherHelper {
 
     suspend fun fetchCurrentWeather(latitude: Double, longitude: Double): Result<WeatherReading> {
         val url = "$WEATHER_API_URL?latitude=$latitude&longitude=$longitude" +
-            "&current=temperature_2m,weather_code&daily=sunrise,sunset&timezone=auto"
+            "&current=temperature_2m,weather_code&daily=sunrise,sunset&timezone=auto&timeformat=unixtime"
 
         return httpGetJson(url).mapCatching { json ->
             val current = json.getJSONObject("current")
@@ -61,8 +62,8 @@ object WeatherHelper {
             WeatherReading(
                 temperatureCelsius = current.getDouble("temperature_2m"),
                 weatherCode = current.getInt("weather_code"),
-                sunriseTime = daily?.optJSONArray("sunrise")?.optString(0),
-                sunsetTime = daily?.optJSONArray("sunset")?.optString(0),
+                sunriseEpochMillis = daily?.firstEpochMillis("sunrise"),
+                sunsetEpochMillis = daily?.firstEpochMillis("sunset"),
                 latitude = latitude,
                 longitude = longitude,
                 fetchedAtMillis = System.currentTimeMillis(),
@@ -88,6 +89,9 @@ object WeatherHelper {
         }
     }
 
+    private fun JSONObject.firstEpochMillis(key: String): Long? =
+        optJSONArray(key)?.takeUnless { it.isNull(0) }?.getLong(0)?.times(ONE_SECOND)
+
     private fun parseGeocodingResult(item: JSONObject): GeocodingResult? {
         val name = item.optString("name").takeIf { it.isNotBlank() } ?: return null
         val latitude = item.optDouble("latitude")
@@ -105,8 +109,9 @@ object WeatherHelper {
 
     private suspend fun httpGetJson(url: String): Result<JSONObject> =
         withContext(Dispatchers.IO) {
-            val connection = URL(url).openConnection() as HttpURLConnection
+            var connection: HttpURLConnection? = null
             try {
+                connection = URL(url).openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
@@ -123,7 +128,7 @@ object WeatherHelper {
             } catch (e: Exception) {
                 Result.failure(e)
             } finally {
-                connection.disconnect()
+                connection?.disconnect()
             }
         }
 
@@ -141,18 +146,15 @@ object WeatherHelper {
         else -> R.drawable.icon_help
     }
 
-    // Sunrise/sunset ISO string form is `YYYY-MM-DDTHH:mm`; only the local-time part is compared.
-    fun isNightAt(now: LocalTime, sunriseTime: String?, sunsetTime: String?): Boolean {
-        val sunrise = parseLocalTime(sunriseTime)
-        val sunset = parseLocalTime(sunsetTime)
-        if (sunrise == null || sunset == null) return isNightHour(now.hour)
-        return now.isBefore(sunrise) || !now.isBefore(sunset)
+    fun isNightAt(nowMillis: Long, sunriseEpochMillis: Long?, sunsetEpochMillis: Long?): Boolean {
+        if (sunriseEpochMillis == null || sunsetEpochMillis == null) {
+            return isNightHour(Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).hour)
+        }
+        // Modulo a day because a cached reading can outlive the date its sunrise and sunset fall on.
+        return (nowMillis - sunriseEpochMillis).mod(ONE_DAY.toLong()) >= sunsetEpochMillis - sunriseEpochMillis
     }
 
-    fun isNightHour(hour: Int): Boolean = hour >= 18 || hour < 6
-
-    private fun parseLocalTime(iso: String?): LocalTime? =
-        iso?.substringAfter('T')?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+    private fun isNightHour(hour: Int): Boolean = hour >= 18 || hour < 6
 
     private suspend fun <T> Task<T>.suspendForTask(
         cancellationTokenSource: CancellationTokenSource? = null

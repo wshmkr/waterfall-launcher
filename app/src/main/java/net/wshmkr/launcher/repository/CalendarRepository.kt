@@ -43,7 +43,7 @@ class CalendarRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val refreshTrigger = MutableSharedFlow<Unit>(
-        replay = 1,
+        extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
@@ -162,8 +162,6 @@ class CalendarRepository @Inject constructor(
         }
 
     private fun readEvents(cursor: Cursor, today: LocalDate): List<CalendarEvent> {
-        val idIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances._ID)
-        val eventIdIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.EVENT_ID)
         val titleIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.TITLE)
         val beginIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN)
         val endIdx = cursor.getColumnIndexOrThrow(CalendarContract.Instances.END)
@@ -180,8 +178,6 @@ class CalendarRepository @Inject constructor(
             if (title == null || (allDay && !allDayCoversToday(begin, end, today))) continue
             events.add(
                 CalendarEvent(
-                    instanceId = cursor.getLong(idIdx),
-                    eventId = cursor.getLong(eventIdIdx),
                     title = title,
                     startMillis = begin,
                     endMillis = end,
@@ -216,8 +212,6 @@ class CalendarRepository @Inject constructor(
         private const val TAG = "CalendarRepository"
 
         private val PROJECTION = arrayOf(
-            CalendarContract.Instances._ID,
-            CalendarContract.Instances.EVENT_ID,
             CalendarContract.Instances.TITLE,
             CalendarContract.Instances.BEGIN,
             CalendarContract.Instances.END,

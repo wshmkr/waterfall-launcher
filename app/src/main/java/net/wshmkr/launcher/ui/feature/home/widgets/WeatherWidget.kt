@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -151,11 +152,15 @@ private fun WeatherReadyRow(
     isStale: Boolean,
     useFahrenheit: Boolean,
     modifier: Modifier,
-    textStyle: androidx.compose.ui.text.TextStyle,
+    textStyle: TextStyle,
 ) {
-    val now by rememberCurrentLocalTime()
-    val isNight = remember(now, reading.sunriseTime, reading.sunsetTime) {
-        WeatherHelper.isNightAt(now, reading.sunriseTime, reading.sunsetTime)
+    val minuteTick by rememberCurrentLocalTime()
+    val isNight = remember(minuteTick, reading.sunriseEpochMillis, reading.sunsetEpochMillis) {
+        WeatherHelper.isNightAt(
+            System.currentTimeMillis(),
+            reading.sunriseEpochMillis,
+            reading.sunsetEpochMillis,
+        )
     }
     val iconRes = WeatherHelper.weatherIconRes(reading.weatherCode, isNight)
     val displayTemperature = if (useFahrenheit) {

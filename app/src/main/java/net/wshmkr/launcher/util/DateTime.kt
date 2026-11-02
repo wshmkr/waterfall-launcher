@@ -3,13 +3,17 @@ package net.wshmkr.launcher.util
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -35,10 +39,6 @@ private fun formattersForCurrentLocale(): LocalizedFormatters {
     return formatters
 }
 
-fun getCurrentTime(use24Hour: Boolean): String = formatTime(LocalTime.now(), use24Hour)
-
-fun getCurrentDate(): String = formatDate(LocalDate.now())
-
 fun formatTime(time: LocalTime, use24Hour: Boolean): String {
     val localized = formattersForCurrentLocale()
     val formatter = if (use24Hour) localized.time24Hour else localized.time12Hour
@@ -56,27 +56,26 @@ fun formatEventTime(epochMillis: Long, use24Hour: Boolean): String {
     return "${time.format(localized.time12Hour)}$marker"
 }
 
-
-// Minute-precision clock — ticks at the next minute boundary so the reader
-// invalidates at most once per minute.
 @Composable
 fun rememberCurrentLocalTime(): State<LocalTime> =
-    produceState(initialValue = LocalTime.now()) {
-        while (isActive) {
-            delay(millisUntilNextMinute())
-            value = LocalTime.now()
-        }
-    }
+    rememberReadEachMinute { LocalTime.now().truncatedTo(ChronoUnit.MINUTES) }
 
 @Composable
-fun rememberCurrentDate(): State<LocalDate> =
-    produceState(initialValue = LocalDate.now()) {
-        while (isActive) {
-            delay(millisUntilNextMinute())
-            val today = LocalDate.now()
-            if (today != value) value = today
+fun rememberCurrentDate(): State<LocalDate> = rememberReadEachMinute(LocalDate::now)
+
+// Re-reads on every start because delay() doesn't advance while the device deep-sleeps.
+@Composable
+private fun <T> rememberReadEachMinute(read: () -> T): State<T> {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    return produceState(initialValue = remember { read() }, lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                value = read()
+                delay(millisUntilNextMinute())
+            }
         }
     }
+}
 
 private fun millisUntilNextMinute(): Long {
     val now = LocalTime.now()
