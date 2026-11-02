@@ -150,7 +150,8 @@ object WeatherHelper {
         if (sunriseEpochMillis == null || sunsetEpochMillis == null) {
             return isNightHour(Instant.ofEpochMilli(nowMillis).atZone(ZoneId.systemDefault()).hour)
         }
-        return nowMillis < sunriseEpochMillis || nowMillis >= sunsetEpochMillis
+        // Modulo a day because a cached reading can outlive the date its sunrise and sunset fall on.
+        return (nowMillis - sunriseEpochMillis).mod(ONE_DAY.toLong()) >= sunsetEpochMillis - sunriseEpochMillis
     }
 
     private fun isNightHour(hour: Int): Boolean = hour >= 18 || hour < 6
