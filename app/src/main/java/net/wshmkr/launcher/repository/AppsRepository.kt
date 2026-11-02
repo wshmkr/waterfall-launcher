@@ -10,7 +10,6 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.res.Configuration
-import android.graphics.drawable.Drawable
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
@@ -20,9 +19,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.core.graphics.drawable.toBitmap
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
@@ -36,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -46,25 +44,21 @@ import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
 import net.wshmkr.launcher.model.labelOrder
-import net.wshmkr.launcher.ui.theme.maxAppIconSize
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
-import kotlin.math.roundToInt
 
 @Singleton
 class AppsRepository @Inject constructor(
     private val application: Application,
     private val usageDataSource: UsageDataSource,
-    private val appPreferencesDataSource: AppPreferencesDataSource
+    private val appPreferencesDataSource: AppPreferencesDataSource,
+    private val iconPackRepository: IconPackRepository,
 ) {
     private val launcherApps: LauncherApps = application.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     private val userManager: UserManager = application.getSystemService(Context.USER_SERVICE) as UserManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-
-    private val iconSizePx
-        get() = (maxAppIconSize.value * application.resources.displayMetrics.density).roundToInt()
 
     private var rasterizedDensityDpi = application.resources.configuration.densityDpi
     private var iconRefreshJob: Job? = null
@@ -94,16 +88,16 @@ class AppsRepository @Inject constructor(
 
     // Icons are rasterized for the density at load time, so a display-size change leaves them all stale.
     private val densityCallbacks = object : ComponentCallbacks {
-        override fun onConfigurationChanged(newConfig: Configuration) = refreshIconsIfDensityChanged()
+        override fun onConfigurationChanged(newConfig: Configuration) = refreshIcons(onlyIfDensityChanged = true)
 
         @Suppress("OVERRIDE_DEPRECATION")
         override fun onLowMemory() = Unit
     }
 
     // Density is recorded after the publish, so a refresh racing loadInstalledApps can't strand stale icons.
-    private fun refreshIconsIfDensityChanged() {
+    private fun refreshIcons(onlyIfDensityChanged: Boolean = false) {
         val density = application.resources.configuration.densityDpi
-        if (density == rasterizedDensityDpi) return
+        if (onlyIfDensityChanged && density == rasterizedDensityDpi) return
 
         iconRefreshJob?.cancel()
         iconRefreshJob = scope.launch {
@@ -148,6 +142,12 @@ class AppsRepository @Inject constructor(
         application.registerReceiver(profileStateReceiver, filter)
         application.registerComponentCallbacks(densityCallbacks)
         launcherApps.registerCallback(launcherAppsCallback)
+
+        scope.launch {
+            iconPackRepository.iconsChanged.collect {
+                if (allApps.isNotEmpty()) refreshIcons()
+            }
+        }
     }
 
     private fun updateActiveProfiles() {
@@ -172,7 +172,12 @@ class AppsRepository @Inject constructor(
         val density = application.resources.configuration.densityDpi
         val userHandles = userManager.userProfiles.takeIf { it.isNotEmpty() } ?: listOf(Process.myUserHandle())
 
-        val storedFavorites = appPreferencesDataSource.getFavorites()
+        // Awaiting the icon-pack load keeps cold start from flashing system icons; overlapping it
+        // with the favorites read keeps it off the critical path when no pack is selected.
+        val storedFavorites = coroutineScope {
+            launch { iconPackRepository.awaitInitialLoad() }
+            appPreferencesDataSource.getFavorites()
+        }
         val favoriteKeys = storedFavorites.toHashSet()
 
         val apps = withContext(Dispatchers.IO) {
@@ -222,7 +227,7 @@ class AppsRepository @Inject constructor(
             usageLoaded = true
         }
 
-        refreshIconsIfDensityChanged()
+        refreshIcons(onlyIfDensityChanged = true)
     }
 
     private fun buildAppInfo(
@@ -239,7 +244,7 @@ class AppsRepository @Inject constructor(
         return AppInfo(
             label = label,
             packageName = appPackageName,
-            icon = toBitmapPainter(activity.getBadgedIcon(0), iconSizePx),
+            icon = iconPackRepository.renderIcon(activity),
             userHandle = userHandle,
             isSystemApp = isSystemApp,
             isFavorite = keyFor(appPackageName, userHandle) in favoriteKeys,
@@ -323,8 +328,7 @@ class AppsRepository @Inject constructor(
                 try {
                     launcherApps.getActivityList(app.packageName, app.userHandle)
                         ?.firstOrNull()
-                        ?.getBadgedIcon(0)
-                        ?.let { app.key to toBitmapPainter(it, iconSizePx) }
+                        ?.let { app.key to iconPackRepository.renderIcon(it) }
                 } catch (_: Exception) {
                     null
                 }
@@ -453,15 +457,3 @@ private fun buildSearchTokens(label: String) =
         .split(' ')
         .filter { it.isNotEmpty() }
         .toImmutableList()
-
-private fun toBitmapPainter(drawable: Drawable, maxSizePx: Int): BitmapPainter {
-    val intrinsicWidth = drawable.intrinsicWidth.takeIf { it > 0 } ?: maxSizePx
-    val intrinsicHeight = drawable.intrinsicHeight.takeIf { it > 0 } ?: maxSizePx
-    val scale = minOf(1f, maxSizePx.toFloat() / maxOf(intrinsicWidth, intrinsicHeight))
-
-    val bitmap = drawable.toBitmap(
-        width = (intrinsicWidth * scale).roundToInt().coerceAtLeast(1),
-        height = (intrinsicHeight * scale).roundToInt().coerceAtLeast(1),
-    )
-    return BitmapPainter(bitmap.asImageBitmap())
-}

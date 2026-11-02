@@ -14,6 +14,27 @@
         <intent>
             <action android:name="android.appwidget.action.APPWIDGET_PICK" />
         </intent>
+        <!-- Icon pack theme actions (ADW/Nova/Apex/GO conventions).
+             Must mirror themeIntents in IconPackRepository, and vice versa. -->
+        <intent>
+            <action android:name="org.adw.launcher.THEMES" />
+        </intent>
+        <intent>
+            <action android:name="com.novalauncher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="org.adw.launcher.icons.ACTION_PICK_ICON" />
+        </intent>
+        <intent>
+            <action android:name="com.anddoes.launcher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.gau.go.launcherex.theme" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="com.anddoes.launcher.THEME" />
+        </intent>
     </queries>
 
     <application

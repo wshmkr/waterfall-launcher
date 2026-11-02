@@ -63,6 +63,7 @@ class UserSettingsDataSource @Inject constructor(
         private val KEY_WEATHER_LOCATION_LAT = doublePreferencesKey("weather_location_latitude")
         private val KEY_WEATHER_LOCATION_LON = doublePreferencesKey("weather_location_longitude")
         private val KEY_PALETTE_STYLE = stringPreferencesKey("palette_style")
+        private val KEY_ICON_PACK = stringPreferencesKey("icon_pack_package")
 
         private const val DEFAULT_SHOW_WIDGET = true
     }
@@ -103,6 +104,10 @@ class UserSettingsDataSource @Inject constructor(
 
     val paletteStyle: Flow<PaletteStyle> = preferences
         .map { PaletteStyle.fromName(it[KEY_PALETTE_STYLE]) }
+        .distinctUntilChanged()
+
+    val iconPack: Flow<String?> = preferences
+        .map { it[KEY_ICON_PACK] }
         .distinctUntilChanged()
 
     private fun Preferences.weatherLocation(): Pair<Double, Double>? {
@@ -149,6 +154,22 @@ class UserSettingsDataSource @Inject constructor(
             preferences[KEY_WEATHER_LOCATION_NAME] = name
             preferences[KEY_WEATHER_LOCATION_LAT] = latitude
             preferences[KEY_WEATHER_LOCATION_LON] = longitude
+        }
+    }
+
+    suspend fun setIconPack(packageName: String?) {
+        persist { preferences ->
+            if (packageName == null) {
+                preferences.remove(KEY_ICON_PACK)
+            } else {
+                preferences[KEY_ICON_PACK] = packageName
+            }
+        }
+    }
+
+    suspend fun clearIconPackIfSelected(packageName: String) {
+        persist { preferences ->
+            if (preferences[KEY_ICON_PACK] == packageName) preferences.remove(KEY_ICON_PACK)
         }
     }
 

@@ -38,6 +38,7 @@ enum class MenuOptionTextSize {
 @Composable
 fun MenuOption(
     icon: Painter? = null,
+    leadingContent: (@Composable () -> Unit)? = null,
     text: String,
     subtext: String? = null,
     onClick: () -> Unit,
@@ -69,7 +70,10 @@ fun MenuOption(
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        icon?.let {
+        if (leadingContent != null) {
+            leadingContent()
+            Spacer(modifier = Modifier.width(Spacing.large))
+        } else if (icon != null) {
             Icon(
                 painter = icon,
                 contentDescription = null,
