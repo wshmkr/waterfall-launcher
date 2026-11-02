@@ -7,7 +7,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -19,6 +18,7 @@ private const val SAVED_STATE_KEY = "widget_picker_pending"
 private const val KEY_WIDGET_ID = "widget_id"
 private const val KEY_WIDGET_INFO = "widget_info"
 private const val KEY_REQUEST = "request"
+private const val REQUEST_CONFIGURE_WIDGET = 1
 
 class WidgetPickerHelper(
     private val activity: ComponentActivity,
@@ -35,9 +35,8 @@ class WidgetPickerHelper(
 
     fun registerLaunchers() {
         widgetResultLauncher = activity.registerForActivityResult(
-            ActivityResultContracts.StartActivityForResult(),
-            ::handleBindOrConfigureResult
-        )
+            ActivityResultContracts.StartActivityForResult()
+        ) { result -> handleBindOrConfigureResult(result.resultCode) }
         // The bind/configure activity can outlive this activity instance across a config change.
         restorePendingWidget()
         activity.savedStateRegistry.registerSavedStateProvider(SAVED_STATE_KEY) { savePendingWidget() }
@@ -57,10 +56,15 @@ class WidgetPickerHelper(
         }
     }
 
-    private fun handleBindOrConfigureResult(result: ActivityResult) {
+    // AppWidgetHost delivers the configure result only through Activity.onActivityResult.
+    fun onActivityResult(requestCode: Int, resultCode: Int) {
+        if (requestCode == REQUEST_CONFIGURE_WIDGET) handleBindOrConfigureResult(resultCode)
+    }
+
+    private fun handleBindOrConfigureResult(resultCode: Int) {
         val widgetId = pendingWidgetId ?: return
         val info = pendingWidgetInfo
-        if (result.resultCode != Activity.RESULT_OK || info == null) {
+        if (resultCode != Activity.RESULT_OK || info == null) {
             clearPendingWidget(deleteFromHost = true)
             return
         }
@@ -75,7 +79,7 @@ class WidgetPickerHelper(
 
     private fun configureOrSave(widgetId: Int, info: AppWidgetProviderInfo) {
         if (info.configure != null) {
-            launchConfiguration(widgetId, info)
+            launchConfiguration(widgetId)
         } else {
             saveWidget(widgetId)
         }
@@ -90,13 +94,9 @@ class WidgetPickerHelper(
         widgetResultLauncher.launch(intent)
     }
 
-    private fun launchConfiguration(widgetId: Int, info: AppWidgetProviderInfo) {
+    private fun launchConfiguration(widgetId: Int) {
         pendingRequest = PendingRequest.CONFIG
-        val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
-            component = info.configure
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-        }
-        widgetResultLauncher.launch(intent)
+        widgetRepository.startConfigureActivityForResult(activity, widgetId, REQUEST_CONFIGURE_WIDGET)
     }
 
     private fun saveWidget(widgetId: Int) {

@@ -1,5 +1,6 @@
 package net.wshmkr.launcher.repository
 
+import android.app.Activity
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -11,6 +12,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -47,9 +49,12 @@ class WidgetRepository @Inject constructor(
 
     suspend fun loadWidgets() = updateIdsOnIo { }
 
-    suspend fun addWidget(widgetId: Int) = updateIdsOnIo {
-        if (!widgetDataSource.addWidget(widgetId)) {
-            appWidgetHost.deleteAppWidgetId(widgetId)
+    // Non-cancellable because the caller's activity can die mid-write, stranding the bound id.
+    suspend fun addWidget(widgetId: Int) {
+        withContext(NonCancellable) {
+            var persisted = false
+            updateIdsOnIo { persisted = widgetDataSource.addWidget(widgetId) }
+            if (!persisted) appWidgetHost.deleteAppWidgetId(widgetId)
         }
     }
 
@@ -65,6 +70,9 @@ class WidgetRepository @Inject constructor(
     fun allocateWidgetId(): Int = appWidgetHost.allocateAppWidgetId()
 
     fun deleteWidgetId(widgetId: Int) = appWidgetHost.deleteAppWidgetId(widgetId)
+
+    fun startConfigureActivityForResult(activity: Activity, widgetId: Int, requestCode: Int) =
+        appWidgetHost.startAppWidgetConfigureActivityForResult(activity, widgetId, 0, requestCode, null)
 
     fun createWidgetView(context: Context, widgetId: Int): AppWidgetHostView? {
         val info = appWidgetManager.getAppWidgetInfo(widgetId) ?: return null
