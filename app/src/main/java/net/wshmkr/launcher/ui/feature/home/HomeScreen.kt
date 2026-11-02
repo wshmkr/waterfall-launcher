@@ -23,12 +23,7 @@ fun HomeScreen(
 ) {
     AppLauncher(launchAppIntent = viewModel.launchAppIntent)
 
-    val onSearchDismiss = remember(viewModel) {
-        {
-            viewModel.navigateToFavorites()
-            viewModel.showSearchOverlay = false
-        }
-    }
+    val onSearchDismiss = remember(viewModel) { viewModel::navigateToFavorites }
     val onLetterSelected = remember(viewModel) { viewModel::scrollToLetter }
     val onSelectionCleared = remember(viewModel) { { viewModel.deselectLetter() } }
 

@@ -58,13 +58,13 @@ fun HomeOptionsMenu(
     val onToggleMedia = remember(settingsViewModel) { settingsViewModel::setShowMedia }
     val onOpenWidgets = remember(navController, onDismiss) {
         {
-            navController.navigate(Screen.WidgetList.route)
+            navController.navigate(Screen.WidgetList.route) { launchSingleTop = true }
             slideOutThenDismiss()
         }
     }
     val onOpenSettings = remember(navController, onDismiss) {
         {
-            navController.navigate(Screen.Settings.route)
+            navController.navigate(Screen.Settings.route) { launchSingleTop = true }
             slideOutThenDismiss()
         }
     }
