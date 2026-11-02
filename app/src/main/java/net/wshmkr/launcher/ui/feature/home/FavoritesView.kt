@@ -79,8 +79,8 @@ fun FavoritesView(
     val widgetTouched = remember { mutableStateOf(false) }
     val onWidgetTouchedChange = remember { { touched: Boolean -> widgetTouched.value = touched } }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
+    val homeVisible by viewModel.homeVisible.collectAsState()
     val favoriteApps = viewModel.favoriteApps
-    val hasFavoriteApps = favoriteApps.isNotEmpty()
     val widgetSettings = viewModel.homeWidgetSettings
     val todayEvents by viewModel.todayEvents.collectAsStateWithLifecycle()
     val onCalendarPermissionGranted = remember(viewModel) { viewModel::refreshCalendarEvents }
@@ -106,8 +106,8 @@ fun FavoritesView(
         }
     }
 
-    LaunchedEffect(hasFavoriteApps) {
-        if (hasFavoriteApps) {
+    LaunchedEffect(homeVisible) {
+        if (homeVisible) {
             isVisible = true
         }
     }
