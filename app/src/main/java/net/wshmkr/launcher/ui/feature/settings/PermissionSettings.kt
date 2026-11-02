@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -93,22 +94,25 @@ private fun RuntimePermissionOption(
     permission: String,
 ) {
     var granted by remember { mutableStateOf(context.isGranted(permission)) }
-    var permanentlyDenied by remember { mutableStateOf(false) }
+    var hadRationaleBeforeRequest by rememberSaveable { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         granted = isGranted
-        permanentlyDenied = !isGranted && isPermissionPermanentlyDenied(context, permission)
+        // No rationale before or after a denial means the system denied without showing a dialog.
+        val deniedWithoutDialog = !isGranted && !hadRationaleBeforeRequest &&
+            isPermissionPermanentlyDenied(context, permission)
+        if (deniedWithoutDialog) openAppDetailsSettings(context)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         granted = context.isGranted(permission)
-        if (granted) permanentlyDenied = false
     }
     val onClick = remember(context, permission, permissionLauncher) {
         { _: Boolean ->
-            if (granted || permanentlyDenied) {
+            if (granted) {
                 openAppDetailsSettings(context)
             } else {
+                hadRationaleBeforeRequest = !isPermissionPermanentlyDenied(context, permission)
                 permissionLauncher.launch(permission)
             }
         }

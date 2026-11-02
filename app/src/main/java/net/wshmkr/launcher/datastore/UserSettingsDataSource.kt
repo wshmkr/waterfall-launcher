@@ -2,8 +2,10 @@ package net.wshmkr.launcher.datastore
 
 import android.content.Context
 import android.text.format.DateFormat
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
@@ -12,6 +14,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -47,6 +50,7 @@ class UserSettingsDataSource @Inject constructor(
     val defaultUseFahrenheit: Boolean get() = Locale.getDefault().country == "US"
 
     companion object {
+        private const val TAG = "UserSettingsDataSource"
         private const val READ_RETRY_DELAY_MS = 5_000L
         private val KEY_SHOW_CLOCK = booleanPreferencesKey("show_clock")
         private val KEY_SHOW_CALENDAR = booleanPreferencesKey("show_calendar")
@@ -110,8 +114,18 @@ class UserSettingsDataSource @Inject constructor(
     private fun <T> perField(key: Preferences.Key<T>, default: () -> T): Flow<T> =
         preferences.map { it[key] ?: default() }.distinctUntilChanged()
 
+    private suspend fun persist(transform: suspend (MutablePreferences) -> Unit) {
+        try {
+            dataStore.edit(transform)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to persist settings", e)
+        }
+    }
+
     private suspend fun <T> put(key: Preferences.Key<T>, value: T) {
-        dataStore.edit { it[key] = value }
+        persist { it[key] = value }
     }
 
     suspend fun setShowClock(enabled: Boolean) = put(KEY_SHOW_CLOCK, enabled)
@@ -131,7 +145,7 @@ class UserSettingsDataSource @Inject constructor(
     suspend fun setPaletteStyle(style: PaletteStyle) = put(KEY_PALETTE_STYLE, style.name)
 
     suspend fun setWeatherLocation(name: String, latitude: Double, longitude: Double) {
-        dataStore.edit { preferences ->
+        persist { preferences ->
             preferences[KEY_WEATHER_LOCATION_NAME] = name
             preferences[KEY_WEATHER_LOCATION_LAT] = latitude
             preferences[KEY_WEATHER_LOCATION_LON] = longitude
@@ -139,7 +153,7 @@ class UserSettingsDataSource @Inject constructor(
     }
 
     suspend fun clearWeatherLocation() {
-        dataStore.edit { preferences ->
+        persist { preferences ->
             preferences.remove(KEY_WEATHER_LOCATION_NAME)
             preferences.remove(KEY_WEATHER_LOCATION_LAT)
             preferences.remove(KEY_WEATHER_LOCATION_LON)
