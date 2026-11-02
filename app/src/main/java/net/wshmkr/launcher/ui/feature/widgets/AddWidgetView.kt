@@ -30,6 +30,10 @@ fun AddWidgetView(
 ) {
     BackHandler(enabled = true, onBack = onDismiss)
 
+    LaunchedEffect(viewModel) {
+        viewModel.refreshWidgetProviders()
+    }
+
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel.widgetAppListItems) {

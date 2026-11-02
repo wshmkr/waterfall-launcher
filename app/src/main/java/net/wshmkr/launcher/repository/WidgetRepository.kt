@@ -1,13 +1,18 @@
 package net.wshmkr.launcher.repository
 
+import android.app.Activity
 import android.appwidget.AppWidgetHost
+import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -26,13 +31,11 @@ class WidgetRepository @Inject constructor(
     private val widgetDataSource: WidgetDataSource
 ) {
     val appWidgetManager: AppWidgetManager = AppWidgetManager.getInstance(context)
-    val appWidgetHost: AppWidgetHost = AppWidgetHost(context, WIDGET_HOST_ID)
+    private val appWidgetHost: AppWidgetHost = AppWidgetHost(context, WIDGET_HOST_ID)
     val packageManager: PackageManager = context.packageManager
 
     private val _widgetIds = MutableStateFlow<List<Int>>(emptyList())
     val widgetIds = _widgetIds.asStateFlow()
-
-    private var persistedWidgetIds: List<Int> = emptyList()
 
     private val widgetMutations = Mutex()
 
@@ -46,30 +49,35 @@ class WidgetRepository @Inject constructor(
 
     suspend fun loadWidgets() = updateIdsOnIo { }
 
-    suspend fun addWidget(widgetId: Int) = updateIdsOnIo {
-        widgetDataSource.addWidget(widgetId)
+    // Non-cancellable because the caller's activity can die mid-write, stranding the bound id.
+    suspend fun addWidget(widgetId: Int) {
+        withContext(NonCancellable) {
+            var persisted = false
+            updateIdsOnIo { persisted = widgetDataSource.addWidget(widgetId) }
+            if (!persisted) appWidgetHost.deleteAppWidgetId(widgetId)
+        }
     }
 
     suspend fun removeWidget(widgetId: Int) = updateIdsOnIo {
-        appWidgetHost.deleteAppWidgetId(widgetId)
         widgetDataSource.removeWidget(widgetId)
+        appWidgetHost.deleteAppWidgetId(widgetId)
     }
 
-    fun previewWidgetOrder(ids: List<Int>) {
-        _widgetIds.value = ids
-    }
-
-    suspend fun commitWidgetOrder() = widgetMutations.withLock {
-        val ids = _widgetIds.value
-        if (ids == persistedWidgetIds) return@withLock
-        withContext(Dispatchers.IO) {
-            widgetDataSource.setWidgetOrder(ids)
-        }
-        // Only marked persisted after the write succeeds, so a failed commit stays retryable.
-        persistedWidgetIds = ids
+    suspend fun commitWidgetOrder(orderedIds: List<Int>) = updateIdsOnIo {
+        widgetDataSource.setWidgetOrder(orderedIds)
     }
 
     fun allocateWidgetId(): Int = appWidgetHost.allocateAppWidgetId()
+
+    fun deleteWidgetId(widgetId: Int) = appWidgetHost.deleteAppWidgetId(widgetId)
+
+    fun startConfigureActivityForResult(activity: Activity, widgetId: Int, requestCode: Int) =
+        appWidgetHost.startAppWidgetConfigureActivityForResult(activity, widgetId, 0, requestCode, null)
+
+    fun createWidgetView(context: Context, widgetId: Int): AppWidgetHostView? {
+        val info = appWidgetManager.getAppWidgetInfo(widgetId) ?: return null
+        return appWidgetHost.createView(context, widgetId, info)
+    }
 
     fun bindAppWidgetIdIfAllowed(appWidgetId: Int, provider: ComponentName): Boolean =
         appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider)
@@ -78,7 +86,7 @@ class WidgetRepository @Inject constructor(
         runCatching { appWidgetManager.installedProviders }
             .getOrElse { emptyList() }
             .groupBy { it.provider.packageName }
-            .mapNotNull { (packageName, infos) ->
+            .map { (packageName, infos) ->
                 val appInfo = runCatching { packageManager.getApplicationInfo(packageName, 0) }.getOrNull()
                 WidgetProviderAppInfo(
                     packageName = packageName,
@@ -92,12 +100,18 @@ class WidgetRepository @Inject constructor(
     fun startListening() = appWidgetHost.startListening()
     fun stopListening() = appWidgetHost.stopListening()
 
-    private suspend fun updateIdsOnIo(block: suspend () -> Unit) = widgetMutations.withLock {
-        val updated = withContext(Dispatchers.IO) {
-            block()
-            widgetDataSource.getWidgetIds()
+    private suspend fun updateIdsOnIo(block: suspend () -> Unit) {
+        widgetMutations.withLock {
+            try {
+                _widgetIds.value = withContext(Dispatchers.IO) {
+                    block()
+                    widgetDataSource.getWidgetIds()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("WidgetRepository", "Failed to update widget ids", e)
+            }
         }
-        persistedWidgetIds = updated
-        _widgetIds.value = updated
     }
 }

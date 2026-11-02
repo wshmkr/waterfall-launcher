@@ -10,10 +10,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun rememberWidgetPreviewDrawable(info: AppWidgetProviderInfo): State<Drawable?> {
+fun rememberWidgetPreviewDrawable(info: AppWidgetProviderInfo?): State<Drawable?> {
     val context = LocalContext.current
     val densityDpi = context.resources.displayMetrics.densityDpi
     return produceState<Drawable?>(null, info, densityDpi) {
+        if (info == null) return@produceState
         value = withContext(Dispatchers.IO) {
             try {
                 info.loadPreviewImage(context, densityDpi)

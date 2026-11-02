@@ -54,8 +54,13 @@ class WidgetDataSource @Inject constructor(
             .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
             .first()
 
-    suspend fun addWidget(widgetId: Int) = updateWidgets { ids ->
-        if (ids.size < MAX_WIDGETS) ids + widgetId else ids
+    suspend fun addWidget(widgetId: Int): Boolean {
+        var added = false
+        updateWidgets { ids ->
+            added = ids.size < MAX_WIDGETS
+            if (added) ids + widgetId else ids
+        }
+        return added
     }
 
     suspend fun removeWidget(widgetId: Int) = updateWidgets { ids ->

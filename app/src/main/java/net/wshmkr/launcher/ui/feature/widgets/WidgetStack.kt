@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetHostView
 import android.os.Bundle
 import android.util.SizeF
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.FlingBehavior
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -55,6 +57,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
@@ -69,6 +72,7 @@ import net.wshmkr.launcher.ui.theme.ContentAlpha
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
+import kotlin.math.roundToInt
 
 // Virtual page count for wrap-around scrolling; real page = virtual page % widget count.
 private const val LOOP_PAGE_COUNT = Int.MAX_VALUE
@@ -89,6 +93,37 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
 // The host view overload also writes OPTION_APPWIDGET_SIZES and accounts for padding.
 private fun AppWidgetHostView.applyWidgetSize(widthDp: Int, heightDp: Int) =
     updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
+
+// Looping pages repeat each widget; only the copy nearest the scroll position hosts its view.
+private fun PagerState.isNearestCopyOfPage(page: Int, pageCount: Int): Boolean {
+    if (pageCount <= 1) return true
+    val offsetInPages = (currentPage - page) + currentPageOffsetFraction
+    return (offsetInPages / pageCount).roundToInt() == 0
+}
+
+// AppWidgetHost delivers updates only to the most recently created view per id, so each id gets one view.
+private class WidgetViewCache(private val createView: (Int) -> AppWidgetHostView?) {
+    private val views = HashMap<Int, AppWidgetHostView>()
+
+    fun get(widgetId: Int): AppWidgetHostView? =
+        views[widgetId] ?: createView(widgetId)?.also { views[widgetId] = it }
+
+    fun retainOnly(widgetIds: List<Int>) {
+        views.keys.retainAll(widgetIds.toSet())
+    }
+}
+
+private fun FrameLayout.showOnly(widgetView: AppWidgetHostView?) {
+    for (index in childCount - 1 downTo 0) {
+        if (getChildAt(index) !== widgetView) removeViewAt(index)
+    }
+    if (widgetView == null || widgetView.parent === this) return
+    (widgetView.parent as? ViewGroup)?.removeView(widgetView)
+    addView(
+        widgetView,
+        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+    )
+}
 
 /** Reads the height in the layout phase so a resize drag never recomposes the stack. */
 private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
@@ -118,6 +153,11 @@ fun WidgetStack(
     val pressSource = remember { MutableInteractionSource() }
     var stackWidthPx by remember { mutableIntStateOf(0) }
     val stackWidth = with(LocalDensity.current) { stackWidthPx.toDp() }
+    val context = LocalContext.current
+    val widgetViews = remember(context, viewModel) {
+        WidgetViewCache { widgetId -> viewModel.createWidgetView(context, widgetId) }
+    }
+    LaunchedEffect(widgetIds) { widgetViews.retainOnly(widgetIds) }
 
     // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
@@ -171,8 +211,13 @@ fun WidgetStack(
                     beyondViewportPageCount = 1,
                     flingBehavior = flingBehavior,
                 ) { page ->
+                    val widgetId = widgetIds[page % pageCount]
+                    val isNearestCopy by remember(pagerState, page, pageCount) {
+                        derivedStateOf { pagerState.isNearestCopyOfPage(page, pageCount) }
+                    }
                     WidgetPage(
-                        widgetId = widgetIds[page % pageCount],
+                        widgetView = remember(widgetViews, widgetId) { widgetViews.get(widgetId) },
+                        showsWidgetView = isNearestCopy,
                         widthDp = stackWidth.value.toInt(),
                         viewModel = viewModel,
                         blockTouches = previewMode,
@@ -234,7 +279,7 @@ fun WidgetStack(
                     pagerState = pagerState,
                     pageCount = pageCount,
                     flingBehavior = flingBehavior,
-                    onLongPress = onManageWidgets,
+                    onLongPress = onManageWidgets.takeUnless { previewMode },
                 )
             }
         }
@@ -244,21 +289,12 @@ fun WidgetStack(
 @OptIn(FlowPreview::class)
 @Composable
 private fun WidgetPage(
-    widgetId: Int,
+    widgetView: AppWidgetHostView?,
+    showsWidgetView: Boolean,
     widthDp: Int,
     viewModel: WidgetViewModel,
     blockTouches: Boolean,
 ) {
-    val context = LocalContext.current
-    val widgetView = remember(widgetId) {
-        viewModel.createWidgetView(context, widgetId)?.apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-        }
-    }
-
     LaunchedEffect(widgetView, widthDp) {
         if (widgetView == null || widthDp <= 0) return@LaunchedEffect
         snapshotFlow { viewModel.stackHeightDp }
@@ -268,23 +304,22 @@ private fun WidgetPage(
 
     if (widgetView == null) {
         UnavailableWidget()
-    } else if (blockTouches) {
-        Box {
-            AndroidView(
-                factory = { widgetView },
-                modifier = Modifier.fillMaxSize(),
-            )
+        return
+    }
+    Box {
+        AndroidView(
+            factory = { FrameLayout(it) },
+            modifier = Modifier.fillMaxSize(),
+            onRelease = { it.removeAllViews() },
+            update = { it.showOnly(widgetView.takeIf { showsWidgetView }) },
+        )
+        if (blockTouches) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(Unit) { detectTapGestures(onTap = {}) },
             )
         }
-    } else {
-        AndroidView(
-            factory = { widgetView },
-            modifier = Modifier.fillMaxSize(),
-        )
     }
 }
 
@@ -358,33 +393,43 @@ private fun PageDashes(
     pagerState: PagerState,
     pageCount: Int,
     flingBehavior: FlingBehavior,
-    onLongPress: () -> Unit,
+    onLongPress: (() -> Unit)?,
 ) {
     val scope = rememberCoroutineScope()
     val pressSource = remember { MutableInteractionSource() }
+    val layoutDirection = LocalLayoutDirection.current
+    val isRtl = layoutDirection == LayoutDirection.Rtl
+    val dashInsetPx = with(LocalDensity.current) { Spacing.medium.toPx() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(Corners.small)
             .indication(pressSource, ripple())
             .heightIn(min = PAGE_DASH_TOUCH_HEIGHT)
-            .padding(start = Spacing.medium, top = PAGE_DASH_TOP_GAP, end = Spacing.medium)
             .scrollable(
                 state = pagerState,
                 orientation = Orientation.Horizontal,
                 reverseDirection = ScrollableDefaults.reverseDirection(
-                    LocalLayoutDirection.current,
+                    layoutDirection,
                     Orientation.Horizontal,
                     reverseScrolling = false,
                 ),
                 flingBehavior = flingBehavior,
             )
-            .captureLongPress(interactionSource = pressSource, onLongPress = onLongPress)
-            .pointerInput(pageCount) {
+            .then(
+                if (onLongPress == null) {
+                    Modifier
+                } else {
+                    Modifier.captureLongPress(interactionSource = pressSource, onLongPress = onLongPress)
+                }
+            )
+            .pointerInput(pageCount, isRtl, dashInsetPx) {
                 detectTapGestures(
                     onTap = { offset ->
-                        val tappedIndex = (offset.x / size.width * pageCount).toInt()
+                        val dashesWidth = (size.width - 2 * dashInsetPx).coerceAtLeast(1f)
+                        val visualIndex = ((offset.x - dashInsetPx) / dashesWidth * pageCount).toInt()
                             .coerceIn(0, pageCount - 1)
+                        val tappedIndex = if (isRtl) pageCount - 1 - visualIndex else visualIndex
                         scope.launch {
                             pagerState.animateScrollToPage(
                                 pagerState.nearestVirtualPage(tappedIndex, pageCount),
@@ -392,7 +437,8 @@ private fun PageDashes(
                         }
                     },
                 )
-            },
+            }
+            .padding(start = Spacing.medium, top = PAGE_DASH_TOP_GAP, end = Spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         val currentPage = pagerState.currentPage % pageCount

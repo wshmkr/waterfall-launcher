@@ -69,6 +69,12 @@ class MainActivity : ComponentActivity() {
         homeViewModel.navigateToFavorites()
     }
 
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        widgetPickerHelper.onActivityResult(requestCode, resultCode)
+    }
+
     override fun onPause() {
         super.onPause()
         widgetRepository.stopListening()
