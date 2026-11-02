@@ -92,16 +92,18 @@ class WidgetRepository @Inject constructor(
     fun startListening() = appWidgetHost.startListening()
     fun stopListening() = appWidgetHost.stopListening()
 
-    private suspend fun updateIdsOnIo(block: suspend () -> Unit) = widgetMutations.withLock {
-        try {
-            _widgetIds.value = withContext(Dispatchers.IO) {
-                block()
-                widgetDataSource.getWidgetIds()
+    private suspend fun updateIdsOnIo(block: suspend () -> Unit) {
+        widgetMutations.withLock {
+            try {
+                _widgetIds.value = withContext(Dispatchers.IO) {
+                    block()
+                    widgetDataSource.getWidgetIds()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("WidgetRepository", "Failed to update widget ids", e)
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w("WidgetRepository", "Failed to update widget ids", e)
         }
     }
 }
