@@ -11,7 +11,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.mutate
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,10 +40,11 @@ import net.wshmkr.launcher.repository.NotificationRepository
 import net.wshmkr.launcher.repository.WeatherRepository
 import net.wshmkr.launcher.ui.common.components.STAR_SYMBOL
 import net.wshmkr.launcher.util.NotificationPanelHelper
+import net.wshmkr.launcher.util.movedItem
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
-const val HOME_SCREEN_APPS = 6
+const val HOME_SCREEN_APPS = 8
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -69,15 +69,7 @@ class HomeViewModel @Inject constructor(
     }
 
     val alphabetLetters by derivedStateOf {
-        buildList {
-            add(STAR_SYMBOL)
-            val letters = appsRepository.allApps
-                .filter { !it.isHidden }
-                .map { it.label.sectionLetter }
-                .distinct()
-                .sorted()
-            addAll(letters)
-        }
+        listOf(STAR_SYMBOL) + letterPositions.keys
     }
 
     // Own derived state, so a favorites write (every drag move) doesn't rebuild it.
@@ -87,7 +79,8 @@ class HomeViewModel @Inject constructor(
 
     val favoriteApps by derivedStateOf { buildFavoriteAppsList() }
 
-    val favoritesVisible: StateFlow<Boolean> = snapshotFlow { favoriteApps.isNotEmpty() }
+    // Home must stay reachable even when every app is hidden or unsuggested.
+    val homeVisible: StateFlow<Boolean> = snapshotFlow { appsRepository.allApps.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -201,12 +194,8 @@ class HomeViewModel @Inject constructor(
     }
 
     fun moveFavorite(fromKey: String, toKey: String) {
-        val keys = appsRepository.favorites
-        val from = keys.indexOf(fromKey)
-        val to = keys.indexOf(toKey)
-        if (from == -1 || to == -1 || from == to) return
-
-        appsRepository.previewFavorites(keys.mutate { it.add(to, it.removeAt(from)) })
+        appsRepository.favorites.movedItem(fromKey, toKey)
+            ?.let(appsRepository::previewFavorites)
     }
 
     fun navigateToFavorites() {

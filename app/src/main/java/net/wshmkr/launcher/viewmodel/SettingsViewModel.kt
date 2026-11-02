@@ -28,7 +28,6 @@ class SettingsViewModel @Inject constructor(
     private val iconPackRepository: IconPackRepository,
 ) : ViewModel() {
 
-    // Kept for existing callers (e.g. HomeOptionsMenu) that consume the composed snapshot.
     var homeWidgetSettings by mutableStateOf(HomeWidgetSettings())
         private set
 
@@ -45,15 +44,13 @@ class SettingsViewModel @Inject constructor(
     val showMediaControls: StateFlow<Boolean> =
         userSettingsDataSource.showMediaControls.stateIn(viewModelScope, subscribed, true)
     val use24Hour: StateFlow<Boolean> =
-        userSettingsDataSource.use24Hour.stateIn(viewModelScope, subscribed, false)
+        userSettingsDataSource.use24Hour
+            .stateIn(viewModelScope, subscribed, userSettingsDataSource.defaultUse24Hour)
     val useFahrenheit: StateFlow<Boolean> =
-        userSettingsDataSource.useFahrenheit.stateIn(viewModelScope, subscribed, false)
+        userSettingsDataSource.useFahrenheit
+            .stateIn(viewModelScope, subscribed, userSettingsDataSource.defaultUseFahrenheit)
     val weatherLocationName: StateFlow<String?> =
         userSettingsDataSource.weatherLocationName.stateIn(viewModelScope, subscribed, null)
-    val weatherLat: StateFlow<Double?> =
-        userSettingsDataSource.weatherLat.stateIn(viewModelScope, subscribed, null)
-    val weatherLon: StateFlow<Double?> =
-        userSettingsDataSource.weatherLon.stateIn(viewModelScope, subscribed, null)
     val paletteStyle: StateFlow<PaletteStyle> =
         userSettingsDataSource.paletteStyle.stateIn(viewModelScope, subscribed, PaletteStyle.Default)
     val iconPack: StateFlow<String?> =

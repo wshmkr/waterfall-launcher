@@ -123,7 +123,7 @@ private fun WidgetProviderRow(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = widgetCountLabel(provider.widgetCount),
+                text = widgetCountLabel(provider.widgets.size),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = dimensions.fontCaption,
             )

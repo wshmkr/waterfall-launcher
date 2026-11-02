@@ -17,8 +17,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import net.wshmkr.launcher.model.AppInfo
-import net.wshmkr.launcher.model.AppListItem
-import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.AppsRepository
 import javax.inject.Inject
 
@@ -33,7 +31,7 @@ class SearchViewModel @Inject constructor(
     private val allAppsFlow = snapshotFlow { appsRepository.allApps.toList() }
 
     @OptIn(FlowPreview::class)
-    val searchListItems: StateFlow<ImmutableList<AppListItem.AppItem>> =
+    val searchResults: StateFlow<ImmutableList<AppInfo>> =
         combine(_searchQuery.debounce(80), allAppsFlow) { query, apps ->
             filterApps(query, apps)
         }
@@ -50,18 +48,16 @@ class SearchViewModel @Inject constructor(
 
     fun launchTopResult() {
         val top = filterApps(_searchQuery.value, appsRepository.allApps).firstOrNull() ?: return
-        val appInfo = top.appInfo
-        launchApp(appInfo.packageName, appInfo.userHandle)
+        launchApp(top.packageName, top.userHandle)
         clearSearch()
     }
 
-    private fun filterApps(query: String, apps: List<AppInfo>): ImmutableList<AppListItem.AppItem> {
+    private fun filterApps(query: String, apps: List<AppInfo>): ImmutableList<AppInfo> {
         if (query.isEmpty()) return persistentListOf()
         val queryLower = query.lowercase()
         return apps
             .asSequence()
             .filter { app -> app.searchTokens.any { it.startsWith(queryLower) } }
-            .map { AppListItem.AppItem(it, it.label.sectionLetter) }
             .toPersistentList()
     }
 }

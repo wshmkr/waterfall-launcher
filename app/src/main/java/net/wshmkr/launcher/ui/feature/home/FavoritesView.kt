@@ -11,8 +11,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,8 +38,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import net.wshmkr.launcher.model.AppInfo
+import net.wshmkr.launcher.ui.Screen
 import net.wshmkr.launcher.ui.common.calculateCenteredContentTopPadding
 import net.wshmkr.launcher.ui.common.components.verticalSwipeDetection
 import net.wshmkr.launcher.ui.common.dialog.AccessibilityServiceDialog
@@ -45,8 +51,10 @@ import net.wshmkr.launcher.ui.feature.home.widgets.MediaWidget
 import net.wshmkr.launcher.ui.feature.widgets.WidgetStack
 import net.wshmkr.launcher.ui.theme.Dimensions
 import net.wshmkr.launcher.ui.theme.LocalDimensions
+import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.util.NotificationPanelHelper
 import net.wshmkr.launcher.viewmodel.HomeViewModel
+import net.wshmkr.launcher.viewmodel.WidgetViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private const val MIN_REORDERABLE_FAVORITES = 2
@@ -55,6 +63,7 @@ private const val MIN_REORDERABLE_FAVORITES = 2
 fun FavoritesView(
     navController: NavController,
     viewModel: HomeViewModel,
+    widgetViewModel: WidgetViewModel,
 ) {
     val reordering = viewModel.favoritesReordering
 
@@ -70,10 +79,10 @@ fun FavoritesView(
     val widgetTouched = remember { mutableStateOf(false) }
     val onWidgetTouchedChange = remember { { touched: Boolean -> widgetTouched.value = touched } }
     val activeProfiles by viewModel.activeProfiles.collectAsState()
-    val favoritesVisible by viewModel.favoritesVisible.collectAsState()
+    val homeVisible by viewModel.homeVisible.collectAsState()
     val favoriteApps = viewModel.favoriteApps
     val widgetSettings = viewModel.homeWidgetSettings
-    val todayEvents by viewModel.todayEvents.collectAsState()
+    val todayEvents by viewModel.todayEvents.collectAsStateWithLifecycle()
     val onCalendarPermissionGranted = remember(viewModel) { viewModel::refreshCalendarEvents }
     val onWeatherRefresh = remember(viewModel) { viewModel::requestWeatherRefresh }
 
@@ -97,9 +106,16 @@ fun FavoritesView(
         }
     }
 
-    LaunchedEffect(favoritesVisible) {
-        if (favoritesVisible) {
+    LaunchedEffect(homeVisible) {
+        if (homeVisible) {
             isVisible = true
+        }
+    }
+
+    // HOME while already on favorites doesn't recompose this view, so reset the scroll here.
+    LaunchedEffect(viewModel) {
+        viewModel.returnHomeEvents.collect {
+            listState.scrollToItem(0)
         }
     }
 
@@ -162,6 +178,7 @@ fun FavoritesView(
                         } else {
                             Modifier
                                 .verticalSwipeDetection(
+                                    listState = listState,
                                     onSwipeUp = onSwipeUp,
                                     onSwipeDown = onSwipeDown
                                 )
@@ -172,9 +189,14 @@ fun FavoritesView(
                                 }
                         }
                     ),
-                contentPadding = PaddingValues(horizontal = dimensions.gutterLarge),
+                contentPadding = PaddingValues(
+                    start = dimensions.gutterLarge,
+                    end = dimensions.gutterLarge,
+                    bottom = WindowInsets.navigationBars.asPaddingValues()
+                        .calculateBottomPadding() + Spacing.small,
+                ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                userScrollEnabled = false,
+                userScrollEnabled = reordering,
             ) {
                 item { Spacer(modifier = Modifier.height(calculateCenteredContentTopPadding())) }
 
@@ -202,7 +224,14 @@ fun FavoritesView(
                 }
 
                 item(key = "widget_stack") {
-                    WidgetStack(onTouchedChange = onWidgetTouchedChange)
+                    val onManageWidgets = remember(navController) {
+                        { navController.navigate(Screen.WidgetList.route) { launchSingleTop = true } }
+                    }
+                    WidgetStack(
+                        viewModel = widgetViewModel,
+                        onTouchedChange = onWidgetTouchedChange,
+                        onManageWidgets = onManageWidgets,
+                    )
                 }
 
                 item(key = "media_widget") {
@@ -219,9 +248,9 @@ fun FavoritesView(
                     },
                 ) { index, item ->
                     FavoriteRow(
-                        index = index,
                         item = item,
-                        favoriteApps = favoriteApps,
+                        previousFavoriteKey = favoriteApps.favoriteKeyAt(index - 1),
+                        nextFavoriteKey = favoriteApps.favoriteKeyAt(index + 1),
                         reordering = reordering,
                         reorderState = reorderState,
                         activeProfiles = activeProfiles,
@@ -242,7 +271,8 @@ fun FavoritesView(
                 animationSpec = tween(durationMillis = 300),
                 label = "outlineAlpha",
             )
-            if (outlineAlpha.value > 0f) {
+            val outlineShown by remember { derivedStateOf { outlineAlpha.value > 0f } }
+            if (outlineShown) {
                 FavoritesOutline(listState = listState, alphaProvider = outlineAlpha::value)
             }
         }
@@ -282,3 +312,6 @@ private fun PointerInputScope.isInsideFavoritesOutline(
         position.x >= dimensions.favoritesOutlineStart.toPx() &&
         position.x <= size.width - dimensions.favoritesOutlineEnd.toPx()
 }
+
+private fun List<AppInfo>.favoriteKeyAt(index: Int): String? =
+    getOrNull(index)?.takeUnless { it.isSuggested }?.key

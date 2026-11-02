@@ -67,16 +67,22 @@ class LauncherNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
-        if (instance == this) instance = null
+        releaseListenerState()
+    }
+
+    // An unbind can destroy the service without a disconnect callback, which would strand its rows.
+    override fun onDestroy() {
+        super.onDestroy()
+        releaseListenerState()
+    }
+
+    private fun releaseListenerState() {
+        if (instance != this) return
+        instance = null
         _isConnected.value = false
         notificationRepository.clearAll()
         playingKeys.clear()
         mediaRankingRepository.resetNotifications(emptyMap())
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (instance == this) instance = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {

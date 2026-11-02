@@ -15,17 +15,13 @@ class AlphabetSliderViewModel : ViewModel() {
     var touchYPosition by mutableStateOf<Float?>(null)
         private set
 
-    var isInitialTouch by mutableStateOf(false)
-        private set
-
     var activeLetter by mutableStateOf<String?>(null)
         private set
 
     var sliderVerticalOffset by mutableFloatStateOf(0f)
         private set
 
-    var horizontalDelta by mutableFloatStateOf(0f)
-        private set
+    private var horizontalDelta = 0f
 
     // Per-index float states — writes to one index only invalidate that index's readers.
     private var waveOffsetStates: Array<MutableFloatState> = emptyArray()
@@ -68,18 +64,16 @@ class AlphabetSliderViewModel : ViewModel() {
                 horizontalDelta = 0f
             }
 
-            if (x != null && touchXStart != null) {
-                val delta = touchXStart!! - x
-                horizontalDelta = if (delta > 0f) delta else 0f
+            val xStart = touchXStart
+            if (x != null && xStart != null) {
+                horizontalDelta = (xStart - x).coerceAtLeast(0f)
             }
 
-            this.isInitialTouch = isInitialTouch
             updateActiveLetter(y)
             updateSliderOffset(y)
             computeWaveOffsets(y, density, screenWidthDp)
         } else {
             activeLetter = null
-            this.isInitialTouch = false
             sliderVerticalOffset = 0f
             touchXStart = null
             horizontalDelta = 0f

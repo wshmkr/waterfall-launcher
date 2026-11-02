@@ -74,16 +74,6 @@ fun AppListItem(
         }
     }
 
-    val inactiveFilter = remember(isActiveUser) {
-        if (!isActiveUser) {
-            ColorFilter.colorMatrix(ColorMatrix().apply {
-                setToSaturation(0f)
-            })
-        } else {
-            null
-        }
-    }
-
     val dimensions = LocalDimensions.current
 
     // Shared because the chevron consumes its own gesture and has to repeat the row's long press.
@@ -119,7 +109,7 @@ fun AppListItem(
                 painter = appInfo.icon,
                 contentDescription = appInfo.label,
                 modifier = Modifier.size(dimensions.iconLarge),
-                colorFilter = inactiveFilter
+                colorFilter = if (isActiveUser) null else inactiveProfileIconFilter
             )
             Spacer(modifier = Modifier.width(dimensions.iconGap))
             Column(
@@ -165,6 +155,8 @@ fun AppListItem(
         )
     }
 }
+
+private val inactiveProfileIconFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
 
 @Composable
 private fun NotificationChevron(size: Dp, enabled: Boolean, onOpen: () -> Unit, onLongClick: () -> Unit) {

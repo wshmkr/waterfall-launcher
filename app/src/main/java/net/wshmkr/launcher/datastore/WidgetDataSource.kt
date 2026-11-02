@@ -54,12 +54,22 @@ class WidgetDataSource @Inject constructor(
             .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
             .first()
 
-    suspend fun addWidget(widgetId: Int) = updateWidgets { ids ->
-        if (ids.size < MAX_WIDGETS) ids + widgetId else ids
+    suspend fun addWidget(widgetId: Int): Boolean {
+        var added = false
+        updateWidgets { ids ->
+            added = ids.size < MAX_WIDGETS
+            if (added) ids + widgetId else ids
+        }
+        return added
     }
 
     suspend fun removeWidget(widgetId: Int) = updateWidgets { ids ->
         ids.filter { it != widgetId }
+    }
+
+    // Merges with the stored list so widgets added or removed mid-drag survive the reorder.
+    suspend fun setWidgetOrder(orderedIds: List<Int>) = updateWidgets { current ->
+        orderedIds.filter { it in current } + current.filterNot { it in orderedIds }
     }
 
     suspend fun setLastPageWidgetId(widgetId: Int) {

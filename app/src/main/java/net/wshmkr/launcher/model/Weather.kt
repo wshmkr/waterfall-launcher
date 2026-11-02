@@ -6,11 +6,12 @@ import androidx.compose.runtime.Immutable
 data class WeatherReading(
     val temperatureCelsius: Double,
     val weatherCode: Int,
-    val sunriseTime: String?,
-    val sunsetTime: String?,
+    val sunriseEpochMillis: Long?,
+    val sunsetEpochMillis: Long?,
     val latitude: Double,
     val longitude: Double,
     val fetchedAtMillis: Long,
+    val fromDeviceLocation: Boolean = false,
 )
 
 @Immutable

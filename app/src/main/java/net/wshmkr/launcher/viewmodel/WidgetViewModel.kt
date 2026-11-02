@@ -17,16 +17,20 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.wshmkr.launcher.datastore.WidgetDataSource
 import net.wshmkr.launcher.model.WidgetProviderAppInfo
 import net.wshmkr.launcher.model.sectionLetter
 import net.wshmkr.launcher.repository.WidgetRepository
+import net.wshmkr.launcher.util.movedItem
 import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+
+private const val TAG = "WidgetViewModel"
 
 @HiltViewModel
 class WidgetViewModel @Inject constructor(
@@ -66,6 +70,8 @@ class WidgetViewModel @Inject constructor(
     private val _bindWidgetEvent = Channel<Pair<Int, AppWidgetProviderInfo>>(Channel.BUFFERED)
     val bindWidgetEvent = _bindWidgetEvent.receiveAsFlow()
 
+    private var widgetProvidersJob: Job? = null
+
     init {
         viewModelScope.launch {
             // Before the first widget renders, so the stack never draws at the default and jumps.
@@ -78,13 +84,22 @@ class WidgetViewModel @Inject constructor(
                     initialPageIndex = it.indexOf(lastWidgetId).coerceAtLeast(0)
                     initialPageRestored = true
                 }
-                widgetIds = it.toImmutableList()
+                val ids = it.toImmutableList()
+                if (ids == widgetIds) return@collect
+                widgetIds = ids
                 refreshManagedWidgets(it)
             }
         }
 
-        viewModelScope.launch {
-            loadWidgetProviders()
+        refreshWidgetProviders()
+    }
+
+    fun refreshWidgetProviders() {
+        widgetProvidersJob?.cancel()
+        widgetProvidersJob = viewModelScope.launch {
+            widgetAppListItems = withContext(Dispatchers.IO) {
+                buildWidgetAppListItems(widgetRepository.getWidgetProviderApps())
+            }
         }
     }
 
@@ -131,48 +146,68 @@ class WidgetViewModel @Inject constructor(
         }
     }
 
+    // The drag needs the move applied within the same frame; widgetIds intentionally waits for commit.
+    fun moveWidget(fromWidgetId: Int, toWidgetId: Int) {
+        val from = managedWidgets.firstOrNull { it.widgetId == fromWidgetId } ?: return
+        val to = managedWidgets.firstOrNull { it.widgetId == toWidgetId } ?: return
+        managedWidgets = managedWidgets.movedItem(from, to)?.toImmutableList() ?: return
+    }
+
+    fun commitWidgetOrder() {
+        val orderedIds = managedWidgets.map { it.widgetId }
+        // managedWidgets lags widgetIds while rows for newly added ids load.
+        val merged = (orderedIds + widgetIds.filterNot { it in orderedIds }).toImmutableList()
+        if (merged == widgetRepository.widgetIds.value) return
+        widgetIds = merged
+        viewModelScope.launch {
+            widgetRepository.commitWidgetOrder(merged)
+        }
+    }
+
     fun createWidgetView(context: Context, widgetId: Int): AppWidgetHostView? {
         return try {
-            val info = widgetRepository.appWidgetManager.getAppWidgetInfo(widgetId) ?: return null
-            widgetRepository.appWidgetHost.createView(context, widgetId, info)
+            widgetRepository.createWidgetView(context, widgetId)
         } catch (e: Exception) {
-            Log.w("WidgetViewModel", "Failed to create widget view for id=$widgetId", e)
+            Log.w(TAG, "Failed to create widget view for id=$widgetId", e)
             null
         }
     }
 
-    private suspend fun loadWidgetProviders() {
-        val items = withContext(Dispatchers.IO) {
-            val providers = widgetRepository.getWidgetProviderApps()
-            buildWidgetAppListItems(providers)
+    private suspend fun refreshManagedWidgets(ids: List<Int>) {
+        val loaded = managedWidgets
+            .filter { it.providerInfo != null }
+            .associateBy { it.widgetId }
+        managedWidgets = if (ids.all { it in loaded }) {
+            ids.mapNotNull { loaded[it] }.toImmutableList()
+        } else {
+            withContext(Dispatchers.IO) {
+                ids.map { widgetId ->
+                    loaded[widgetId] ?: buildManagedWidget(widgetId)
+                }.toImmutableList()
+            }
         }
-        widgetAppListItems = items
     }
 
-    private suspend fun refreshManagedWidgets(ids: List<Int>) {
+    private fun buildManagedWidget(widgetId: Int): ManagedWidget {
         val manager = widgetRepository.appWidgetManager
         val pm = widgetRepository.packageManager
-
-        val items = withContext(Dispatchers.IO) {
-            ids.mapNotNull { widgetId ->
-                val info = runCatching { manager.getAppWidgetInfo(widgetId) }
-                    .getOrNull() ?: return@mapNotNull null
-                val appInfo = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
-                    .getOrNull()
-                val appName = appInfo?.loadLabel(pm)?.toString() ?: info.provider.packageName
-                val widgetName = runCatching { info.loadLabel(pm)?.toString() }
-                    .getOrNull() ?: info.provider.className
-                val icon = appInfo?.loadIcon(pm)
-                ManagedWidget(
-                    widgetId = widgetId,
-                    widgetName = widgetName,
-                    appName = appName,
-                    appIcon = icon
-                )
-            }.toImmutableList()
-        }
-
-        managedWidgets = items
+        val info = runCatching { manager.getAppWidgetInfo(widgetId) }.getOrNull()
+            ?: return ManagedWidget(
+                widgetId = widgetId,
+                widgetName = "Unavailable widget",
+                appName = "Provider not found",
+                providerInfo = null,
+            )
+        val appName = runCatching { pm.getApplicationInfo(info.provider.packageName, 0) }
+            .getOrNull()?.loadLabel(pm)?.toString() ?: info.provider.packageName
+        val widgetName = runCatching { info.loadLabel(pm)?.toString() }
+            .getOrNull() ?: info.provider.className
+        return ManagedWidget(
+            widgetId = widgetId,
+            widgetName = widgetName,
+            appName = appName,
+            providerInfo = info
+        )
     }
 
     private fun buildWidgetAppListItems(providers: List<WidgetProviderAppInfo>): ImmutableList<WidgetAppListItem> {
@@ -199,7 +234,6 @@ class WidgetViewModel @Inject constructor(
                     label = provider.label,
                     letter = letter,
                     icon = provider.icon,
-                    widgetCount = provider.widgets.size,
                     widgets = widgetOptions
                 )
             )
@@ -214,14 +248,9 @@ class WidgetViewModel @Inject constructor(
                 val widgetId = widgetRepository.allocateWidgetId()
                 _bindWidgetEvent.send(widgetId to option.info)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.w(TAG, "Failed to allocate widget id", e)
             }
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        widgetRepository.stopListening()
     }
 }
 
@@ -233,7 +262,6 @@ sealed class WidgetAppListItem {
         val label: String,
         val letter: String,
         val icon: Drawable?,
-        val widgetCount: Int,
         val widgets: ImmutableList<WidgetOption>
     ) : WidgetAppListItem()
 }
@@ -249,5 +277,5 @@ data class ManagedWidget(
     val widgetId: Int,
     val widgetName: String,
     val appName: String,
-    val appIcon: Drawable?
+    val providerInfo: AppWidgetProviderInfo?
 )

@@ -4,23 +4,31 @@ import android.appwidget.AppWidgetHostView
 import android.os.Bundle
 import android.util.SizeF
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -29,11 +37,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -44,22 +54,25 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
 import net.wshmkr.launcher.ui.common.gesture.captureLongPress
 import net.wshmkr.launcher.ui.theme.ContentAlpha
 import net.wshmkr.launcher.ui.theme.Corners
 import net.wshmkr.launcher.ui.theme.Spacing
 import net.wshmkr.launcher.viewmodel.WidgetViewModel
+import kotlin.math.roundToInt
 
 // Virtual page count for wrap-around scrolling; real page = virtual page % widget count.
 private const val LOOP_PAGE_COUNT = Int.MAX_VALUE
@@ -67,6 +80,9 @@ private const val LOOP_PAGE_COUNT = Int.MAX_VALUE
 private const val WIDGET_SIZE_DEBOUNCE_MS = 80L
 
 private val DRAG_HANDLE_HEIGHT = 32.dp
+
+private val PAGE_DASH_TOUCH_HEIGHT = 12.dp
+private val PAGE_DASH_TOP_GAP = 4.dp
 
 private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
     if (pageCount <= 1) return initialIndex
@@ -78,6 +94,37 @@ private fun loopStartPage(pageCount: Int, initialIndex: Int): Int {
 private fun AppWidgetHostView.applyWidgetSize(widthDp: Int, heightDp: Int) =
     updateAppWidgetSize(Bundle(), listOf(SizeF(widthDp.toFloat(), heightDp.toFloat())))
 
+// Looping pages repeat each widget; only the copy nearest the scroll position hosts its view.
+private fun PagerState.isNearestCopyOfPage(page: Int, pageCount: Int): Boolean {
+    if (pageCount <= 1) return true
+    val offsetInPages = (currentPage - page) + currentPageOffsetFraction
+    return (offsetInPages / pageCount).roundToInt() == 0
+}
+
+// AppWidgetHost delivers updates only to the most recently created view per id, so each id gets one view.
+private class WidgetViewCache(private val createView: (Int) -> AppWidgetHostView?) {
+    private val views = HashMap<Int, AppWidgetHostView>()
+
+    fun get(widgetId: Int): AppWidgetHostView? =
+        views[widgetId] ?: createView(widgetId)?.also { views[widgetId] = it }
+
+    fun retainOnly(widgetIds: List<Int>) {
+        views.keys.retainAll(widgetIds.toSet())
+    }
+}
+
+private fun FrameLayout.showOnly(widgetView: AppWidgetHostView?) {
+    for (index in childCount - 1 downTo 0) {
+        if (getChildAt(index) !== widgetView) removeViewAt(index)
+    }
+    if (widgetView == null || widgetView.parent === this) return
+    (widgetView.parent as? ViewGroup)?.removeView(widgetView)
+    addView(
+        widgetView,
+        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+    )
+}
+
 /** Reads the height in the layout phase so a resize drag never recomposes the stack. */
 private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
     layout { measurable, constraints ->
@@ -86,10 +133,14 @@ private fun Modifier.stackHeight(heightDp: Density.() -> Dp) =
         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
     }
 
+// Requires the app's single WidgetViewModel: a defaulted hiltViewModel() resolves per nav destination.
 @Composable
 fun WidgetStack(
-    viewModel: WidgetViewModel = hiltViewModel(),
+    viewModel: WidgetViewModel,
     onTouchedChange: (Boolean) -> Unit = {},
+    onManageWidgets: () -> Unit = {},
+    // Preview mode: the resize handle is always shown and widget taps are blocked.
+    previewMode: Boolean = false,
 ) {
     val widgetIds = viewModel.widgetIds
 
@@ -102,13 +153,16 @@ fun WidgetStack(
     val pressSource = remember { MutableInteractionSource() }
     var stackWidthPx by remember { mutableIntStateOf(0) }
     val stackWidth = with(LocalDensity.current) { stackWidthPx.toDp() }
+    val context = LocalContext.current
+    val widgetViews = remember(context, viewModel) {
+        WidgetViewCache { widgetId -> viewModel.createWidgetView(context, widgetId) }
+    }
+    LaunchedEffect(widgetIds) { widgetViews.retainOnly(widgetIds) }
 
     // Disposing the drag handle does not fire onDragEnd, so persist before tearing it down.
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        if (editing) {
-            viewModel.commitStackHeight()
-            editing = false
-        }
+        viewModel.commitStackHeight()
+        editing = false
     }
 
     // Recreate the pager whenever the list changes so virtual pages always map
@@ -130,87 +184,104 @@ fun WidgetStack(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(Corners.medium)
-                .captureLongPress(
-                    interactionSource = pressSource,
-                    enabled = { !editing },
-                    onTouchedChange = onTouchedChange,
-                ) { editing = true },
-        ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .stackHeight { viewModel.stackHeightDp.dp }
-                        .onSizeChanged { stackWidthPx = it.width },
-                ) {
-                    HorizontalPager(
-                        state = pagerState,
+        val flingBehavior = PagerDefaults.flingBehavior(state = pagerState)
+
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(Corners.medium)
+                    .stackHeight { viewModel.stackHeightDp.dp }
+                    .onSizeChanged { stackWidthPx = it.width }
+                    .then(
+                        if (previewMode) {
+                            Modifier
+                        } else {
+                            Modifier.captureLongPress(
+                                interactionSource = pressSource,
+                                enabled = { !editing },
+                                onTouchedChange = onTouchedChange,
+                            ) { editing = true }
+                        }
+                    ),
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 1,
+                    flingBehavior = flingBehavior,
+                ) { page ->
+                    val widgetId = widgetIds[page % pageCount]
+                    val isNearestCopy by remember(pagerState, page, pageCount) {
+                        derivedStateOf { pagerState.isNearestCopyOfPage(page, pageCount) }
+                    }
+                    WidgetPage(
+                        widgetView = remember(widgetViews, widgetId) { widgetViews.get(widgetId) },
+                        showsWidgetView = isNearestCopy,
+                        widthDp = stackWidth.value.toInt(),
+                        viewModel = viewModel,
+                        blockTouches = previewMode,
+                    )
+                }
+
+                if (previewMode) {
+                    StackResizeHandle(viewModel = viewModel)
+                }
+
+                if (editing || previewMode) {
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(Corners.medium),
-                        beyondViewportPageCount = 1,
-                    ) { page ->
-                        WidgetPage(
-                            widgetId = widgetIds[page % pageCount],
-                            widthDp = stackWidth.value.toInt(),
-                            viewModel = viewModel,
-                        )
-                    }
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline,
+                                Corners.medium,
+                            ),
+                    )
+                }
 
-                    if (editing) {
+                if (editing) {
+                    Popup(
+                        onDismissRequest = { editing = false },
+                        properties = PopupProperties(focusable = true),
+                    ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.outline,
-                                    Corners.medium,
-                                ),
-                        )
-                        Popup(
-                            onDismissRequest = { editing = false },
-                            properties = PopupProperties(focusable = true),
+                                .width(stackWidth)
+                                .stackHeight {
+                                    viewModel.stackHeightDp.dp + DRAG_HANDLE_HEIGHT / 2
+                                },
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .width(stackWidth)
-                                    .stackHeight {
-                                        viewModel.stackHeightDp.dp + DRAG_HANDLE_HEIGHT / 2
+                                    .fillMaxSize()
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(onTap = { editing = false })
                                     },
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .pointerInput(Unit) {
-                                            detectTapGestures(onTap = { editing = false })
-                                        },
-                                )
-                                DragHandle(
-                                    modifier = Modifier.align(Alignment.BottomCenter),
-                                    currentHeightDp = { viewModel.stackHeightDp },
-                                    onResize = viewModel::previewStackHeight,
-                                    onResizeEnd = viewModel::commitStackHeight,
-                                )
-                            }
+                            )
+                            StackResizeHandle(viewModel = viewModel)
                         }
                     }
                 }
 
-                if (pageCount > 1) {
-                    PageDashes(pagerState = pagerState, pageCount = pageCount)
+                if (!previewMode) {
+                    // Sibling so the ripple draws above the opaque interop widget views.
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .indication(pressSource, ripple()),
+                    )
                 }
             }
 
-            // A sibling, so the ripple draws above the opaque interop widget views.
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .indication(pressSource, ripple()),
-            )
+            if (pageCount > 1) {
+                PageDashes(
+                    pagerState = pagerState,
+                    pageCount = pageCount,
+                    flingBehavior = flingBehavior,
+                    onLongPress = onManageWidgets.takeUnless { previewMode },
+                )
+            }
         }
     }
 }
@@ -218,20 +289,12 @@ fun WidgetStack(
 @OptIn(FlowPreview::class)
 @Composable
 private fun WidgetPage(
-    widgetId: Int,
+    widgetView: AppWidgetHostView?,
+    showsWidgetView: Boolean,
     widthDp: Int,
     viewModel: WidgetViewModel,
+    blockTouches: Boolean,
 ) {
-    val context = LocalContext.current
-    val widgetView = remember(widgetId) {
-        viewModel.createWidgetView(context, widgetId)?.apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-        }
-    }
-
     LaunchedEffect(widgetView, widthDp) {
         if (widgetView == null || widthDp <= 0) return@LaunchedEffect
         snapshotFlow { viewModel.stackHeightDp }
@@ -241,12 +304,33 @@ private fun WidgetPage(
 
     if (widgetView == null) {
         UnavailableWidget()
-    } else {
-        AndroidView(
-            factory = { widgetView },
-            modifier = Modifier.fillMaxSize(),
-        )
+        return
     }
+    Box {
+        AndroidView(
+            factory = { FrameLayout(it) },
+            modifier = Modifier.fillMaxSize(),
+            onRelease = { it.removeAllViews() },
+            update = { it.showOnly(widgetView.takeIf { showsWidgetView }) },
+        )
+        if (blockTouches) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) { detectTapGestures(onTap = {}) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.StackResizeHandle(viewModel: WidgetViewModel) {
+    DragHandle(
+        modifier = Modifier.align(Alignment.BottomCenter),
+        currentHeightDp = { viewModel.stackHeightDp },
+        onResize = viewModel::previewStackHeight,
+        onResizeEnd = viewModel::commitStackHeight,
+    )
 }
 
 @Composable
@@ -297,15 +381,64 @@ private fun DragHandle(
     }
 }
 
+private fun PagerState.nearestVirtualPage(targetIndex: Int, pageCount: Int): Int {
+    var delta = targetIndex - currentPage % pageCount
+    if (delta > pageCount / 2) delta -= pageCount
+    if (delta < -pageCount / 2) delta += pageCount
+    return currentPage + delta
+}
+
 @Composable
 private fun PageDashes(
     pagerState: PagerState,
     pageCount: Int,
+    flingBehavior: FlingBehavior,
+    onLongPress: (() -> Unit)?,
 ) {
+    val scope = rememberCoroutineScope()
+    val pressSource = remember { MutableInteractionSource() }
+    val layoutDirection = LocalLayoutDirection.current
+    val isRtl = layoutDirection == LayoutDirection.Rtl
+    val dashInsetPx = with(LocalDensity.current) { Spacing.medium.toPx() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = Spacing.medium, vertical = Spacing.small),
+            .clip(Corners.small)
+            .indication(pressSource, ripple())
+            .heightIn(min = PAGE_DASH_TOUCH_HEIGHT)
+            .scrollable(
+                state = pagerState,
+                orientation = Orientation.Horizontal,
+                reverseDirection = ScrollableDefaults.reverseDirection(
+                    layoutDirection,
+                    Orientation.Horizontal,
+                    reverseScrolling = false,
+                ),
+                flingBehavior = flingBehavior,
+            )
+            .then(
+                if (onLongPress == null) {
+                    Modifier
+                } else {
+                    Modifier.captureLongPress(interactionSource = pressSource, onLongPress = onLongPress)
+                }
+            )
+            .pointerInput(pageCount, isRtl, dashInsetPx) {
+                detectTapGestures(
+                    onTap = { offset ->
+                        val dashesWidth = (size.width - 2 * dashInsetPx).coerceAtLeast(1f)
+                        val visualIndex = ((offset.x - dashInsetPx) / dashesWidth * pageCount).toInt()
+                            .coerceIn(0, pageCount - 1)
+                        val tappedIndex = if (isRtl) pageCount - 1 - visualIndex else visualIndex
+                        scope.launch {
+                            pagerState.animateScrollToPage(
+                                pagerState.nearestVirtualPage(tappedIndex, pageCount),
+                            )
+                        }
+                    },
+                )
+            }
+            .padding(start = Spacing.medium, top = PAGE_DASH_TOP_GAP, end = Spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(Spacing.small),
     ) {
         val currentPage = pagerState.currentPage % pageCount

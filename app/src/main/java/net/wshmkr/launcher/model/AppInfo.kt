@@ -20,8 +20,7 @@ data class AppInfo(
     val isSuggested: Boolean = false,
     val searchTokens: ImmutableList<String> = persistentListOf(),
 ) {
-    val key: String
-        get() = keyFor(packageName, userHandle)
+    val key: String = keyFor(packageName, userHandle)
 }
 
 fun keyFor(packageName: String, userHandle: UserHandle): String {
@@ -30,3 +29,6 @@ fun keyFor(packageName: String, userHandle: UserHandle): String {
 
 val String.sectionLetter: String
     get() = firstOrNull()?.uppercaseChar()?.toString() ?: "#"
+
+// Section letter first: case-folded order alone can split a section (e.g. "ı" sorts after "z").
+val labelOrder: Comparator<String> = compareBy<String>({ it.sectionLetter }, { it.lowercase() })

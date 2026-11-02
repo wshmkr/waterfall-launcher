@@ -5,6 +5,7 @@ import android.content.Context
 import android.location.Location
 import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -75,7 +76,7 @@ class WeatherRepository @Inject constructor(
                 .distinctUntilChanged()
                 .collectLatest { subscribed ->
                     if (!subscribed) return@collectLatest
-                    var force = false
+                    var force = forceRefreshRequests.tryReceive().isSuccess
                     while (true) {
                         refresh(force)
                         force = withTimeoutOrNull(delayUntilNextRefresh()) {
@@ -112,21 +113,25 @@ class WeatherRepository @Inject constructor(
                 return
             }
 
+            dimShownReadingIfElsewhere(staticLocation)
+
             val target = staticLocation ?: deviceLocation()
             if (target == null) {
                 serveFallback(atTargetLocation, now)
                 return
             }
+            val fallback = if (staticLocation == null) reading?.takeIf { it.isNear(target) } else atTargetLocation
 
             WeatherHelper.fetchCurrentWeather(target.first, target.second)
-                .onSuccess { fetched ->
+                .onSuccess { result ->
+                    val fetched = result.copy(fromDeviceLocation = staticLocation == null)
                     reading = fetched
                     weatherCacheDataSource.save(fetched)
                     _state.value = uiStateFor(fetched, now)
                     nextRefreshDueAtMillis = fetched.fetchedAtMillis + READING_TTL_MS
                 }
                 .onFailure {
-                    serveFallback(atTargetLocation, now)
+                    serveFallback(fallback, now)
                 }
         }
     }
@@ -135,6 +140,11 @@ class WeatherRepository @Inject constructor(
         cached?.takeIf { it.isDisplayableAt(now) }
             ?.let { WeatherUiState.Ready(it, isStale = it.isStaleAt(now)) }
             ?: WeatherUiState.Error
+
+    private fun dimShownReadingIfElsewhere(staticLocation: Pair<Double, Double>?) {
+        val shown = (_state.value as? WeatherUiState.Ready)?.reading ?: return
+        if (!shown.matchesTarget(staticLocation)) _state.value = WeatherUiState.Ready(shown, isStale = true)
+    }
 
     private fun serveFallback(fallback: WeatherReading?, now: Long) {
         _state.value = uiStateFor(fallback, now)
@@ -150,9 +160,16 @@ class WeatherRepository @Inject constructor(
 
     // Permission is checked dynamically in refresh() before this is reached.
     @SuppressLint("MissingPermission")
-    private suspend fun deviceLocation(): Pair<Double, Double>? =
-        runCatching { WeatherHelper.getBestAvailableLocation(fusedClient) }.getOrNull()
-            ?.let { it.latitude to it.longitude }
+    private suspend fun deviceLocation(): Pair<Double, Double>? {
+        val location = try {
+            WeatherHelper.getBestAvailableLocation(fusedClient)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+        return location?.let { it.latitude to it.longitude }
+    }
 
     private fun WeatherReading.isDisplayableAt(now: Long): Boolean =
         now - fetchedAtMillis < MAX_READING_AGE_MS
@@ -160,12 +177,13 @@ class WeatherRepository @Inject constructor(
     private fun WeatherReading.isStaleAt(now: Long): Boolean =
         now - fetchedAtMillis >= READING_TTL_MS
 
+    // Without a fix, a fixed-location reading would present another place's weather as local.
     private fun WeatherReading.matchesTarget(staticLocation: Pair<Double, Double>?): Boolean =
-        staticLocation == null || isNear(staticLocation.first, staticLocation.second)
+        staticLocation?.let { isNear(it) } ?: fromDeviceLocation
 
-    private fun WeatherReading.isNear(targetLatitude: Double, targetLongitude: Double): Boolean {
+    private fun WeatherReading.isNear(target: Pair<Double, Double>): Boolean {
         val distance = FloatArray(1)
-        Location.distanceBetween(latitude, longitude, targetLatitude, targetLongitude, distance)
+        Location.distanceBetween(latitude, longitude, target.first, target.second, distance)
         return distance[0] <= CACHE_LOCATION_RADIUS_METERS
     }
 }

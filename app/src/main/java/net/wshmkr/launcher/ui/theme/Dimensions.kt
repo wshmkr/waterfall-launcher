@@ -36,6 +36,8 @@ data class Dimensions(
     val mediaAppIconSize: Dp,
     val albumArtSize: Dp,
     val searchButtonEndInset: Dp,
+    val widgetThumbnailWidth: Dp,
+    val widgetThumbnailHeight: Dp,
 
     val fontCaption: TextUnit,
     val fontSmall: TextUnit,
@@ -60,6 +62,8 @@ val standardDimensions = Dimensions(
     mediaAppIconSize = 56.dp,
     albumArtSize = 96.dp,
     searchButtonEndInset = 64.dp,
+    widgetThumbnailWidth = 72.dp,
+    widgetThumbnailHeight = 56.dp,
 
     fontCaption = 12.sp,
     fontSmall = 14.sp,
@@ -84,6 +88,8 @@ val compactDimensions = Dimensions(
     mediaAppIconSize = 48.dp,
     albumArtSize = 80.dp,
     searchButtonEndInset = 56.dp,
+    widgetThumbnailWidth = 64.dp,
+    widgetThumbnailHeight = 48.dp,
 
     fontCaption = 11.sp,
     fontSmall = 13.sp,
@@ -108,6 +114,8 @@ val largeDimensions = Dimensions(
     mediaAppIconSize = 64.dp,
     albumArtSize = 112.dp,
     searchButtonEndInset = 72.dp,
+    widgetThumbnailWidth = 80.dp,
+    widgetThumbnailHeight = 64.dp,
 
     fontCaption = 13.sp,
     fontSmall = 15.sp,
@@ -122,6 +130,9 @@ val LocalDimensions = staticCompositionLocalOf { standardDimensions }
 
 // Largest size an app icon is ever drawn at, so icons can be rasterized once without upscaling.
 val maxAppIconSize: Dp = maxOf(compactDimensions.iconLarge, standardDimensions.iconLarge, largeDimensions.iconLarge)
+
+// Largest album art slot, so URI art is decoded once without upscaling.
+val maxAlbumArtSize: Dp = maxOf(compactDimensions.albumArtSize, standardDimensions.albumArtSize, largeDimensions.albumArtSize)
 
 fun dimensionsFor(screenWidthDp: Int): Dimensions = when {
     screenWidthDp < COMPACT_WIDTH_THRESHOLD_DP -> compactDimensions
@@ -156,4 +167,4 @@ private const val ALPHABET_BOTTOM_LIFT_FRACTION = 0.11f
 private const val ALPHABET_HEIGHT_FRACTION = 0.45f
 private val ALPHABET_MAX_LETTER_PITCH = 18.dp
 private const val SEARCH_BUTTON_BOTTOM_FRACTION = 0.055f
-private const val HOME_WIDGET_GAP_FRACTION = 0.018f
+private const val HOME_WIDGET_GAP_FRACTION = 0.010f

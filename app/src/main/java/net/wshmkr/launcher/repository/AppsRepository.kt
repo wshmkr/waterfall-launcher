@@ -33,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,8 +44,13 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
+<<<<<<< ours
 import net.wshmkr.launcher.util.maxAppIconSizePx
 import net.wshmkr.launcher.util.toBitmapPainter
+=======
+import net.wshmkr.launcher.model.labelOrder
+import net.wshmkr.launcher.ui.theme.maxAppIconSize
+>>>>>>> theirs
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.exp
@@ -82,7 +88,7 @@ class AppsRepository @Inject constructor(
     val activeProfiles = _activeProfiles.asStateFlow()
 
     private val appComparator =
-        compareBy<AppInfo> { it.label.lowercase() }.thenBy { it.userHandle.hashCode() }
+        compareBy<AppInfo, String>(labelOrder) { it.label }.thenBy { it.userHandle.hashCode() }
 
     private val profileStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -163,7 +169,7 @@ class AppsRepository @Inject constructor(
         _activeProfiles.value = userHandles.filter { isProfileActive(it) }.toPersistentSet()
     }
 
-    fun isProfileActive(userHandle: UserHandle): Boolean {
+    private fun isProfileActive(userHandle: UserHandle): Boolean {
         if (userHandle == Process.myUserHandle()) {
             return true
         }
@@ -291,8 +297,8 @@ class AppsRepository @Inject constructor(
         Snapshot.withMutableSnapshot {
             allApps.removeAll { it.packageName == packageName && it.userHandle == userHandle }
             if (updated != null) {
-                allApps.add(updated)
-                allApps.sortWith(appComparator)
+                val searchIndex = allApps.binarySearch(updated, appComparator)
+                allApps.add(if (searchIndex < 0) -searchIndex - 1 else searchIndex, updated)
             }
         }
     }
@@ -373,7 +379,7 @@ class AppsRepository @Inject constructor(
             .map { it.first }
             .toList()
 
-        if (ranked == mostUsedApps.toList()) return
+        if (ranked == mostUsedApps) return
         Snapshot.withMutableSnapshot {
             mostUsedApps.clear()
             mostUsedApps.addAll(ranked)
@@ -435,18 +441,21 @@ class AppsRepository @Inject constructor(
 
         val app = allApps[index]
         val enable = !isSet(app)
+        allApps[index] = withFlag(app, enable)
         try {
-            if (enable) {
-                store.add(packageName, userHandle)
-            } else {
-                store.remove(packageName, userHandle)
+            // Non-cancellable so a cancelled caller can't leave memory and disk disagreeing.
+            withContext(NonCancellable) {
+                if (enable) {
+                    store.add(packageName, userHandle)
+                } else {
+                    store.remove(packageName, userHandle)
+                }
             }
-        } catch (e: CancellationException) {
-            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Failed to persist package flag", e)
+            val currentIndex = indexOfApp(packageName, userHandle)
+            if (currentIndex != -1) allApps[currentIndex] = app
         }
-        allApps[index] = withFlag(app, enable)
     }
 
     companion object {
