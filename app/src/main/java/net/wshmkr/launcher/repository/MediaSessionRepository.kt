@@ -14,6 +14,7 @@ import coil.ImageLoader
 import coil.imageLoader
 import coil.request.Disposable
 import coil.request.ImageRequest
+import coil.size.Precision
 import coil.size.Scale
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -335,6 +336,8 @@ class MediaSessionRepository @Inject constructor(
                     .size((maxAlbumArtSize.value * context.resources.displayMetrics.density).roundToInt())
                     // The slot center-crops, so FIT would leave non-square art short and upscaled.
                     .scale(Scale.FILL)
+                    // An explicit size defaults to exact, which would upscale small art to the slot.
+                    .precision(Precision.INEXACT)
                     .target(
                         onSuccess = { art -> handler.post { onArtLoadFinished(generation, wantedUri, art.toBitmap()) } },
                         onError = { handler.post { onArtLoadFinished(generation, wantedUri, null) } },
