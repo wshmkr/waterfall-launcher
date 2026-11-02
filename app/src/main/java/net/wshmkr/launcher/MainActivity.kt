@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Drawing nothing until the stored palette loads avoids a frame in the default palette.
             val paletteStyle by userSettingsDataSource.paletteStyle
-                .collectAsStateWithLifecycle<PaletteStyle, PaletteStyle?>(initialValue = null)
+                .collectAsStateWithLifecycle<PaletteStyle?>(initialValue = null)
             val loadedPaletteStyle = paletteStyle ?: return@setContent
             WaterfallLauncherTheme(paletteStyle = loadedPaletteStyle) {
                 val navController = rememberNavController()
