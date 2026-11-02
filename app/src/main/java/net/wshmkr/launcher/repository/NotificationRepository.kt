@@ -55,30 +55,9 @@ class NotificationRepository @Inject constructor() {
     }
 
     fun reset(seed: Iterable<NotificationInfo>) {
-        val seedList = seed.toList()
-        val seedKeys = seedList.mapTo(HashSet()) { it.key }
-        _notifications.update { existing ->
-            val next = mutableMapOf<String, MutableMap<UserHandle, MutableList<NotificationInfo>>>()
-            for (notification in seedList) {
-                val userMap = next.getOrPut(notification.packageName) { mutableMapOf() }
-                val list = userMap.getOrPut(notification.userHandle) { mutableListOf() }
-                list.removeAll { it.key == notification.key }
-                list.add(notification)
-            }
-            // Preserve entries added concurrently between seed capture and this update.
-            for ((packageName, userMap) in existing) {
-                for ((userHandle, notifications) in userMap) {
-                    for (notification in notifications) {
-                        if (notification.key !in seedKeys) {
-                            val destUsers = next.getOrPut(packageName) { mutableMapOf() }
-                            val destList = destUsers.getOrPut(userHandle) { mutableListOf() }
-                            destList.add(notification)
-                        }
-                    }
-                }
-            }
-            next
-        }
+        _notifications.value = seed
+            .groupBy { it.packageName }
+            .mapValues { (_, inPackage) -> inPackage.groupBy { it.userHandle } }
     }
 
     fun clearAll() {
