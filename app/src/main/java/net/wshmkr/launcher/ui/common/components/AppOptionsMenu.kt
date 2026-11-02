@@ -1,8 +1,5 @@
 package net.wshmkr.launcher.ui.common.components
 
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -26,6 +23,8 @@ import net.wshmkr.launcher.ui.common.icons.VisibilityIcon
 import net.wshmkr.launcher.ui.common.icons.VisibilityOffIcon
 import net.wshmkr.launcher.ui.theme.LocalDimensions
 import net.wshmkr.launcher.ui.theme.Spacing
+import net.wshmkr.launcher.util.openAppDetails
+import net.wshmkr.launcher.util.requestUninstall
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,11 +100,7 @@ fun AppOptionsMenu(
             icon = InfoIcon(),
             text = "App info",
             onClick = {
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", appInfo.packageName, null)
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(intent)
+                openAppDetails(context, appInfo.packageName, appInfo.userHandle)
                 slideOutThenDismiss()
             }
         )
@@ -142,11 +137,7 @@ fun AppOptionsMenu(
                 icon = DeleteIcon(),
                 text = "Uninstall",
                 onClick = {
-                    val intent = Intent(Intent.ACTION_DELETE).apply {
-                        data = Uri.fromParts("package", appInfo.packageName, null)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(intent)
+                    requestUninstall(context, appInfo.packageName, appInfo.userHandle)
                     slideOutThenDismiss()
                 }
             )

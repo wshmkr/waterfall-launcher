@@ -21,7 +21,7 @@ fun SearchOverlay(
     // Single collector at outer scope; reads inside items() scope recompositions to rows.
     val activeProfiles by viewModel.activeProfiles.collectAsState()
     val queryState = viewModel.searchQuery.collectAsState()
-    val listItemsState = viewModel.searchListItems.collectAsState()
+    val resultsState = viewModel.searchResults.collectAsState()
 
     val onQueryChange = remember(viewModel) { viewModel::updateSearchQuery }
     val onSearch = remember(viewModel) { { _: String -> viewModel.launchTopResult() } }
@@ -46,17 +46,12 @@ fun SearchOverlay(
         onSearch = onSearch,
     ) {
         items(
-            items = listItemsState.value,
-            key = { it.appInfo.key },
-            contentType = { it::class },
-        ) { item ->
-            val app = item.appInfo
-            val isActiveUser = remember(app.userHandle, activeProfiles) {
-                app.userHandle in activeProfiles
-            }
+            items = resultsState.value,
+            key = { it.key },
+        ) { app ->
             AppListItem(
                 appInfo = app,
-                isActiveUser = isActiveUser,
+                isActiveUser = app.userHandle in activeProfiles,
                 onClick = onClickApp,
                 onToggleFavorite = onToggleFavorite,
                 onToggleHidden = onToggleHidden,
