@@ -14,6 +14,8 @@ import coil.ImageLoader
 import coil.imageLoader
 import coil.request.Disposable
 import coil.request.ImageRequest
+import coil.size.Precision
+import coil.size.Scale
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +34,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import net.wshmkr.launcher.model.MediaInfo
 import net.wshmkr.launcher.service.LauncherNotificationListenerService
+import net.wshmkr.launcher.ui.theme.maxAlbumArtSize
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.roundToInt
 
 private const val ART_SETTLE_TIMEOUT_MS = 2_000L
 
@@ -124,7 +128,7 @@ class MediaSessionRepository @Inject constructor(
         private val imageLoader: ImageLoader = context.imageLoader
         // All fields are read/written only on the handler thread; start/stop post to the handler
         // so callers on any thread converge onto the same serialised access.
-        private var trackedControllers: List<Pair<MediaController, MediaController.Callback>> = emptyList()
+        private var trackedSessions: List<TrackedSession> = emptyList()
         private var mediaRanking: MediaRanking = mediaRankingRepository.ranking.value
         private var playingPackages: Set<String> = emptySet()
         private var lastMediaInfo: MediaInfo? = null
@@ -168,8 +172,8 @@ class MediaSessionRepository @Inject constructor(
                 } catch (e: SecurityException) {
                     // Ignore.
                 }
-                trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
-                trackedControllers = emptyList()
+                trackedSessions.forEach { it.controller.unregisterCallback(it) }
+                trackedSessions = emptyList()
                 cancelArtLoad()
                 handler.removeCallbacks(artSettleRunnable)
                 onStopped()
@@ -192,19 +196,14 @@ class MediaSessionRepository @Inject constructor(
         }
 
         private fun trackControllers(controllers: List<MediaController>) {
-            trackedControllers.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
-            trackedControllers = controllers.map { controller ->
-                val callback = object : MediaController.Callback() {
-                    override fun onMetadataChanged(metadata: MediaMetadata?) {
-                        // Only the shown session's cached extraction depends on its metadata.
-                        if (controller.sameSessionAs(lastControllerRef)) metadataStale = true
-                        publish()
-                    }
-                    override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
-                    override fun onSessionDestroyed() = refreshActiveSessions()
+            trackedSessions.forEach { it.controller.unregisterCallback(it) }
+            trackedSessions = controllers.map { controller ->
+                TrackedSession(controller).also {
+                    controller.registerCallback(it, handler)
+                    // Read after registering so no change between read and registration is lost.
+                    it.metadata = controller.metadata
+                    it.playbackState = controller.playbackState
                 }
-                controller.registerCallback(callback, handler)
-                controller to callback
             }
             // Metadata may have changed during the re-registration gap.
             metadataStale = true
@@ -212,17 +211,16 @@ class MediaSessionRepository @Inject constructor(
         }
 
         private fun publish() {
-            // The metadata/playbackState getters are binder calls.
-            val candidates = trackedControllers.mapNotNull { (controller, _) ->
-                val metadata = controller.metadata ?: return@mapNotNull null
-                val playbackState = controller.playbackState ?: return@mapNotNull null
-                SessionSnapshot(controller, metadata, playbackState)
+            val candidates = trackedSessions.mapNotNull { session ->
+                val metadata = session.metadata ?: return@mapNotNull null
+                val playbackState = session.playbackState ?: return@mapNotNull null
+                SessionSnapshot(session.controller, metadata, playbackState)
             }
                 // Mirror the shade: ignore sessions with no media notification (e.g. YouTube Shorts).
                 .filter { it.controller.packageName in mediaRanking.notificationPostTimes }
 
-            val holdLastShown = lastMediaInfo != null && trackedControllers.any { (controller, _) ->
-                controller.sameSessionAs(lastControllerRef)
+            val holdLastShown = lastMediaInfo != null && trackedSessions.any {
+                it.controller.sameSessionAs(lastControllerRef)
             }
             val lastShownPresent = candidates.any { it.controller.sameSessionAs(lastControllerRef) }
 
@@ -249,9 +247,8 @@ class MediaSessionRepository @Inject constructor(
             } else {
                 metadataStale = false
                 lastArtUri = selected.metadata.artUri()
-                val extracted = extractMediaInfo(selected.controller, selected.metadata, lastArtUri)
+                extractMediaInfo(selected.controller, selected.metadata, lastArtUri)
                     .reusingArtFrom(lastMediaInfo)
-                if (extracted.hasSameDisplayContentAs(lastMediaInfo)) lastMediaInfo else extracted
             }
 
             if (mediaInfo?.albumArt != null) {
@@ -336,6 +333,11 @@ class MediaSessionRepository @Inject constructor(
                     .data(wantedUri)
                     // Software bitmaps keep pixel comparison in reusingArtFrom safe.
                     .allowHardware(false)
+                    .size((maxAlbumArtSize.value * context.resources.displayMetrics.density).roundToInt())
+                    // The slot center-crops, so FIT would leave non-square art short and upscaled.
+                    .scale(Scale.FILL)
+                    // An explicit size defaults to exact, which would upscale small art to the slot.
+                    .precision(Precision.INEXACT)
                     .target(
                         onSuccess = { art -> handler.post { onArtLoadFinished(generation, wantedUri, art.toBitmap()) } },
                         onError = { handler.post { onArtLoadFinished(generation, wantedUri, null) } },
@@ -413,6 +415,26 @@ class MediaSessionRepository @Inject constructor(
             return getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
                 ?: getString(MediaMetadata.METADATA_KEY_ART_URI)
                 ?: getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+        }
+
+        // Caches callback-delivered state so publish() avoids per-session binder calls.
+        private inner class TrackedSession(val controller: MediaController) : MediaController.Callback() {
+            var metadata: MediaMetadata? = null
+            var playbackState: PlaybackState? = null
+
+            override fun onMetadataChanged(metadata: MediaMetadata?) {
+                this.metadata = metadata
+                // Only the shown session's cached extraction depends on its metadata.
+                if (controller.sameSessionAs(lastControllerRef)) metadataStale = true
+                publish()
+            }
+
+            override fun onPlaybackStateChanged(state: PlaybackState?) {
+                playbackState = state
+                publish()
+            }
+
+            override fun onSessionDestroyed() = refreshActiveSessions()
         }
 
         private data class SessionSnapshot(
