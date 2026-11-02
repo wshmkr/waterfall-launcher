@@ -75,7 +75,8 @@ private class CaptureLongPressNode(
             )
             if (!enabled()) return@awaitEachGesture
 
-            onTouchedChange(true)
+            val gestureOnTouchedChange = onTouchedChange
+            gestureOnTouchedChange(true)
             try {
                 val slop = viewConfiguration.touchSlop
                 // null means the timeout elapsed with the finger still down: a long press.
@@ -103,7 +104,7 @@ private class CaptureLongPressNode(
                     )
                 }
             } finally {
-                onTouchedChange(false)
+                gestureOnTouchedChange(false)
             }
         }
     }
