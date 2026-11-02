@@ -34,6 +34,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +45,7 @@ import net.wshmkr.launcher.datastore.UsageDataSource
 import net.wshmkr.launcher.datastore.UsageEntry
 import net.wshmkr.launcher.model.AppInfo
 import net.wshmkr.launcher.model.keyFor
+import net.wshmkr.launcher.model.labelOrder
 import net.wshmkr.launcher.ui.theme.maxAppIconSize
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -82,7 +84,7 @@ class AppsRepository @Inject constructor(
     val activeProfiles = _activeProfiles.asStateFlow()
 
     private val appComparator =
-        compareBy<AppInfo, String>(String.CASE_INSENSITIVE_ORDER) { it.label }.thenBy { it.userHandle.hashCode() }
+        compareBy<AppInfo, String>(labelOrder) { it.label }.thenBy { it.userHandle.hashCode() }
 
     private val profileStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -415,15 +417,18 @@ class AppsRepository @Inject constructor(
         val enable = !isSet(app)
         allApps[index] = withFlag(app, enable)
         try {
-            if (enable) {
-                store.add(packageName, userHandle)
-            } else {
-                store.remove(packageName, userHandle)
+            // Non-cancellable so a cancelled caller can't leave memory and disk disagreeing.
+            withContext(NonCancellable) {
+                if (enable) {
+                    store.add(packageName, userHandle)
+                } else {
+                    store.remove(packageName, userHandle)
+                }
             }
-        } catch (e: CancellationException) {
-            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Failed to persist package flag", e)
+            val currentIndex = indexOfApp(packageName, userHandle)
+            if (currentIndex != -1) allApps[currentIndex] = app
         }
     }
 
